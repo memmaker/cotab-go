@@ -13,9 +13,6 @@ func (e *Engine) unported(name string) {
 	e.skipCommand()
 }
 
-func (e *Engine) cmdCombat()       { e.unported("COMBAT") }
-func (e *Engine) cmdProgram()      { e.unported("PROGRAM") }
-
 // cmdOnGotoGosub = O03C:1AE5 (ON GOTO, ON GOSUB): jump to the n-th of the
 // addresses that follow.
 func (e *Engine) cmdOnGotoGosub() {
@@ -598,3 +595,108 @@ func (e *Engine) cmdParlay() {
 		e.setVar(dst, uint16(results[k]))
 	}
 }
+
+// PROGRAM's operand.
+const (
+	programPartyMenu = 0
+	programQuit      = 3
+	programEnding    = 8
+	programCamp      = 9
+	areaWordGameOver = 509
+	gameWordTraining = 680
+)
+
+// cmdProgram = O03C:30FE YourHaveWon (what): the party menu, the ending,
+// camping or the end of the game.
+func (e *Engine) cmdProgram() {
+	s := &e.sc
+	if s.restoreSelected {
+		e.selectMember(s.savedSelected)
+		s.restoreSelected = false
+	}
+	e.readArgs(1)
+	switch byte(e.arg(1)) {
+	case programPartyMenu:
+		e.PartyMenu()
+		if e.mapMode != mapPicture && wordAt(e.area, 2*areaWordFreeSteps) == 0 {
+			e.loadPicture()
+		}
+	case programEnding:
+		e.endGameText()
+		e.gameWon = true
+		putWord(e.area, 2*areaWordGameOver, 255)
+		putWord(e.game, 2*gameWordTraining, 255)
+		for _, c := range e.party {
+			c.HP = c.MaxHP
+			c.Status = statusOkay
+			c.Okay = 1
+		}
+		e.PartyMenu()
+		if e.YesNo(colourLightMagenta, colourGreen, colourWhite, "You've won. Save before quitting? ") == 'Y' {
+			e.SaveGame()
+		}
+		e.Exit()
+	case programCamp:
+		pc := s.pc
+		e.campEvents()
+		s.pc = pc
+		e.cmdExit()
+	case programQuit:
+		e.partyDead = true
+		e.cmdExit()
+	}
+}
+
+// endGameText = O0AC:1000 end_game_text: the ending (still to port).
+func (e *Engine) endGameText() {}
+
+// Area2 words COMBAT reads: a shop or a temple instead of a fight.
+const (
+	gameWordShop   = 876
+	gameWordTemple = 738
+	gameWordSearch = 714
+)
+
+// cmdCombat = O03C:17E4: with no monsters loaded the event is a shop, a
+// temple or the treasure; otherwise the fight, then the treasure.
+func (e *Engine) cmdCombat() {
+	s := &e.sc
+	s.pc++
+	if !s.monstersLoaded && !e.duelling {
+		switch {
+		case wordAt(e.game, 2*gameWordShop) == 1:
+			putWord(e.game, 2*gameWordShop, 0)
+			e.shopMenu()
+		case wordAt(e.game, 2*gameWordTemple) == 1:
+			putWord(e.game, 2*gameWordTemple, 0)
+			e.templeMenu()
+		default:
+			e.treasureMenu()
+		}
+	} else {
+		if d := e.freeSteps(s.posX, s.posY, s.facing); uint16(d) < wordAt(e.game, 2*gameWordDistance) {
+			putWord(e.game, 2*gameWordDistance, uint16(d))
+		}
+		e.fight()
+		e.treasureMenu()
+		if wordAt(e.area, 2*areaWordFreeSteps) == 0 {
+			e.bigPicture(bigPicWild)
+		}
+		e.duelling = false
+	}
+	if wordAt(e.area, 2*areaWordFreeSteps) == 0 {
+		e.gameState = stateWilderness
+	} else {
+		e.gameState = stateDungeon
+	}
+	putWord(e.game, 2*gameWordSearch, wordAt(e.game, 2*gameWordSearch)&1)
+	s.pictureShown, s.pictureBig = false, false
+	s.pictureOn = false
+	e.loadPicture()
+}
+
+// The subsystems COMBAT opens (being ported: Pool of Radiance's for now).
+func (e *Engine) shopMenu()     { e.Shop() }        // O048:06E7
+func (e *Engine) templeMenu()   { e.Temple() }      // O042:0000, temple_shop
+func (e *Engine) treasureMenu() { e.AfterCombat() } // O045:17A2
+func (e *Engine) fight()        { e.Combat() }      // O057:0100

@@ -81,6 +81,7 @@ type Engine struct {
 	picFrame        byte       // b729B
 	spriteFrame     byte       // b72A5
 	textWaiting     bool       // b5D0B
+	duelling        bool       // b8B70: the duel instead of a fight
 	forcePicture    bool       // b4FD9: the encounter picture shows even during ENCOUNTER
 	gameSpeed       byte       // game_speed_var_4FC2
 	freeTraining    bool       // b75A1: the 'J' cheat of the party menu
