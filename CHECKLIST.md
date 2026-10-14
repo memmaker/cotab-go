@@ -38,3 +38,13 @@ raw EGA colour indices.
 - viewanim.go: the view-window animation and the wilderness map cursor (M5).
 - Camp (O09D) still runs Pool of Radiance's Encamp; combat, shops and temples are por code paths.
 - Pool/Hillsfar import shows a message.
+
+## Deliberate deviations (obvious bugs fixed, per c-to-go.md)
+- Shops with the normal price factor (16): the original's Buy (O048:0474) has no case for it and charges an
+  unset local, which holds the menu colour pushed by the shop menu's displayInput (15) — every item costs
+  15 gold. The port charges the price the list shows.
+- Encounter speeds (O04C:20E5): haste and slow are swapped against the character sheet; the port doubles for
+  haste (42) and halves for slow (39) like the sheet.
+- Appraise "Keep" with no items lost the gem; the port keeps it.
+- ENCOUNTER with a digit that is no menu item read past its reaction table; the port asks again.
+- The shop's "Excuse me" text: unchanged; DIVIDE by zero in scripts gives 0 instead of a runtime error.
