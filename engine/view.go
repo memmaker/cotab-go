@@ -102,129 +102,150 @@ func (e *Engine) SheetPortrait() {
 	e.DrawPortrait(0x1C, 1, true)
 }
 
-// ItemsMenu = ovr20:0EF8: the character's items with Ready, Use, Trade,
-// Drop, Halve, Join, Sell and Id. Returns true when the View should end
-// (an item was used in combat).
+// ItemsMenu = O0AF:1583 use_item (var done): the character's items with
+// Ready, Use, Trade, Drop, Halve, Join, Sell and Id. Returns done (an item
+// was used in combat).
 func (e *Engine) ItemsMenu() bool {
 	c := e.selected()
 	key := byte(' ')
-	var it *Item
 	index := 0
 	redraw, full := true, true
-	quit := false
-	for key != 0 && key != 'E' && !quit && c.ItemCount > 0 {
+	done := false
+	for key != 0 && key != 'E' && !done && c.ItemCount > 0 {
 		count := c.ItemCount
-		if len(c.Items) == 0 {
-			if c.ItemCount != count {
-				redraw = true
+		if len(c.Items) > 0 {
+			menu := "Ready"
+			if c.Okay != 0 && wordAt(e.area, 2*areaWordNoMagic) == 0 &&
+				(e.gameState == stateCamp || e.gameState == stateWilderness || e.gameState == stateDungeon ||
+					e.gameState == stateCombat && c.Combat != nil && c.Combat.CanUse != 0) {
+				menu += " Use"
 			}
-			continue
-		}
-		hired := c.Control >= 0x80 && c.Okay != 0 && c.Status != 1
-		menu := "Ready"
-		if c.Okay != 0 && wordAt(e.area, 0x1CA) == 0 &&
-			(e.gameState == 2 || e.gameState == 3 || e.gameState == 4 ||
-				e.gameState == 5 && c.Combat != nil && c.Combat.CanUse != 0) {
-			menu += " Use"
-		}
-		if !hired && e.gameState != 5 {
-			menu += " Trade"
-		}
-		menu += " Drop"
-		if c.ItemCount < 0x10 {
-			menu += " Halve"
-		}
-		menu += " Join"
-		if !hired && e.gameState == 1 {
-			menu += " Sell"
-		}
-		if e.gameState == 1 {
-			menu += " Id"
-		}
-		menu = cut(menu, 0x28)
-		list := make([]*ListNode, len(c.Items))
-		for i, x := range c.Items {
-			e.ItemName(c, x, 0, 0, true, false)
-			list[i] = &ListNode{Text: x.Name()}
-		}
-		if full || e.itemsRedraw {
-			e.ClearScreen()
-			e.DrawBorder(1, 1, 0x26, 0x16, 0)
-			e.displayName(c, 1, 1, true)
-			e.DisplayString(len(c.Name())+4, 1, 0xA, "Items")
-			e.DrawBoxTitled(1, 3, 0x26, 0x16, 0, 0, "")
-			e.DisplayString(1, 3, 0xF, "Ready Item")
-			redraw, full, e.itemsRedraw = true, false, false
-		}
-		var sel *ListNode
-		e.ext.items = true // P and F1-F6 (extras.go)
-		key = e.ListMenu("", menu, 0xD, 0xA, 0xF, 1, 5, 0x26, 0x16, list, true, &redraw, &index, &sel)
-		e.ext.items = false
-		it = nil
-		for i, n := range list {
-			if n == sel {
-				it = c.Items[i]
+			hired := c.Control >= npcControl && c.Okay != 0 && c.Status != statusAnimated
+			if !hired && e.gameState != stateCombat {
+				menu += " Trade"
 			}
-		}
-		if it != nil {
-			switch key {
-			case 'R':
-				e.readyItem(it)
-			case 'U':
-				if it.Readied == 0 {
-					e.BottomMessage("Must be Readied")
-					key = ' '
-				} else if e.isScroll(it) || it.Spells[1] > 0 && it.Spells[2] < 0x80 {
-					quit = e.useItem(it)
-					if e.gameState != 5 {
-						quit = false
-					}
-					if !quit {
-						full = true
-					}
+			menu += " Drop"
+			if c.ItemCount < maxItems {
+				menu += " Halve"
+			}
+			menu += " Join"
+			if !hired && e.gameState == stateShop {
+				menu += " Sell"
+			}
+			if e.gameState == stateShop {
+				menu += " Id"
+			}
+			list := make([]*ListNode, len(c.Items))
+			for i, x := range c.Items {
+				e.ItemName(c, x, 0, 0, true, false)
+				list[i] = &ListNode{Text: x.Name()}
+			}
+			if full || e.itemsRedraw {
+				e.drawListFrame()
+				e.displayName(c, 1, 1, true)
+				e.displayStringBg(int(c.PName[0])+4, 1, colourGreen, colourBlack, "Items")
+				e.displayStringBg(1, 3, colourWhite, colourBlack, "Ready Item")
+				redraw, full, e.itemsRedraw = true, false, false
+			}
+			var sel *ListNode
+			key = e.ListMenu("", menu, colourLightMagenta, colourGreen, colourWhite, 1, 5, 38, 22, list, true, &redraw, &index, &sel)
+			var it *Item
+			for i, n := range list {
+				if n == sel {
+					it = c.Items[i]
 				}
-			case 'T':
-				if e.canLoseItem(it) {
-					e.tradeItem(it)
-				} else {
-					key = ' '
-				}
-				full = true
-			case 'D':
-				if e.canLoseItem(it) {
-					e.ItemName(c, it, 0, 0, false, false)
-					e.DisplayTextBlock(1, 0x15, 0x26, 0x16, 0xE, true, "Your "+it.Name()+"will be gone forever")
-					if e.YesNo(0xD, 0xA, 0xF, "Drop It? ") == 'Y' {
-						e.RemoveItem(e.selected(), it)
+			}
+			if it != nil {
+				switch key {
+				case 'V':
+					e.itemDebug(it)
+					redraw, full = true, true
+				case 'R':
+					e.readyItem(it)
+				case 'U':
+					if it.Readied == 0 {
+						e.printMessage("Must be Readied")
+						key = ' '
+					} else if e.isScroll(it) || it.Spells[1] > 0 && it.Spells[2] < 0x80 {
+						done = e.useItem(it)
+						if e.gameState != stateCombat {
+							done = false
+						}
+						if !done {
+							full = true
+						}
+					}
+				case 'T':
+					if e.canLoseItem(it) {
+						e.tradeItem(it)
+					} else {
+						key = ' '
+					}
+					full = true
+				case 'D':
+					if e.canLoseItem(it) {
+						e.ItemName(c, it, 0, 0, false, false)
+						e.msgCol, e.msgRow = 1, 21
+						e.DisplayTextBlock(1, 21, 38, 22, colourYellow, true, "Your "+it.Name()+"will be gone forever")
+						if e.YesNo(colourLightMagenta, colourGreen, colourWhite, "Drop It? ") == 'Y' {
+							e.loseItem(e.selected(), it)
+							redraw = true
+						}
+						e.ClearCells(1, 21, 38, 22)
+					} else {
+						key = ' '
+					}
+				case 'H':
+					e.halveItem(it)
+				case 'J':
+					e.joinItems(it)
+				case 'S':
+					if e.canLoseItem(it) {
+						e.sellItem(it)
+					} else {
+						key = ' '
+					}
+				case 'I':
+					if e.identifyItem(it) {
 						redraw = true
 					}
-					e.ClearCells(1, 0x15, 0x26, 0x16)
-				} else {
-					key = ' '
-				}
-			case 'H':
-				e.halveItem(it)
-			case 'J':
-				e.joinItems(it)
-			case 'S':
-				if e.canLoseItem(it) {
-					e.sellItem(it)
-				} else {
-					key = ' '
-				}
-			case 'I':
-				if e.identifyItem(it) {
-					redraw = true
 				}
 			}
+			e.ApplyItems(c)
 		}
-		e.ApplyItems(c) // 146F: also reached with nothing selected
 		if c.ItemCount != count {
 			redraw = true
 		}
 	}
-	return quit
+	return done
 }
+
+// areaWordNoMagic: items cannot be used here.
+const areaWordNoMagic = 229
+
+// itemDebug = O0AF:10A6: the item record's fields (a debugging page).
+func (e *Engine) itemDebug(it *Item) {
+	e.drawScreenFrame()
+	labels := []string{"itemptr:      ", "namenum(1):   ", "namenum(2):   ", "namenum(3):   ", "plus:         ",
+		"plussave:     ", "ready:        ", "identified:   ", "cursed:       ", "value:        ", "special(1):   ",
+		"special(2):   ", "special(3):   ", "dice large:    ", "sides large:   "}
+	for i, l := range labels {
+		e.displayStringBg(1, i+1, colourGreen, colourBlack, l)
+	}
+	values := []int{int(it.Type), int(it.Words[0]), int(it.Words[1]), int(it.Words[2]), int(it.Plus), int(it.Plus2),
+		int(it.Readied), int(it.Hidden), int(it.Cursed), int(it.Price), int(it.Spells[0]), int(it.Spells[1]), int(it.Spells[2]),
+		int(e.baseItem(it.Type, baseDiceLarge)), int(e.baseItem(it.Type, baseSidesLarge))}
+	for i, v := range values {
+		e.displayStringBg(20, i+1, colourGreen, colourBlack, itoa(v))
+	}
+	e.displayAndWait(colourGreen, colourBlack, "press a key")
+}
+
+// Base item record fields itemDebug shows.
+const (
+	baseDiceLarge  = 2
+	baseSidesLarge = 3
+)
 
 // readyItem = ovr20:14D0 (item): ready or unready, with the reasons it
 // cannot be readied and the item's own effect (+0x3E > 0x7F).

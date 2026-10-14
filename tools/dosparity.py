@@ -99,6 +99,14 @@ def main():
                 a, n = arg.split(',')
                 r = tools.read_memory(client, int(a, 16), int(n), allow_running=True)
                 print('peek', a, r['data_hex'])
+            elif kind == 'dsptr':
+                # dsptr:OFF,DELTA,N: the far pointer at DS:OFF (decimal), then N bytes at pointer+DELTA
+                off, delta, n = (int(x) for x in arg.split(','))
+                ds = tools.status(client)['cpu']['ds']
+                p = bytes.fromhex(tools.read_memory(client, ds * 16 + off, 4, allow_running=True)['data_hex'])
+                lin = (p[2] | p[3] << 8) * 16 + (p[0] | p[1] << 8) + delta
+                r = tools.read_memory(client, lin, n, allow_running=True)
+                print('dsptr', arg, 'ds=%04X' % ds, r['data_hex'])
             elif kind == 'seed':
                 # Turbo Pascal's RandSeed: DS offset 18416 in Curse of the Azure Bonds
                 ds = tools.status(client)['cpu']['ds']
