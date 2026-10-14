@@ -936,7 +936,7 @@ func (e *Engine) showRest(unit int) {
 		e.displayStringBg(x+3, 17, colourGreen, colourBlack, ":")
 		x += 3
 	}
-	e.displayStringBg(x+1, 17, col[restMinutes], colourBlack, twoDigits(10*r[restTens]+r[restMinutes]))
+	e.displayStringBg(x+1, 17, col[restTens], colourBlack, twoDigits(10*r[restTens]+r[restMinutes]))
 }
 
 // restTimeMenu = O0B6:0751: set the rest time; true to rest.
