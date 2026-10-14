@@ -13,7 +13,7 @@ no hex/magic numbers, readable names).
   - [x] Add character (Curse .GUY files) with the party rules
   - [ ] Pool of Radiance / Hillsfar import (O0A1 load_player)
   - [ ] Drop / Modify / View / Remove / Human Change Classes screens (ported, not yet parity-checked)
-  - [ ] Load / Save game (O0A1 loadGame/SaveGame)
+  - [x] Load / Save game (O0A1 loadGame/SaveGame): savgamX.dat byte-identical but for stack garbage in unused name slots; loading pixel-identical
 - [ ] M5 world: 3D view (WALLDEF/8X8D/SKY), area map, ECL interpreter (CotAB opcode set)
   - [x] ECL VM (O04C): operands, packed text, text variables, getVar/setVar with the character values, compares, calls
   - [x] adventuring loop (O03C:3607/3677/3758), command bar, steps, doors (bash/pick/knock), status line, party summary
@@ -23,6 +23,11 @@ no hex/magic numbers, readable names).
   - [ ] the duel (O04C:1B9A), the sound calls (R699, M8)
   - [ ] parity: PARLAY's prompt (the original passes a char as its prompt string)
 - [ ] M6 camp, shops, temples, training (paladin/ranger etc.)
+  - [x] shop (O048) with money (O0BA: pool, share, take, appraise) and View (O0AF viewPlayer, items menu, trade/drop coins, paladin heal/cure): pixel-identical
+  - [x] camp (O09D) and resting (O0B6): menus, magic, memorize, scribe, display, rest, alter, fix: pixel-identical but for campfire frames
+  - [x] temple (O042)
+  - [ ] item functions still Pool of Radiance's, being audited: ready, use, trade, halve, join, sell, identify
+  - [ ] training halls (O0A7 train_player is ported; the hall's script path)
 - [ ] M7 combat
 - [ ] M8 sound: the PC speaker driver as Go data
 - [ ] M9 goplay: games.js, deploy.sh, README tables, hardware cursor n/a (no pointer), wasm build, box art
