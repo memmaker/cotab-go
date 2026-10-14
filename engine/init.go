@@ -39,6 +39,7 @@ func (e *Engine) Init() {
 		e.LoadIconPic("COMSPR", i, i+0xD) // ovr33:01C8
 	}
 	e.LoadIconPic("COMSPR", 0x19, 0x19)
+	e.picturesOn, e.loadingMessage = true, true // b4FD7, b4FD8 (O060:0054)
 	if e.Cfg.Graphics == 'E' {
 		e.videoMode = 1 // b5000
 		e.loadSkyPictures()
