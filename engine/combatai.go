@@ -521,7 +521,7 @@ func (e *Engine) weaponScore(c *Character, it *Item) int {
 	if it.Spells[1] == 0x53 {
 		s = 0
 	}
-	if it.Magic != 0 {
+	if it.Cursed != 0 {
 		s = 0
 	}
 	return int(s)
@@ -588,7 +588,7 @@ func (e *Engine) aiPickWeapon(c *Character) {
 	}
 	done := false
 	ok = true
-	if w := c.Slots[0]; w != nil && (w == chosen || w.Magic != 0) {
+	if w := c.Slots[0]; w != nil && (w == chosen || w.Cursed != 0) {
 		ok = false
 	}
 	if ok {
@@ -596,7 +596,7 @@ func (e *Engine) aiPickWeapon(c *Character) {
 			e.readyItem(c.Slots[0])
 		}
 		e.ApplyItems(c)
-		if w := c.Slots[1]; w != nil && w.Magic == 0 {
+		if w := c.Slots[1]; w != nil && w.Cursed == 0 {
 			c.Hands -= tb(w, 1)
 		}
 		if chosen != nil {
@@ -607,12 +607,12 @@ func (e *Engine) aiPickWeapon(c *Character) {
 	e.ApplyItems(c)
 	e.o14_0D23(c)
 	ok = true
-	if w := c.Slots[1]; w != nil && (w == best3 || w.Magic != 0) {
+	if w := c.Slots[1]; w != nil && (w == best3 || w.Cursed != 0) {
 		ok = false
 	}
 	if c.Hands > 2 {
 		// the original passes chosen even when nil
-		if w := c.Slots[1]; w == nil || w.Magic != 0 {
+		if w := c.Slots[1]; w == nil || w.Cursed != 0 {
 			if chosen != nil {
 				e.readyItem(chosen)
 			}

@@ -58,6 +58,8 @@ func main() {
 			fmt.Fprintf(&b, "var %s = [%d]uint16{%s}\n\n", t.Name, t.Len, list(raw, 2, false))
 		case tablespec.SignedWords:
 			fmt.Fprintf(&b, "var %s = [%d]int16{%s}\n\n", t.Name, t.Len, list(raw, 2, true))
+		case tablespec.Longs:
+			fmt.Fprintf(&b, "var %s = [%d]int32{%s}\n\n", t.Name, t.Len, list(raw, 4, true))
 		default: // strings: Len Pascal strings of Kind.Size() bytes each
 			fmt.Fprintf(&b, "var %s = [%d]string{", t.Name, t.Len)
 			for i := 0; i < t.Len; i++ {
@@ -78,9 +80,9 @@ func main() {
 func list(raw []byte, size int, signed bool) string {
 	var parts []string
 	for i := 0; i+size <= len(raw); i += size {
-		v := int(raw[i])
-		if size == 2 {
-			v |= int(raw[i+1]) << 8
+		v := 0
+		for k := size - 1; k >= 0; k-- {
+			v = v<<8 | int(raw[i+k])
 		}
 		if signed && v >= 1<<(8*size-1) {
 			v -= 1 << (8 * size)

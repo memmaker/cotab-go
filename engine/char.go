@@ -80,27 +80,27 @@ type charRecord struct {
 	IconSize        byte        // 324
 	IconColour      [6]byte     // 325 icon parts, low nibble and high nibble
 	ItemCount       byte        // 331
-	_               [4]byte     // 332 item list pointer
-	_               [52]byte    // 336 readied item pointers
-	Hands           byte        // 388
-	SaveBonus       byte        // 389
-	Weight          uint16      // 390
-	_               [8]byte     // 392 party link and combat block pointers
-	PaladinCures    byte        // 400 cure disease uses left this week
-	Pad192          [3]byte     // 401
-	Status          byte        // 404 index into the status names
-	Okay            byte        // 405 non-zero = active
-	Side            byte        // 406 0 party, 1 monsters (1 also draws the name yellow)
-	Auto            byte        // 407 the computer fights for it
-	THAC0           byte        // 408
-	AC              [2]byte     // 409 60 - armour class: front, rear
-	Attacks         [2]byte     // 411 attacks per hand this round
-	Dice            [2]byte     // 413 damage dice count per hand
-	Sides           [2]byte     // 415 damage dice sides per hand
-	Bonus           [2]byte     // 417 damage bonus per hand
-	HP              byte        // 419
-	Move            byte        // 420
-	Initiative      byte        // 421
+	Pad332          byte        // 332
+	_               [4]byte     // 333 item list pointer
+	_               [52]byte    // 337 readied item pointers
+	Hands           byte        // 389
+	SaveBonus       byte        // 390
+	Weight          uint16      // 391
+	_               [8]byte     // 393 party link and combat block pointers
+	PaladinCures    byte        // 401 cure disease uses left this week
+	Pad402          [3]byte     // 402
+	Status          byte        // 405 index into the status names
+	Okay            byte        // 406 non-zero = active
+	Side            byte        // 407 0 party, 1 monsters (1 also draws the name yellow)
+	Auto            byte        // 408 the computer fights for it
+	THAC0           byte        // 409
+	AC              [2]byte     // 410 60 - armour class: front, rear
+	Attacks         [2]byte     // 412 attacks per hand this round
+	Dice            [2]byte     // 414 damage dice count per hand
+	Sides           [2]byte     // 416 damage dice sides per hand
+	Bonus           [2]byte     // 418 damage bonus per hand
+	HP              byte        // 420
+	Move            byte        // 421
 }
 
 const charRecSize = 422
@@ -211,4 +211,10 @@ func abs(n int) int {
 		return -n
 	}
 	return n
+}
+
+func init() {
+	if n := binary.Size(charRecord{}); n != charRecSize {
+		panic("charRecord is " + strconv.Itoa(n) + " bytes, want 422")
+	}
 }

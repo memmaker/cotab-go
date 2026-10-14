@@ -17,3 +17,15 @@ const ticksPerSecond = 100
 
 // titleSound is the tune started with the Forgotten Realms banner (DS 9672, a word).
 const titleSound = 13
+
+// Game states (game_state_4FD3).
+const (
+	stateStartMenu = iota
+	stateShop
+	stateCamp
+	stateWilderness
+	stateDungeon
+	stateCombat
+	stateAfterCombat
+	stateEndGame
+)

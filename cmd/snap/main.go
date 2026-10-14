@@ -18,6 +18,11 @@ import (
 )
 
 func dump(s *ega.Screen, name string) {
+	raw := make([]byte, len(s.Pix))
+	for i, c := range s.Pix {
+		raw[i] = byte(c) & 15
+	}
+	os.WriteFile(strings.TrimSuffix(name, ".png")+".raw", raw, 0o644)
 	img := image.NewRGBA(image.Rect(0, 0, ega.W, ega.H))
 	for i, c := range s.Pix {
 		img.Set(i%ega.W, i/ega.W, s.RGBA(c))

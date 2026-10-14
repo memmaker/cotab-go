@@ -289,7 +289,7 @@ func (e *Engine) drainLevels(c *Character, n int) {
 			if c.HP == 0 && c.Status != 6 {
 				e.killWithMessage(c, 6, "is killed")
 			}
-			e.RecomputeCharacter(c)
+			e.recalcClassBonuses(c)
 		}
 		i := bestClass()
 		c.MaxLevel = c.Levels[i]

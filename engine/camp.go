@@ -627,7 +627,7 @@ func (e *Engine) affectList(c *Character) []string {
 		if listedAffect(t) {
 			for s := 1; s <= 0x38 && name == ""; s++ {
 				if e.X.Bytes(0x3204+16*s, 1)[0] == t {
-					name = e.spellName(s)
+					name = spellNames[s]
 				}
 			}
 			if name == "" {

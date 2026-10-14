@@ -7,7 +7,7 @@ func (e *Engine) RandomItem(typ byte) *Item {
 	k := 0 // DS:0970 record of a table item
 	it.Readied = 0
 	it.Hidden = 6
-	it.Magic = 0
+	it.Cursed = 0
 	it.Type = typ
 	it.Weight = 0
 	switch {

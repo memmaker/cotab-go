@@ -411,7 +411,7 @@ func (e *Engine) rollHitPoints(c *Character) {
 		switch k {
 		case clsCleric:
 			c.SpellSlots[0] = 1
-			e.wisdomSlots(c)
+			e.wisdomSlots(c, false)
 			for s := 1; s < len(spellTable); s++ {
 				if spellTable[s].class() == spellClassCleric && spellTable[s].level() == 1 {
 					c.SpellBook[s-1] = 1
@@ -426,9 +426,9 @@ func (e *Engine) rollHitPoints(c *Character) {
 		count++
 	}
 	c.Coins[coinPlatinum] = startPlatinum
-	c.HPRoll = byte(e.o17_4235(c, 0xFF))
+	c.HPRoll = byte(e.rollHitPoints2(c, 0xFF))
 	c.MaxHP = c.HPRoll
-	adj := int(int8(e.o17_3F31(c)))
+	adj := int(int8(e.conHitPointBonusOf(c)))
 	if adj < 0 && int(c.MaxHP) <= -adj+count {
 		c.MaxHP = 1
 	} else {

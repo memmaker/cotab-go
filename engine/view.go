@@ -411,7 +411,7 @@ func (e *Engine) readyItem(it *Item) {
 	effect := it.Spells[2] > 0x7F
 	c := e.selected()
 	if it.Readied != 0 {
-		if it.Magic != 0 {
+		if it.Cursed != 0 {
 			e.BottomMessage("It's Cursed")
 			return
 		}
@@ -528,7 +528,7 @@ func (e *Engine) joinItems(it *Item) {
 		if p == it || p.Count == 0 {
 			continue
 		}
-		same := p.Words == it.Words && p.Type == it.Type && p.Plus == it.Plus && p.Plus2 == it.Plus2 && p.Magic == it.Magic
+		same := p.Words == it.Words && p.Type == it.Type && p.Plus == it.Plus && p.Plus2 == it.Plus2 && p.Cursed == it.Cursed
 		if !same || p.Weight != it.Weight || p.Spells[0] >= 2 {
 			continue
 		}

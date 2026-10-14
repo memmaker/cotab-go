@@ -41,7 +41,7 @@ func (e *Engine) ItemName(c *Character, it *Item, x, y int, readied, display boo
 			detect = true
 		}
 	}
-	if detect && (int8(it.Plus) > 0 || int8(it.Plus2) > 0 || it.Magic != 0) {
+	if detect && (int8(it.Plus) > 0 || int8(it.Plus2) > 0 || it.Cursed != 0) {
 		name = cut(name+"* ", 0x28)
 	}
 	if it.Count > 0 {

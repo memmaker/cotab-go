@@ -8,8 +8,6 @@ package engine
 // [0xA] affect type.
 
 import (
-	"bytes"
-	"fmt"
 )
 
 // tgt / setTgt = DS:6C91 + 4*i: the spell target list (1-based). Slot 1 is
@@ -27,185 +25,6 @@ func (e *Engine) setTgt(i int, c *Character) {
 	} else {
 		e.spellTargets[i] = c
 	}
-}
-
-// spellName = DS:28E9 + 0x29*spell.
-func (e *Engine) spellName(spell int) string { return e.X.PString(0x28E9 + spell*0x29) }
-
-// spellMenu = ovr23:008A (mode, var index): shows the list built by
-// buildSpellList (mode 1 cast, 2 memorize, 3 scribe, 4 learn) and returns
-// the chosen spell, 0 for none. For mode 3 DS:6B80 is the scroll chosen.
-func (e *Engine) spellMenu(mode int, index *int) byte {
-	menu := ""
-	switch mode {
-	case 1:
-		menu = "Cast"
-	case 2:
-		menu = "Memorize"
-		if hasPending(e.selected()) { // extra
-			menu += " Clear"
-		}
-	case 3:
-		menu = "Scribe"
-	case 4:
-		menu = "Learn"
-	}
-	title := ""
-	if mode >= 1 && mode <= 4 { // set {1,2,3,4} at cs:001B
-		title = "Choose Spell: "
-	}
-	y2 := 0x16
-	if mode == 2 {
-		y2 = 0xF
-	}
-	showExit := mode != 4
-	redraw := false
-	if *index < 0 {
-		e.DrawBoxTitled(1, 3, 0x26, y2, 0, 0, "")
-		redraw = true
-		*index = 0
-	}
-	if mode == 4 || mode == 1 || mode == 2 { // extra: 2, the counts of the chosen spells change
-		redraw = true
-	}
-	var sel *ListNode
-	var key byte
-	for {
-		key = e.ListMenu(title, menu, 0xD, 0xA, 0xF, 1, 5, 0x26, y2, e.spellList, showExit, &redraw, index, &sel)
-		// set {0, 13, 'C', 'E', 'L', 'M', 'S'} at cs:004A
-		if key == 0 || key == 13 || key == 'C' || key == 'E' || key == 'L' || key == 'M' || key == 'S' {
-			break
-		}
-	}
-	// the number of entries (not headers) before the selected one
-	idx := 0
-	for _, n := range e.spellList {
-		if n == sel {
-			break
-		}
-		if n.Flag == 0 {
-			idx++
-		}
-	}
-	e.spellMenuKey = key
-	var res byte
-	if key != 0 && key != 'E' { // set {0, 'E'} at cs:006A
-		if idx < len(e.spellIDs) {
-			res = e.spellIDs[idx]
-		}
-	}
-	if mode == 3 && idx < len(e.spellItems) {
-		e.usedScroll = e.spellItems[idx]
-	}
-	e.spellList = nil // ovr26:11F3 frees the list
-	return res
-}
-
-// addSpellLine = ovr23:028D (spell): appends the spell to the menu list,
-// behind a class header when the group changes. Bit 7 marks the spell as
-// "to be memorised" (" *"). The asm's id array holds 0x15 bytes and runs
-// into the item array when the book is listed; the slice has no limit.
-func (e *Engine) addSpellLine(spell byte) {
-	group := byte(0) // bp-6 is 0 for the first line
-	if n := len(e.spellIDs); n > 0 {
-		group = e.spellRec(e.spellIDs[n-1], 1)
-	}
-	if g := e.spellRec(spell&0x7F, 1); g != group {
-		e.spellList = append(e.spellList, &ListNode{Text: cut(e.X.PString(0xA79+int(g)*0x29), 0x28), Flag: 1})
-	}
-	prefix := "  "
-	if spell > 0x7F {
-		prefix = " *"
-	}
-	e.spellList = append(e.spellList, &ListNode{Text: cut(prefix+e.spellName(int(spell&0x7F)), 0x28)})
-	e.spellIDs = append(e.spellIDs, spell&0x7F)
-}
-
-// addScrollSpells = ovr23:044E (all): lists the spells on the scroll in
-// DS:6B80 (all: only those still to be scribed, > 0x80; else any), unless
-// the scroll is hidden or too hard for the reader; remembers the scroll.
-func (e *Engine) addScrollSpells(all byte) {
-	sel := e.selected()
-	// 00BA:2199 (sel, 0x10, out): the character has the affect
-	if e.FindAffect(sel, 0x10) != nil || sel.Levels[clsCleric] > 0 && sel.Levels[clsCleric] < 0x80 && e.items[int(e.usedScroll.Type)<<4] == 0xC {
-		e.usedScroll.Hidden = 0
-	}
-	if e.usedScroll.Hidden != 0 {
-		return
-	}
-	for _, v := range e.usedScroll.Spells {
-		if all != 0 && v > 0x80 || all == 0 && v > 0 {
-			e.addSpellLine(v)
-			if e.spellItemCount < len(e.spellItems) {
-				e.spellItems[e.spellItemCount] = e.usedScroll
-			}
-			e.spellItemCount++
-		}
-	}
-}
-
-// addAllScrolls = ovr23:051C (all): the spells on every scroll carried;
-// DS:6B80 walks the item list and is nil at the end.
-func (e *Engine) addAllScrolls(all byte) {
-	e.spellItems = [0x31]*Item{}
-	e.spellItemCount = 0
-	for _, it := range e.selected().Items {
-		e.usedScroll = it
-		if e.isScroll(it) {
-			e.addScrollSpells(all)
-		}
-	}
-	e.usedScroll = nil
-}
-
-// buildSpellList = ovr23:059C (kind): fills the menu list; kinds as in
-// SpellList. True when there is at least one line.
-func (e *Engine) buildSpellList(kind int) bool {
-	any := false
-	e.spellList = nil
-	e.spellIDs = nil
-	c := e.selected()
-	switch kind {
-	case 0:
-		for i := 0; i <= 0x14; i++ {
-			if v := c.Memorized[i]; v > 0 && v < 0x80 {
-				e.addSpellLine(v)
-			}
-		}
-	case 5:
-		for i := 0; i <= 0x14; i++ {
-			if v := c.Memorized[i]; v > 0x7F {
-				e.addSpellLine(v)
-			}
-		}
-	case 1:
-		for i := 1; i <= 0x37; i++ {
-			if c.SpellBook[i-1] != 0 {
-				e.addSpellLine(byte(i))
-				// extra: how many are chosen to be memorized
-				if n := bytes.Count(c.Memorized[:], []byte{byte(i) | 0x80}); n > 0 {
-					l := e.spellList[len(e.spellList)-1]
-					l.Text = cut(fmt.Sprintf("%-30s x%d", l.Text, n), 0x25)
-				}
-			}
-		}
-	case 2:
-		e.addScrollSpells(0)
-	case 3:
-		e.addAllScrolls(0)
-	case 6:
-		e.addAllScrolls(1)
-	case 4:
-		for i := 1; i <= 0x38; i++ {
-			if c.spellSlot(int(e.spellRec(byte(i), 0)), int(e.spellRec(byte(i), 1))) > 0 && c.SpellBook[i-1] == 0 {
-				e.addSpellLine(byte(i))
-			}
-		}
-	}
-	if len(e.spellList) > 0 {
-		any = true
-	}
-	return any
 }
 
 // o23_0729 = ovr23:0729 (spell): the duration of the spell in rounds (or
@@ -367,7 +186,7 @@ func (e *Engine) CastSpell(spell, mode, b byte, quit *bool) {
 	ok := true
 	if e.beginFlag != 5 && e.spellRec(spell, 7) == 0 {
 		if !e.usingItem {
-			e.DisplayString(1, 0x13, 0xA, e.spellName(int(spell)))
+			e.DisplayString(1, 0x13, 0xA, spellNames[int(spell)])
 			e.DisplayString(1, 0x14, 0xA, "is a combat-only spell...")
 			if e.YesNo(0xD, 0xF, 0xA, "Lose it? ") == 'Y' {
 				e.forgetSpell(spell)
@@ -453,9 +272,9 @@ func (e *Engine) spellRemoveCurse() {
 		if found {
 			break
 		}
-		if it.Magic != 0 {
+		if it.Cursed != 0 {
 			found = true
-			it.Magic = 0
+			it.Cursed = 0
 		}
 	}
 	if found {
@@ -659,7 +478,7 @@ func (e *Engine) fxRestore() {
 	if int32(t.Exp) < bestXP {
 		t.Exp = uint32(bestXP)
 	}
-	e.RecomputeCharacter(t)
+	e.recalcClassBonuses(t)
 	e.CharMessage(t, "is restored", 0xA, true)
 }
 
@@ -761,14 +580,6 @@ func (e *Engine) o23_30D9(c *Character, a *Affect, flag int) {
 	e.clearCombatInfo(c)
 }
 
-// isScroll = ovr23:323D (item): the base item type is a scroll (11..13).
-func (e *Engine) isScroll(it *Item) bool {
-	if it == nil {
-		return false
-	}
-	t := e.items[int(it.Type)<<4]
-	return t > 0xA && t < 0xE
-}
 
 // scrollUsed = ovr23:328A (char, item, spell): the spell is wiped from the
 // scroll; the scroll goes when the item byte +0x30 falls under 0xD2.
@@ -797,13 +608,13 @@ func (e *Engine) o23_331A(c *Character, msg string, spell int) {
 	if e.beginFlag == 5 {
 		e.CharMessage(c, "Casts a Spell", 0xA, true)
 		e.ClearCells(0, 0x17, 0x27, 0x17)
-		e.DisplayString(0, 0x17, 0xA, "Spell:"+e.spellName(spell))
+		e.DisplayString(0, 0x17, 0xA, "Spell:"+spellNames[spell])
 		return
 	}
 	e.ClearCells(1, 0x12, 0x26, 0x16)
 	e.displayName(c, 1, 0x13, false)
 	e.DisplayString(len(c.Name())+2, 0x13, 0xA, msg)
-	e.DisplayString(1, 0x14, 0xA, e.spellName(spell))
+	e.DisplayString(1, 0x14, 0xA, spellNames[spell])
 	e.MsgDelay()
 	e.ClearMessageArea()
 }

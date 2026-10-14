@@ -11,6 +11,7 @@ const (
 	Signed
 	Words
 	SignedWords
+	Longs // signed 32-bit
 	// Strings of a fixed slot size: String(n) holds a length byte and n-1 characters.
 	stringBase
 )
@@ -25,6 +26,8 @@ func (k Kind) Size() int {
 		return 1
 	case Words, SignedWords:
 		return 2
+	case Longs:
+		return 4
 	}
 	return int(k - stringBase)
 }
@@ -66,6 +69,28 @@ var Tables = []Table{
 	{"classStatMinimum", 16756, 17, Bytes, "Per class: the minimum of each ability (str int wis dex con cha).", 6},
 	{"classHitDice", 17843, 8, Bytes, "Per class: dice count and sides of the starting hit points.", 2},
 
+	// Training (O0A7 train_player and its hit point rolls).
+	{"coinValues", 3236, 5, Longs, "Worth of copper, silver, electrum, gold and platinum, in copper.", 0},
+	{"classExpMasks", 16042, 17, Bytes, "Per class: the training bit of the class (trainers list the bits they train).", 0},
+	{"classMaxHitDice", 16059, 8, Bytes, "Per class: the level up to which hit points are rolled.", 0},
+	{"classHitDiceFirst", 2074, 8, Bytes, "Per class: hit dice rolled at level 1.", 0},
+	{"classHitDiceSides", 2082, 8, Bytes, "Per class: sides of the hit dice.", 0},
+	{"conHitPointBonus", 17025, 26, Signed, "Per constitution score: the hit point bonus per die.", 0},
+	{"expTableData", 17043, 8, Bytes, "Per class (99-byte rows): longint experience thresholds; level n needs the one at index n+1.", 99},
+
+	// Class calculations (O0FE).
+	{"clericSlotData", 17084, 297, Bytes, "Cleric spells gained per level: entry level*5 + spell level (1..5).", 0},
+	{"paladinSlotData", 17381, 99, Bytes, "Paladin cleric spells gained per level: entry level*5 + spell level.", 0},
+	{"rangerSlotData", 17480, 99, Bytes, "Ranger spells gained per level: entry level*5 + k (k 1..3 druid, 4..5 magic-user).", 0},
+	{"mageSlotData", 17579, 264, Bytes, "Magic-user spells gained per level: entry level*5 + spell level.", 0},
+	{"saveTableData", 17854, 480, Bytes, "Saving throw targets: entry class*60 + level*5 + save.", 0},
+	{"oldClassSaveData", 18274, 130, Bytes, "Saving throws by the old-class level column: entry level*5 + save.", 0},
+	{"thiefBaseData", 16064, 96, Bytes, "Thief skills by level: entry level*8 + skill (1..8).", 0},
+	{"thiefRaceData", 16160, 64, Signed, "Thief skill adjustment by race: entry race*8 + skill.", 0},
+	{"thiefDexData", 16179, 130, Signed, "Thief skill adjustment by dexterity: entry dex*5 + skill (1..5).", 0},
+
 	// Spells.
+	{"spellNames", 10175, 101, String(41), "Spell names by spell number.", 0},
+	{"spellLevelHeadings", 2167, 10, String(41), "Spell menu headings by spell level.", 0},
 	{"spellTableData", 14300, 101, Bytes, "The spell table: one 16-byte record per spell number (spellEntry).", 16},
 }

@@ -57,6 +57,11 @@ type Engine struct {
 	gameArea        byte  // game_area_5C08: 1 in the demo, 2 for the real game
 	gameSpeed       byte  // game_speed_var_4FC2
 	freeTraining    bool  // b75A1: the 'J' cheat of the party menu
+	silentTraining  bool  // b4FE1: training without questions (character creation)
+	cannotTrain     bool  // b75A0: the last training found nothing to raise
+	gameWon         bool  // b8B89: the ending was reached; training is free
+	gameState       byte  // game_state_4FD3: what the party is doing (stateCombat, ...)
+	spells          spellList
 
 	party      []*Character // DS:5D96 list head ...
 	partySel   int          // DS:5D92 selected character

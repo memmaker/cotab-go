@@ -32,7 +32,7 @@ type Item struct {
 	Plus2   byte       // 0x33
 	Readied byte       // 0x34
 	Hidden  byte       // 0x35 bit 3-i: word i not known yet
-	Magic   byte       // 0x36
+	Cursed  byte       // 0x36
 	Weight  uint16     // 0x37
 	Count   byte       // 0x39
 	Price   uint16     // 0x3A
@@ -359,7 +359,7 @@ func (e *Engine) AddToParty(c *Character) {
 	c.Order = byte(o)
 	e.setPartyCount(e.partyCount() + 1)
 	e.takeRecordCoins(c)
-	e.RecomputeCharacter(c) // ovr24:0000
+	e.recalcClassBonuses(c) // ovr24:0000
 }
 
 // removeFromParty unlinks c (used by Remove/Drop); order values stay.
