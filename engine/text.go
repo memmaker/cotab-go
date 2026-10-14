@@ -135,7 +135,10 @@ func (e *Engine) DrawBoxTitled(x1, y1, x2, y2, style, colour int, title string) 
 // punct = DS:0D16 set: characters that end a word for DisplayTextBlock.
 func punct(c byte) bool { return strings.IndexByte("!,-.:;?", c) >= 0 }
 
-// DisplayTextBlock = 0709:0768 (x1, y1, x2, y2, colour, clear, s): word
+// textDelayPerSpeed: milliseconds per character and game-speed step.
+const textDelayPerSpeed = 3
+
+// DisplayTextBlock = R4CE:0498 press_any_key (x1, y1, x2, y2, colour, clear, s): word
 // wrapped text in the cell box, continuing at the text cursor (DS:5E24 x,
 // DS:5E25 y) when it lies inside the box. When the box is full the player
 // is asked to press a key and the box starts over.
@@ -166,8 +169,8 @@ func (e *Engine) DisplayTextBlock(x1, y1, x2, y2, colour int, clear bool, s stri
 	printSeg := func(j int) {
 		for ; i <= j; i++ {
 			e.DisplayChar(e.msgCol, e.msgRow, colour, at(i), true)
-			if e.slowText && !e.skipText() {
-				e.Delay(int(e.msgDelay) * 10)
+			if e.slowText {
+				e.Delay(int(e.gameSpeed) * textDelayPerSpeed) // R4CE:03CE
 			}
 			e.msgCol++
 		}
@@ -232,15 +235,3 @@ func (e *Engine) InputNumber(prompt string, colour int) uint16 {
 	}
 }
 
-// skipText (extra): a key pressed while text is
-// printed slowly shows the rest at once; the key is used up.
-func (e *Engine) skipText() bool {
-	if e.tr != nil || e.msgDelay == 0 {
-		return false
-	}
-	if !e.ext.skip && e.KeyPressed() {
-		e.ext.ahead = e.ext.ahead[1:]
-		e.ext.skip = true
-	}
-	return e.ext.skip
-}
