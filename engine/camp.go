@@ -143,7 +143,7 @@ func (e *Engine) castMenu() {
 	cast := false
 	index := -1
 	e.spellCaster = nil
-	e.fromCommandBar = true
+	e.menuSel = 1
 	if e.canStudy(studyCast) {
 		for {
 			var any bool
@@ -246,7 +246,7 @@ func (e *Engine) memorizeMenu() {
 	}
 	done := false
 	index := -1
-	e.fromCommandBar = true
+	e.menuSel = 1
 	var shown bool
 	e.spellMenu2(5, 0, &index, &shown)
 	redraw := true
@@ -825,18 +825,18 @@ func (e *Engine) campMenu() bool {
 				e.Exit()
 			}
 		case 'V':
-			e.fromCommandBar = true
+			e.menuSel = 1
 			e.viewPlayer()
 		case 'M':
-			e.fromCommandBar = true
+			e.menuSel = 1
 			e.magicMenu(&interrupted)
 		case 'R':
-			e.fromCommandBar = true
+			e.menuSel = 1
 			interrupted = e.restMenu()
 		case 'F':
 			interrupted = e.fixMenu()
 		case 'A':
-			e.fromCommandBar = true
+			e.menuSel = 1
 			e.alterMenu()
 		}
 	}

@@ -276,15 +276,15 @@ func (e *Engine) adventureInput() byte {
 					}
 				case 'C':
 					if e.selected().Status == 0 {
-						e.fromCommandBar = true
+						e.menuSel = 1
 						e.castMenu()
 					}
 				case 'V':
-					e.fromCommandBar = true
+					e.menuSel = 1
 					e.CharacterSheet()
 				case 'E':
 					done = true
-					e.fromCommandBar = true
+					e.menuSel = 1
 				case 'S':
 					putWord(e.game, 2*gameWordLook, wordAt(e.game, 2*gameWordLook)^1)
 				case 'L':

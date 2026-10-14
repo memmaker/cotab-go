@@ -104,12 +104,12 @@ func (e *Engine) DisplayInput(prompt, menu string, promptColour, normal, highlig
 			e.mapCursorShow()
 			cursorShow = cursorHide + cursorShowDelay
 		}
-		if (wordAt(e.area, areaPictureWord) != 0 || animate) && e.anim.frame > 0 {
-			e.drawAnimationFrame(animate)
-			if e.Ticks()-since >= int64(e.anim.delay[e.anim.frame])*10 || wordAt(e.area, areaPictureWord) != 0 {
-				e.anim.frame++
-				if e.anim.frame > e.anim.frames {
-					e.anim.frame = 1
+		if a := &e.pic; (wordAt(e.area, areaPictureWord) != 0 || animate) && a.cur > 0 && a.cur <= len(a.frames) {
+			e.drawViewPicture(viewPicX, viewPicY, animate, a.cur-1)
+			if e.Ticks()-since >= int64(a.frames[a.cur-1].Delay)*10 || wordAt(e.area, areaPictureWord) != 0 {
+				a.cur++
+				if a.cur > len(a.frames) {
+					a.cur = 1
 				}
 				since = e.Ticks()
 			}

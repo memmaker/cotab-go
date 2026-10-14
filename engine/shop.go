@@ -51,7 +51,7 @@ func (e *Engine) shopList(index *int, redraw *bool) (byte, *Item) {
 		copy(line, name[:min(len(name), shopLineWidth)])
 		list[i] = &ListNode{Text: string(line)}
 	}
-	e.fromCommandBar = false
+	e.menuSel = 0
 	var sel *ListNode
 	key := e.ListMenu("Items: ", "Buy", colourLightMagenta, colourGreen, colourWhite, 1, 1, 38, 22, list, true, redraw, index, &sel)
 	var item *Item

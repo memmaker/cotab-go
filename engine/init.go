@@ -121,7 +121,7 @@ func (e *Engine) newGameState() {
 	e.areaKind = noPicture
 	e.silentTraining = false
 	e.ClearRow24()
-	e.fromCommandBar = true
+	e.menuSel = 1
 	e.gameState = stateDungeon
 	e.lastGameState = stateStartMenu
 	e.gameWon = false

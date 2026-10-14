@@ -64,7 +64,6 @@ type Engine struct {
 	canBash         bool       // b75A2: the locked door may still be bashed
 	canPick         bool       // b75A3
 	canKnock        bool       // b75A4
-	fromCommandBar  bool       // b72AE: a menu was opened from the command bar
 	cheatArg        bool       // ParamStr(2) gave the map cheat
 	loadingMessage  bool       // b4FD8: show "Loading...Please Wait" (Alter Pics: animation)
 	picturesOn      bool       // b4FD7: Alter Pics
@@ -94,7 +93,6 @@ type Engine struct {
 	gameWon         bool       // b8B89: the ending was reached; training is free
 	gameState       byte       // game_state_4FD3: what the party is doing (stateCombat, ...)
 	spells          spellList
-	anim            viewAnim
 	addSource       byte // b759E: where AddPlayer loads characters from (fromCurse ...)
 	areaKind        byte // b72AA: 'y' on the wilderness map (its cursor blinks)
 	mapMode         byte // b72A4: 'P' while a picture hides the map
