@@ -15,6 +15,13 @@ no hex/magic numbers, readable names).
   - [ ] Drop / Modify / View / Remove / Human Change Classes screens (ported, not yet parity-checked)
   - [ ] Load / Save game (O0A1 loadGame/SaveGame)
 - [ ] M5 world: 3D view (WALLDEF/8X8D/SKY), area map, ECL interpreter (CotAB opcode set)
+  - [x] ECL VM (O04C): operands, packed text, text variables, getVar/setVar with the character values, compares, calls
+  - [x] adventuring loop (O03C:3607/3677/3758), command bar, steps, doors (bash/pick/knock), status line, party summary
+  - [x] view: adventure frame, EGA sky (bands, sun/moon, SKY 252 floor), 3D view and overhead map, pictures (PIC/SPRIT/HEAD/BODY/bigpic)
+  - [x] commands 0..35, 37..64 except COMBAT (36) and PROGRAM (56); first scene .. overhead map pixel-identical to DOSBox
+  - [ ] COMBAT (36: shops O048, temple O042, after-combat O045, combat O057) and PROGRAM (56)
+  - [ ] the duel (O04C:1B9A), the sound calls (R699, M8)
+  - [ ] parity: PARLAY's prompt (the original passes a char as its prompt string)
 - [ ] M6 camp, shops, temples, training (paladin/ranger etc.)
 - [ ] M7 combat
 - [ ] M8 sound: the PC speaker driver as Go data
@@ -29,4 +36,5 @@ raw EGA colour indices.
 
 ## Known placeholders
 - viewanim.go: the view-window animation and the wilderness map cursor (M5).
+- Camp (O09D) still runs Pool of Radiance's Encamp; combat, shops and temples are por code paths.
 - Pool/Hillsfar import shows a message.
