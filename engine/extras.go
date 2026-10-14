@@ -179,7 +179,7 @@ func (e *Engine) markSeen() {
 // minimapAllowed follows the game's own rule for its Area command.
 // In camp the panel keeps the party.
 func (e *Engine) minimapAllowed() bool {
-	return e.viewMode == 1 && wordAt(e.area, 0x1F6) == 0 && e.beginFlag != 2
+	return e.viewMode == 1 && wordAt(e.area, 0x1F6) == 0 && e.gameState != 2
 }
 
 // Minimap geometry: 16x16 cells of 7 pixels inside the roster panel
@@ -260,7 +260,7 @@ func (e *Engine) extraKey(k byte) bool {
 // the View page or in the inventory they switch to member n (Exit, then
 // View again). Not in combat, where View is the fighter's.
 func (e *Engine) viewKey(n int) uint16 {
-	if n >= len(e.party) || e.beginFlag == 5 || e.ext.menu == 0 {
+	if n >= len(e.party) || e.gameState == 5 || e.ext.menu == 0 {
 		return 0
 	}
 	switch {
@@ -370,7 +370,7 @@ func (e *Engine) PartyOverview() {
 // and keep the minimap current.
 func (e *Engine) viewDrawn() {
 	e.markSeen()
-	if e.ext.minimap && e.minimapAllowed() && e.beginFlag != 0 {
+	if e.ext.minimap && e.minimapAllowed() && e.gameState != 0 {
 		e.DrawMinimap()
 	}
 }

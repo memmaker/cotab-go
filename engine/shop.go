@@ -95,7 +95,7 @@ func (e *Engine) shopBuy() {
 
 // Shop = ovr07:053E.
 func (e *Engine) Shop() {
-	e.beginFlag = 1
+	e.gameState = 1
 	e.DrawMainScreen()
 	e.DisplayPartyList()
 	for _, it := range e.run.treasure {

@@ -98,7 +98,6 @@ type Engine struct {
 	partySel   int          // DS:5D92 selected character
 	rosterHi   *Character   // SelectCharacter: 00BA:0767 highlights this one (nil: partySel)
 	rosterNone bool         // ... or no one (who = nil)
-	beginFlag  byte         // DS:49F3
 	loadedGame bool         // DS:49F8
 	saved      bool         // DS:557D
 	debug      bool         // DS:470C

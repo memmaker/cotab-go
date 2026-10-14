@@ -57,7 +57,7 @@ func (e *Engine) o23_07D6(spell int) int {
 	case 0x3B:
 		v = e.Dice(1, 4)*10 + 0x28
 	case 0x3F:
-		if e.beginFlag == 5 {
+		if e.gameState == 5 {
 			v = e.Dice(2, 10) * 10
 		} else {
 			v = (e.Dice(1, 10) + 10) * 10
@@ -169,7 +169,7 @@ func (e *Engine) o23_0F4F(side int, msg string) {
 	for i := 1; i <= e.nSpellTargets; i++ {
 		t := e.tgt(i)
 		if t == nil || int(t.Side) != side ||
-			e.curSpell == 1 && e.beginFlag == 5 && e.nearEnemies(t, 1) > 0 {
+			e.curSpell == 1 && e.gameState == 5 && e.nearEnemies(t, 1) > 0 {
 			e.setTgt(i, nil)
 		}
 	}
@@ -183,7 +183,7 @@ func (e *Engine) o23_0F4F(side int, msg string) {
 func (e *Engine) CastSpell(spell, mode, b byte, quit *bool) {
 	caster := e.selected()
 	ok := true
-	if e.beginFlag != 5 && e.spellRec(spell, 7) == 0 {
+	if e.gameState != 5 && e.spellRec(spell, 7) == 0 {
 		if !e.usingItem {
 			e.DisplayString(1, 0x13, 0xA, spellNames[int(spell)])
 			e.DisplayString(1, 0x14, 0xA, "is a combat-only spell...")
@@ -207,7 +207,7 @@ func (e *Engine) CastSpell(spell, mode, b byte, quit *bool) {
 		*quit = e.spellTargetHook(int(spell), int(mode)) // the asm passes the caller's var
 		if *quit {
 			ok = false
-			if e.beginFlag == 5 {
+			if e.gameState == 5 {
 				e.hitColours(0x12)
 				x, y := e.combatX(caster), e.combatY(caster)
 				dir := 0
@@ -239,7 +239,7 @@ func (e *Engine) CastSpell(spell, mode, b byte, quit *bool) {
 			e.spellFx[spell]()
 			e.curSpell = 0
 			e.spellFlag6820 = 0
-		} else if e.beginFlag != 5 {
+		} else if e.gameState != 5 {
 			ok = false
 		} else {
 			if mode == 0 && e.YesNo(0xE, 0xA, 0xF, "Abort Spell? ") != 'Y' {
@@ -253,7 +253,7 @@ func (e *Engine) CastSpell(spell, mode, b byte, quit *bool) {
 		}
 	}
 	e.ClearMessageArea()
-	if e.beginFlag == 5 {
+	if e.gameState == 5 {
 		e.ClearCells(0, 0x17, 0x27, 0x17)
 	}
 }
@@ -603,7 +603,7 @@ func (e *Engine) scrollUsed(c *Character, it *Item, spell byte) {
 // side panel in combat, else in the message box.
 func (e *Engine) o23_331A(c *Character, msg string, spell int) {
 	msg = cut(msg, 0x28)
-	if e.beginFlag == 5 {
+	if e.gameState == 5 {
 		e.CharMessage(c, "Casts a Spell", 0xA, true)
 		e.ClearCells(0, 0x17, 0x27, 0x17)
 		e.DisplayString(0, 0x17, 0xA, "Spell:"+spellNames[spell])

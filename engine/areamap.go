@@ -85,7 +85,7 @@ func (e *Engine) areaMapInit() {
 
 // areaMapIcons = 00BA:2B5E: switch to the area map view and draw it.
 func (e *Engine) areaMapIcons() {
-	e.beginFlag = 3
+	e.gameState = 3
 	e.areaMapInit()
 	e.Redraw()
 	e.drawAreaMapParty()

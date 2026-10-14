@@ -224,7 +224,7 @@ func (e *Engine) templeHeal() {
 
 // Temple = ovr05:0D09.
 func (e *Engine) Temple() {
-	e.beginFlag = 1
+	e.gameState = 1
 	e.DrawMainScreen()
 	e.DisplayPartyList()
 	for leave := false; !leave; {

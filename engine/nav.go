@@ -200,7 +200,7 @@ func (e *Engine) mouseKey(button, cx, cy int) uint16 {
 		return r.click(cx, cy)
 	}
 	if e.ext.inCommand {
-		if e.ext.minimap && e.minimapAllowed() && e.beginFlag != 0 && cx >= 0x11 && cx <= 0x26 && cy >= 1 && cy <= 0xE {
+		if e.ext.minimap && e.minimapAllowed() && e.gameState != 0 && cx >= 0x11 && cx <= 0x26 && cy >= 1 && cy <= 0xE {
 			e.FullMap() // a click on the minimap
 			return 0
 		}
@@ -215,7 +215,7 @@ func (e *Engine) mouseKey(button, cx, cy int) uint16 {
 // rosterRow is the party member listed at cell (cx, cy), or -1.
 func (e *Engine) rosterRow(cx, cy int) int {
 	x := 1
-	if e.beginFlag != 0 {
+	if e.gameState != 0 {
 		x = 0x11
 		if e.ext.minimap && e.minimapAllowed() {
 			return -1
@@ -243,7 +243,7 @@ func (e *Engine) rosterClick(cx, cy int) uint16 {
 // rosterRegion makes the roster clickable for a menu that takes the keypad.
 func (e *Engine) rosterRegion() {
 	x := 1
-	if e.beginFlag != 0 {
+	if e.gameState != 0 {
 		x = 0x11
 	}
 	e.addRegion(region{x0: x, y0: 4, x1: 0x26, y1: 4 + len(e.party) - 1, click: e.rosterClick})

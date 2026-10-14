@@ -45,7 +45,7 @@ const (
 
 // pageGeom is where the drawing page sits on screen and how wide it is.
 func (e *Engine) pageGeom() (x0, w int) {
-	if e.beginFlag == 5 {
+	if e.gameState == 5 {
 		return pageCol * 8, viewW * 24
 	}
 	return 8, pageCells * 8
@@ -563,7 +563,7 @@ func (e *Engine) groundAt(c *Character, dir int) (byte, byte) {
 // map; unless summoned, a body (ground 0x1F) stays where it fell.
 func (e *Engine) combatRemoveFromMap(c *Character) {
 	e.soundWait(0)
-	if e.beginFlag != 5 {
+	if e.gameState != 5 {
 		e.PlaySound(sndFall)
 		e.MsgDelay()
 		e.soundWait(0xA)
@@ -608,7 +608,7 @@ func (e *Engine) combatRemoveFromMap(c *Character) {
 // (x,y) if every square it needs is free ground; with uncover, its body is
 // taken off the map.
 func (e *Engine) combatSquareFree(c *Character, x, y int, uncover bool) bool {
-	if e.beginFlag != 5 {
+	if e.gameState != 5 {
 		return true
 	}
 	idx := e.combatIndex(c)

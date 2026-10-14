@@ -682,9 +682,9 @@ func (e *Engine) opCombat() {
 		e.run.f84D4 = 0
 	}
 	if e.viewMode == 1 {
-		e.beginFlag = 4
+		e.gameState = 4
 	} else {
-		e.beginFlag = 3
+		e.gameState = 3
 	}
 	putWord(e.game, 0x594, wordAt(e.game, 0x594)&1)
 	e.es.f84C8 = [2]byte{}

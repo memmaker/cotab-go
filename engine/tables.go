@@ -251,6 +251,9 @@ var stepX = [8]int8{0, 1, 1, 1, 0, -1, -1, -1}
 // Row step by facing 0..7.
 var stepY = [8]int8{-1, -1, 0, 1, 1, 1, 0, -1}
 
+// Magic item templates read by the treasure generator: from entry n, name words n..n+2, weight n+3, price n+4, spells n+5..n+7 (low bytes).
+var itemTemplates = [57]uint16{14642, 185, 187, 64, 1, 800, 3, 99, 0, 239, 167, 64, 1, 1100, 1, 59, 0, 185, 167, 64, 1, 400, 1, 3, 0, 173, 167, 64, 1, 450, 1, 48, 0, 206, 167, 69, 1, 11000, 30, 15, 0, 226, 167, 100, 10, 15000, 0, 38, 131, 157, 167, 21, 20, 3000, 1, 51, 0}
+
 // Clock carries: minutes per ten, tens per hour, hours per day ... (area words 198..204).
 var clockLimits = [7]uint16{10, 10, 6, 24, 30, 12, 256}
 

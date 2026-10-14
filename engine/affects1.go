@@ -80,7 +80,7 @@ func (e *Engine) killWithMessage(c *Character, status byte, msg string) {
 	}
 	e.MsgDelay()
 	e.ClearMessageArea()
-	if e.beginFlag != 5 {
+	if e.gameState != 5 {
 		e.DisplayPartyList()
 	}
 }
@@ -291,7 +291,7 @@ func (e *Engine) o13_05EB(c *Character, a *Affect, flag byte) {
 	if e.addAffectNow(c, 0xF, a.Data, 0xA) && c.HP > 1 {
 		e.rv.dmgType = 0
 		e.Damage(c, 1, 0, false)
-		if e.beginFlag != 5 {
+		if e.gameState != 5 {
 			e.DisplayPartyList()
 		}
 	}
@@ -574,7 +574,7 @@ func (e *Engine) o13_1168(c *Character, a *Affect, flag byte) {
 	if c.HP > 1 {
 		e.rv.dmgType = 0
 		e.Damage(c, 1, 0, false)
-		if e.beginFlag != 5 {
+		if e.gameState != 5 {
 			e.DisplayPartyList()
 		}
 	} else if e.FindAffect(c, 0x1F) == nil {

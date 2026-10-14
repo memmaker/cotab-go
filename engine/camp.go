@@ -886,8 +886,8 @@ func (e *Engine) alterMenu() {
 func (e *Engine) CampMenu() bool {
 	e.Music(1) // Amiga 0x17FBC .. 0x1813C
 	defer e.Music(0)
-	saved := e.beginFlag
-	e.beginFlag = 2
+	saved := e.gameState
+	e.gameState = 2
 	e.camp.heal = 0
 	e.camp.rest = [7]int{}
 	e.DrawMainScreen()
@@ -922,7 +922,7 @@ func (e *Engine) CampMenu() bool {
 	}
 	e.clearStudy()
 	e.spellCaster = nil
-	e.beginFlag = saved
+	e.gameState = saved
 	e.StatusLine()
 	e.ClearMessageArea()
 	e.ClearRow24()

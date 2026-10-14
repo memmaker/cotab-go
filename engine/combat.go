@@ -7,7 +7,7 @@ import "strings"
 // Combat = ovr09:007A: set up the battle, then rounds until one side is
 // down (or the party stops fighting).
 func (e *Engine) Combat() {
-	e.beginFlag = 5
+	e.gameState = 5
 	e.ext.battleLog, e.ext.panel = nil, nil
 	e.combatTargets = true // DS:6B84 = 0068:0066 (ovr14:20C3)
 	e.combatSetup()

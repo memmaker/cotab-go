@@ -380,7 +380,7 @@ func (e *Engine) lootMenu() {
 func (e *Engine) AfterCombat() {
 	putWord(e.game, 0x58E, 0)
 	e.ac.monsters = false
-	e.beginFlag = 6
+	e.gameState = 6
 	e.combatResult()
 	e.cleanupCombatants()
 	if !e.run.quit || e.duel() {

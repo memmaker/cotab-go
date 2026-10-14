@@ -56,7 +56,7 @@ func (e *Engine) AdvanceClock(count, unit int) {
 // looked at.
 func (e *Engine) tickEffects(count, unit int) {
 	r := &e.run
-	if e.beginFlag != 2 {
+	if e.gameState != 2 {
 		for i := 1; i < len(r.effTick); i++ { // FillChar(DS:471E, 0x48, 1)
 			r.effTick[i] = 1
 		}

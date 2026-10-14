@@ -36,7 +36,7 @@ func (e *Engine) combatSetup() {
 		e.affectGroup(c, 8)
 	}
 	e.o14_2879()
-	e.beginFlag = 5
+	e.gameState = 5
 }
 
 // flushKey = 0899:0122: a waiting key is read and dropped.

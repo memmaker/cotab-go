@@ -6,7 +6,7 @@ package engine
 // While adventuring with the minimap on (extras.go) the panel shows the
 // map instead.
 func (e *Engine) DisplayPartyList() {
-	if e.beginFlag != 0 && e.ext.minimap && e.minimapAllowed() {
+	if e.gameState != 0 && e.ext.minimap && e.minimapAllowed() {
 		e.DrawMinimap()
 		return
 	}
@@ -15,7 +15,7 @@ func (e *Engine) DisplayPartyList() {
 
 func (e *Engine) drawPartyList() {
 	x := 1
-	if e.beginFlag != 0 {
+	if e.gameState != 0 {
 		x = 0x11
 	}
 	y := 2
@@ -136,7 +136,6 @@ func (e *Engine) PartyMenu() {
 	enabled[menuCreate], enabled[menuAdd], enabled[menuLoad], enabled[menuExit] = true, true, true, true
 	redraw := true
 	e.freeTraining = false
-	e.beginFlag = 0
 	for {
 		if redraw {
 			e.drawScreenFrame()
@@ -223,7 +222,7 @@ func (e *Engine) PartyMenu() {
 		case 'L':
 			if enabled[menuLoad] {
 				e.LoadGame()
-				if e.beginFlag != 0 {
+				if e.gameState != 0 {
 					e.loadedGame = true
 					return
 				}
@@ -302,7 +301,7 @@ func (e *Engine) SelectCharacter(prompt string, exit bool, who *Character) *Char
 				return 0
 			}})
 		}
-		key, extra := e.DisplayInput(prompt+" ", menu, 0xD, 0xA, 0xF, true, e.beginFlag == 2 || e.beginFlag == 6) // 00BA:2C48 at 3844
+		key, extra := e.DisplayInput(prompt+" ", menu, 0xD, 0xA, 0xF, true, e.gameState == 2 || e.gameState == 6) // 00BA:2C48 at 3844
 		e.regionCut(mark)
 		e.rosterHi, e.rosterNone = nil, false
 		// The exit set (DS 00BA:2C1F) is checked before the extra flag.

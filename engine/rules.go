@@ -112,7 +112,7 @@ func (e *Engine) checkAffect(c *Character, typ byte) {
 				continue
 			}
 			a = pa
-			if e.beginFlag != 5 {
+			if e.gameState != 5 {
 				found = true
 				continue
 			}
@@ -413,7 +413,7 @@ func (e *Engine) Damage(c *Character, dmg int, mode byte, saved bool) {
 	}
 	e.hitMessage(c, false, msg)
 	e.ApplyDamage(c, int(e.rv.damage))
-	if e.beginFlag == 5 && c.Combat != nil {
+	if e.gameState == 5 && c.Combat != nil {
 		c.Combat.CanCast = 0
 		if c.Combat.Spell > 0 {
 			e.CharMessage(c, "lost a spell", 0xC, true)
@@ -430,7 +430,7 @@ func (e *Engine) Damage(c *Character, dmg int, mode byte, saved bool) {
 			msg = "is killed"
 		}
 		e.CharMessage(c, msg, e.msgRow+1, false)
-		if e.beginFlag != 5 {
+		if e.gameState != 5 {
 			e.MsgDelay()
 		} else {
 			e.removeCombatAffects(c)
@@ -489,7 +489,7 @@ func (e *Engine) Heal(c *Character, amount int, magical bool) bool {
 		if c.Status == 5 {
 			c.Status = 4
 		}
-		if c.Status == 4 && e.beginFlag != 5 {
+		if c.Status == 4 && e.gameState != 5 {
 			e.callAffect(0x4E, c, nil, 1)
 		}
 	}
@@ -504,7 +504,7 @@ func (e *Engine) Revive(c *Character, hp byte) bool {
 	c.Status = 0
 	c.Okay = 1
 	c.HP = hp
-	if e.beginFlag == 5 {
+	if e.gameState == 5 {
 		e.combatRedrawChar(c, 3, 0)
 	}
 	msg := "gets back up"
@@ -519,7 +519,7 @@ func (e *Engine) Revive(c *Character, hp byte) bool {
 // CharMessage = 00BA:16EC (char, message, row, wait): the name and a
 // message in the combat side panel, or in the box under the view.
 func (e *Engine) CharMessage(c *Character, msg string, row int, wait bool) {
-	if e.beginFlag == 5 {
+	if e.gameState == 5 {
 		e.combatSay(c, msg, true) // extra: under the view, not in the side pane
 	} else {
 		r := 0x11
@@ -540,7 +540,7 @@ func (e *Engine) CharMessage(c *Character, msg string, row int, wait bool) {
 
 // ClearMessageArea = 00BA:17E3.
 func (e *Engine) ClearMessageArea() {
-	if e.beginFlag == 5 {
+	if e.gameState == 5 {
 		e.ClearCells(0, 0x17, 0x27, 0x18)
 		if p := e.ext.panel; p != nil {
 			e.combatPanel(p)
@@ -554,7 +554,7 @@ func (e *Engine) ClearMessageArea() {
 // flashes (once per message delay step for magic) with a sound.
 func (e *Engine) hitMessage(c *Character, magical bool, msg string) {
 	msg = cut(msg, 0x28)
-	if e.beginFlag != 5 {
+	if e.gameState != 5 {
 		e.CharMessage(c, msg, 0xA, true)
 		return
 	}
@@ -610,7 +610,7 @@ func (e *Engine) ApplyDamage(c *Character, dmg int) {
 		c.Status = 6
 	case over > 0:
 		c.Status = 5
-		if e.beginFlag == 5 && c.Combat != nil {
+		if e.gameState == 5 && c.Combat != nil {
 			c.Combat.Dying = byte(over)
 		}
 	case left == 0:
@@ -622,7 +622,7 @@ func (e *Engine) ApplyDamage(c *Character, dmg int) {
 	}
 	c.Okay = 0
 	c.HP = 0
-	if e.beginFlag == 5 {
+	if e.gameState == 5 {
 		e.rv.side[int8(c.Side)&1]--
 		if c.Combat != nil {
 			c.Combat.Delay = 0
@@ -652,7 +652,7 @@ func (e *Engine) healedMessage(c *Character) {
 		msg = "is fully healed"
 	}
 	e.CharMessage(c, msg, 0xA, true)
-	if e.beginFlag != 5 {
+	if e.gameState != 5 {
 		e.DisplayPartyList()
 	}
 }

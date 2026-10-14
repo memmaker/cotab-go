@@ -17,8 +17,8 @@ func (e *Engine) o34_00F7() {}
 // speaks, and the screen is rebuilt.
 func (e *Engine) ProgramEight() {
 	digit := e.symDAX[4:] // Str(DS:5376) -> DS:4713
-	savedFlag := e.beginFlag
-	e.beginFlag = 7
+	savedFlag := e.gameState
+	e.gameState = 7
 	var im *dax.Image // DS:470E, never freed
 
 	// finalAnim = the nested routine at ovr19:0006 (x, y, block, loops):
@@ -96,7 +96,7 @@ func (e *Engine) ProgramEight() {
 	e.MsgDelay()
 	e.MsgDelay()
 	e.MsgDelay()
-	e.beginFlag = savedFlag
+	e.gameState = savedFlag
 	e.DrawMainScreen()
 }
 

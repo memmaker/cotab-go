@@ -353,7 +353,7 @@ func (e *Engine) LoadGame() {
 	e.posX, e.posY, e.facing = int(pos[0]), int(pos[1]), int(pos[2])
 	e.pos3, e.pos4 = pos[3], pos[4]
 	e.viewMode = int(rd(1)[0])
-	e.beginFlag = rd(1)[0]
+	e.gameState = rd(1)[0]
 	count := int(rd(1)[0])
 	names := rd(0x148)
 	w := binary.LittleEndian.Uint16(e.area[0x1FE:])
@@ -409,7 +409,7 @@ func (e *Engine) LoadGame() {
 func (e *Engine) SaveGame() {
 	var key byte
 	for {
-		key, _ = e.DisplayInput("Save Which Game: ", "A B C D E F G H I J", 0xD, 0xA, 0xF, false, e.beginFlag == 2) // ovr18:1D8B
+		key, _ = e.DisplayInput("Save Which Game: ", "A B C D E F G H I J", 0xD, 0xA, 0xF, false, e.gameState == 2) // ovr18:1D8B
 		if key == 0 || key >= 'A' && key <= 'J' {
 			break
 		}
@@ -432,7 +432,7 @@ func (e *Engine) SaveGame() {
 	b = append(b, e.aux...)
 	b = append(b, e.ecl...)
 	b = append(b, byte(e.posX), byte(e.posY), byte(e.facing), e.pos3, e.pos4)
-	b = append(b, byte(e.viewMode), e.beginFlag, byte(len(e.party)))
+	b = append(b, byte(e.viewMode), e.gameState, byte(len(e.party)))
 	names := make([]byte, 0x148)
 	for i := range e.party {
 		s := "CHRDAT" + string(key) + strconv.Itoa(i+1)

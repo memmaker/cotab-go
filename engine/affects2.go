@@ -705,10 +705,10 @@ func (e *Engine) o13_2F57(c *Character, a *Affect, flag byte) {
 	}
 	out, ok := e.SetStrength(c, 0x12, 0x64)
 	if ok {
-		if e.beginFlag == 5 {
-			e.beginFlag = 2
+		if e.gameState == 5 {
+			e.gameState = 2
 			e.CharMessage(c, "is stronger", 0xA, true)
-			e.beginFlag = 5
+			e.gameState = 5
 		} else {
 			e.CharMessage(c, "is stronger", 0xA, true)
 		}
@@ -729,7 +729,7 @@ func (e *Engine) o13_30A5(c *Character, a *Affect, flag byte) {
 		it.Readied = 0
 		n := int(it.Spells[1] >> 4)
 		e.rv.dmgType = 8
-		if e.beginFlag == 5 {
+		if e.gameState == 5 {
 			e.combatUseHook()
 		}
 		e.Damage(c, n, 0, false)

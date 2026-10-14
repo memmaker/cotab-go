@@ -58,7 +58,7 @@ func (e *Engine) sheetEffects(c *Character) {
 // ViewCharacter = ovr20:0AB3 (var quit): the View command. Returns quit,
 // which ItemsMenu sets when an item was used in combat.
 func (e *Engine) ViewCharacter() bool {
-	if e.beginFlag == 5 {
+	if e.gameState == 5 {
 		e.combatViewEnter() // ovr31 (seg 03E0) +2F
 	}
 	key := byte(' ')
@@ -115,7 +115,7 @@ func (e *Engine) ViewCharacter() bool {
 			e.CharacterSheet()
 		}
 	}
-	if e.beginFlag == 5 {
+	if e.gameState == 5 {
 		e.combatViewLeave() // ovr31 (seg 03E0) +2A
 	}
 	e.DrawMainScreen()
@@ -189,11 +189,11 @@ func (e *Engine) ItemsMenu() bool {
 		hired := c.Control >= 0x80 && c.Okay != 0 && c.Status != 1
 		menu := "Ready"
 		if c.Okay != 0 && wordAt(e.area, 0x1CA) == 0 &&
-			(e.beginFlag == 2 || e.beginFlag == 3 || e.beginFlag == 4 ||
-				e.beginFlag == 5 && c.Combat != nil && c.Combat.CanUse != 0) {
+			(e.gameState == 2 || e.gameState == 3 || e.gameState == 4 ||
+				e.gameState == 5 && c.Combat != nil && c.Combat.CanUse != 0) {
 			menu += " Use"
 		}
-		if !hired && e.beginFlag != 5 {
+		if !hired && e.gameState != 5 {
 			menu += " Trade"
 		}
 		menu += " Drop"
@@ -201,10 +201,10 @@ func (e *Engine) ItemsMenu() bool {
 			menu += " Halve"
 		}
 		menu += " Join"
-		if !hired && e.beginFlag == 1 {
+		if !hired && e.gameState == 1 {
 			menu += " Sell"
 		}
-		if e.beginFlag == 1 {
+		if e.gameState == 1 {
 			menu += " Id"
 		}
 		menu = cut(menu, 0x28)
@@ -242,7 +242,7 @@ func (e *Engine) ItemsMenu() bool {
 					key = ' '
 				} else if e.isScroll(it) || it.Spells[1] > 0 && it.Spells[2] < 0x80 {
 					quit = e.useItem(it)
-					if e.beginFlag != 5 {
+					if e.gameState != 5 {
 						quit = false
 					}
 					if !quit {
@@ -351,7 +351,7 @@ func (e *Engine) readyItem(it *Item) {
 		}
 		e.BottomMessage("already using " + name)
 	case 3:
-		if !(e.beginFlag == 5 && c.Auto != 0) {
+		if !(e.gameState == 5 && c.Auto != 0) {
 			e.BottomMessage("Your hands are full!")
 		}
 	}
@@ -451,7 +451,7 @@ func (e *Engine) useItem(it *Item) bool {
 		return false
 	}
 	c := e.selected()
-	if e.beginFlag == 5 && c.Auto == 0 {
+	if e.gameState == 5 && c.Auto == 0 {
 		e.combatUseHook() // 00BA:2B88
 	}
 	if e.usingItem {
@@ -459,7 +459,7 @@ func (e *Engine) useItem(it *Item) bool {
 			spell -= 0x17
 		}
 		e.CharMessage(c, "uses an item", 0xA, false)
-		if e.beginFlag == 5 {
+		if e.gameState == 5 {
 			e.DisplayString(0, 0x17, 0xA, "Item:")
 			e.ItemName(c, it, 5, 0x17, false, true)
 		} else {
@@ -471,7 +471,7 @@ func (e *Engine) useItem(it *Item) bool {
 	e.usingItem = true
 	e.CastSpell(spell, c.Auto, 0, &quit)
 	e.usingItem = false
-	if e.beginFlag == 5 && e.spellRec(spell, 0xB) != 0 {
+	if e.gameState == 5 && e.spellRec(spell, 0xB) != 0 {
 		quit = e.clearCombatInfo(c)
 	}
 	if quit {

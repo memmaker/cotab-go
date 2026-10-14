@@ -399,7 +399,7 @@ func (e *Engine) o23_206F() {
 			p.Control = 0xB3
 		}
 		p.Kind = 4
-		if e.beginFlag == 5 {
+		if e.gameState == 5 {
 			p.Combat.Target = nil
 		}
 		lvl--

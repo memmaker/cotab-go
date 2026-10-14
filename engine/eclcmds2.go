@@ -14,7 +14,6 @@ func (e *Engine) unported(name string) {
 }
 
 func (e *Engine) cmdCombat()       { e.unported("COMBAT") }
-func (e *Engine) cmdTreasure()     { e.unported("TREASURE") }
 func (e *Engine) cmdRob()          { e.unported("ROB") }
 func (e *Engine) cmdParlay()       { e.unported("PARLAY") }
 func (e *Engine) cmdDamage()       { e.unported("DAMAGE") }

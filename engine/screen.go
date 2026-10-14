@@ -81,7 +81,7 @@ func (e *Engine) DrawMainFrame(inner bool) {
 
 // DrawMainScreen = 00BA:27D9: rebuild the whole screen for DS:49F3.
 func (e *Engine) DrawMainScreen() {
-	switch e.beginFlag {
+	switch e.gameState {
 	case 0:
 		e.DrawBoxTitled(1, 1, 0x26, 0x16, 0, 0xF, "")
 	case 1:
@@ -144,7 +144,7 @@ func (e *Engine) StatusLine() {
 	}
 	s += e.X.PString(0x25A8+3*e.viewFacing()) + " "
 	s += hh + ":" + mm
-	if e.beginFlag == 2 {
+	if e.gameState == 2 {
 		s += " camping"
 	} else if wordAt(e.game, 0x594)&1 != 0 {
 		s += " search"
@@ -158,7 +158,7 @@ func (e *Engine) StatusLine() {
 
 // AreaMapScreen = 00BA:2B5E: switch to the area map.
 func (e *Engine) AreaMapScreen() {
-	e.beginFlag = 3
+	e.gameState = 3
 	e.areaMapInit()
 	e.Redraw()
 	e.drawAreaMapParty()
