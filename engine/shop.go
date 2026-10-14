@@ -1,131 +1,200 @@
 package engine
 
-import "strings"
+// The shop (unit O048): COMBAT with the area2 shop flag set opens it; the
+// goods are the treasure list, the money the pool and the buyer's coins.
 
-// The shop, ported from ovr07. ECL COMBAT with the shop flag (game +0x6D8)
-// set runs Shop instead of a fight; the goods are the treasure list.
+// gameWordPriceFactor: the shop's prices are the item's price times this
+// over 16 (1 .. 128).
+const gameWordPriceFactor = 877
 
-// shopList = ovr07:0030 (var index, var list, var item, var key): the goods
-// with their prices right-aligned in a 30-character field, in a "Shop" box.
-func (e *Engine) shopList(index *int, item **Item) byte {
-	list := make([]*ListNode, len(e.run.treasure))
-	for i, it := range e.run.treasure {
+// shopPrice: an item's price in this shop. Fixed: the original's buying
+// code has no case for the normal factor 16 and reads an unset price; the
+// list shows the plain price there, so that is taken.
+func (e *Engine) shopPrice(it *Item) uint16 {
+	switch wordAt(e.game, 2*gameWordPriceFactor) {
+	case 1:
+		return it.Price / 16
+	case 2:
+		return it.Price / 8
+	case 4:
+		return it.Price >> 1 >> 1
+	case 8:
+		return it.Price >> 1
+	case 32:
+		return it.Price * 2
+	case 64:
+		return it.Price * 4
+	case 128:
+		return it.Price * 8
+	}
+	return it.Price
+}
+
+// Width of a shop list line, price right-aligned.
+const shopLineWidth = 30
+
+// shopList = O048:004E (var key, var item, var selection, var index): the
+// goods with their prices; the item names are rebuilt afterwards.
+func (e *Engine) shopList(index *int, redraw *bool) (byte, *Item) {
+	list := make([]*ListNode, len(e.treasureItems))
+	for i, it := range e.treasureItems {
 		if it.Price == 0 {
 			it.Price = 1
 		}
-		price := itoa(int(it.Price))
-		if len(price) > 0x10 {
-			price = price[:0x10]
+		price := itoa(int(e.shopPrice(it)))
+		if len(price) > 16 {
+			price = price[:16]
 		}
-		line := []byte(strings.Repeat(" ", 0x1E))
-		copy(line[0x1E-len(price):], price)
-		copy(line, cut(it.Name(), 0x1D-len(price))) // extra: the name stops before the price
+		line := []byte(spaces(shopLineWidth))
+		copy(line[shopLineWidth-len(price):], price)
+		name := it.Name()
+		copy(line, name[:min(len(name), shopLineWidth)])
 		list[i] = &ListNode{Text: string(line)}
-		list[i].Dim = !e.canUseItem(e.selected(), it) // extra: what the buyer cannot use is grey and passed over
 	}
-	e.DrawBoxTitled(1, 1, 0x26, 0x16, 0, 0xF, "Shop")
-	e.DisplayString(2, 2, 0xE, e.moneyLine())
-	if c := e.selected(); len(e.party) > 0 { // extra: who is buying (F1-F6 change it)
-		e.displayName(c, 0x26-len(c.Name()), 2, false)
-	}
-	redraw := true
+	e.fromCommandBar = false
 	var sel *ListNode
-	if len(list) > 0 { // extra: the cursor starts on something the buyer can use
-		for k := 0; k < len(list) && list[*index%len(list)].Dim; k++ {
-			*index = (*index + 1) % len(list)
-		}
-		*index %= len(list)
-	}
-	e.ext.buying = true
-	key := e.ListMenu("Items: ", "Buy Look", 0xD, 0xA, 0xF, 1, 4, 0x26, 0x16, list, true, &redraw, index, &sel)
-	e.ext.buying = false
-	*item = nil
+	key := e.ListMenu("Items: ", "Buy", colourLightMagenta, colourGreen, colourWhite, 1, 1, 38, 22, list, true, redraw, index, &sel)
+	var item *Item
 	for i, n := range list {
 		if n == sel {
-			*item = e.run.treasure[i]
+			item = e.treasureItems[i]
 		}
 	}
-	for _, it := range e.run.treasure {
+	for _, it := range e.treasureItems {
 		e.ItemName(nil, it, 0, 0, false, false)
 	}
-	return key
+	return key, item
 }
 
-// buyItem = ovr07:0239 (item, var overloaded): a copy goes to the
-// selected character unless it is too much to carry.
-func (e *Engine) buyItem(it *Item) (overloaded bool) {
+func spaces(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = ' '
+	}
+	return string(b)
+}
+
+// overloadedBy = O0AF:324B (c, item): sixteen items, or the item's weight
+// (times its count) would overload c.
+func (e *Engine) overloadedBy(c *Character, it *Item) bool {
+	e.ApplyItems(c)
+	over := c.ItemCount > 15
+	w := it.Weight
+	if it.Count > 0 {
+		w = uint16(it.Count) * w
+	}
+	if c.Weight+w > carryLimit(c) {
+		over = true
+	}
+	return over
+}
+
+// takeItemCopy = O048:034C overloaded (item): a copy of the item joins the
+// selected member's items unless it overloads them.
+func (e *Engine) takeItemCopy(it *Item) bool {
 	c := e.selected()
-	if e.overloaded(it, c) {
-		e.BottomMessage("OverLoaded")
+	if e.overloadedBy(c, it) {
+		e.printMessage("OverLoaded")
 		return true
 	}
-	e.AddItemCopy(c, it)
+	cp := *it
+	c.Items = append(c.Items, &cp)
 	e.ApplyItems(c)
 	return false
 }
 
-// shopBuy = ovr07:0361: pick goods until Exit, paid from the party's gold.
+// shopBuy = O048:0474: buy goods until another key than Buy or Enter,
+// paid from the buyer's coins or else from the pool.
 func (e *Engine) shopBuy() {
-	// extra: the list opens at its top on the first item (the original,
-	// ovr07:037C, starts on the second, with the top left where the last
-	// list had it)
 	index := 0
-	e.listTop = 0
+	e.drawScreenFrame()
+	redraw := true
 	for {
-		var it *Item
-		key := e.shopList(&index, &it)
-		if key == keyRelist>>8 {
-			continue // F1-F6 picked another buyer
-		}
-		if key == 'L' { // extra: what the item does
-			e.lookItem(it)
-			continue
-		}
-		if key != 'B' && key != 13 || it == nil {
+		key, it := e.shopList(&index, &redraw)
+		if key != 'B' && key != keyEnter {
 			return
 		}
-		price := int(it.Price)
-		if price > e.purse.gold {
-			e.BottomMessage("Not enough Money.")
-		} else if !e.buyItem(it) {
-			e.purse.gold -= price
+		if it == nil {
+			continue
+		}
+		price := e.shopPrice(it)
+		if gold := uint16(goldWorth(e.selected())); price <= gold {
+			if !e.takeItemCopy(it) {
+				e.setGold(gold - price)
+			}
+		} else if pool := poolGold(e.treasureCoins); int32(price) <= pool {
+			if !e.takeItemCopy(it) {
+				e.setPoolGold(uint16(pool - int32(price)))
+			}
+		} else {
+			e.printMessage("Not enough Money.")
 		}
 	}
 }
 
-// Shop = ovr07:053E.
-func (e *Engine) Shop() {
-	e.gameState = 1
-	e.DrawMainScreen()
-	e.DisplayPartyList()
-	for _, it := range e.run.treasure {
+// shopMenu = O048:06E7: the shop's menu until the party leaves.
+func (e *Engine) shopMenu() {
+	e.gameState = stateShop
+	e.shopFrame = wordAt(e.area, 2*areaWordFreeSteps) == 0
+	e.loadPicture()
+	e.shopFrame = true
+	e.playerSummary(e.selected())
+	e.treasureCoins = [coinKinds]int32{}
+	e.poolHasMoney = false
+	for _, it := range e.treasureItems {
 		e.ItemName(nil, it, 0, 0, false, false)
 	}
 	for leave := false; !leave; {
-		e.shopMoney()
-		key, _ := e.DisplayInput("", "Buy View Appraise Exit", 0xD, 0xA, 0xF, true, false)
+		money, _ := e.treasureLeft()
+		menu := "Buy View Pool Appraise Exit"
+		if money {
+			menu = "Buy View Take Pool Share Appraise Exit"
+		}
+		key, extra := e.DisplayInput("", menu, colourLightMagenta, colourGreen, colourWhite, true, false)
 		appraised := false
 		switch key {
 		case 'B':
 			e.shopBuy()
 		case 'V':
-			e.ViewCharacter()
+			e.viewPlayer()
+		case 'T':
+			e.takeMoney()
+		case 'P':
+			if !extra {
+				e.poolMoney()
+			}
+		case 'S':
+			e.shareMoney()
 		case 'A':
-			appraised = e.Appraise()
+			appraised = e.appraise()
 		case 'E':
-			leave = true
-		case 'G', 'O':
-			e.partyKeypad(key)
+			if money, _ := e.treasureLeft(); money {
+				e.msgCol, e.msgRow = textLeft, textTop
+				e.DisplayTextBlock(textLeft, textTop, textRight, textBottom, colourGreen, true,
+					`As you Leave the Shopkeeper says, "Excuse me but you have Left Some Money here."  `)
+				e.DisplayTextBlock(textLeft, textTop, textRight, textBottom, colourWhite, false,
+					"Do you want to go back and get your Money?")
+				if e.scriptMenu("", "~Yes ~No", colourLightMagenta, colourGreen, colourWhite, false, false) == 1 {
+					leave = true
+				} else {
+					e.ClearCells(textLeft, textTop, textRight, textBottom)
+				}
+			} else {
+				leave = true
+			}
+		case scanHome, scanEnd:
+			e.cycleSelected(key)
 		}
-		if key == 'B' || key == 'A' && appraised {
-			e.DrawMainScreen()
+		switch {
+		case key == 'B' || key == 'T':
+			e.loadPicture()
+		case key == 'A' && appraised:
+			e.loadPicture()
 		}
-		e.DisplayPartyList()
+		e.playerSummary(e.selected())
 	}
 }
 
-// canUseItem (extra): the item's class mask lets c ready it (the Wrong
-// Class test of readyItem).
-func (e *Engine) canUseItem(c *Character, it *Item) bool {
-	return e.baseItem(it.Type, 0xD)&c.ClassMask != 0
-}
+// viewPlayer = O0AF:0B64 (var done): the character sheet with its menu
+// (being audited: Pool of Radiance's View for now).
+func (e *Engine) viewPlayer() bool { return e.ViewCharacter() }

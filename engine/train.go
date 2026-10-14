@@ -451,7 +451,7 @@ func payGold(c *Character, gold int32) {
 
 // Coin indexes.
 const (
-	_ = iota // coinCopper (money.go holds the copper worth table of the same name)
+	coinCopper = iota
 	coinSilver
 	coinElectrum
 	coinGold

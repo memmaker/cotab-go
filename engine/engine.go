@@ -77,6 +77,7 @@ type Engine struct {
 	shopBody        byte       // b4FDF
 	treasureCoins   [7]int32   // a6F8A: the treasure's money
 	treasureItems   []*Item    // p6FA6: the treasure's items
+	poolHasMoney    bool       // b757E: money lies in the pool
 	textNewLine     bool       // b8B7B
 	picFrame        byte       // b729B
 	spriteFrame     byte       // b72A5

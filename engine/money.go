@@ -19,13 +19,13 @@ func (p purse) empty() bool { return p == purse{} }
 
 // coinCopper is the worth of copper, silver, electrum, gold and platinum
 // in copper pieces (DS:0D24); 200 copper make a gold piece (DS:0D30).
-var coinCopper = [5]int{1, 10, 100, 200, 1000}
+var porCopperWorth = [5]int{1, 10, 100, 200, 1000}
 
 // coinsToPurse counts coins of the seven kinds (the last two gems and
 // jewelry) as gold, rounded to the nearest piece.
 func coinsToPurse(c [7]uint16) purse {
 	var t int
-	for i, v := range coinCopper {
+	for i, v := range porCopperWorth {
 		t += int(c[i]) * v
 	}
 	return purse{gold: (t + 100) / 200, gems: int(c[5]), jewelry: int(c[6])}

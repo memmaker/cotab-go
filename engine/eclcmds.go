@@ -522,8 +522,9 @@ func (e *Engine) cycleSelected(k byte) {
 			e.partySel--
 		}
 	case scanEnd:
-		if e.partySel+1 < len(e.party) {
-			e.partySel++
+		e.partySel++
+		if e.partySel >= len(e.party) {
+			e.partySel = 0
 		}
 	default:
 		e.partySel = 0

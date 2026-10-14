@@ -314,12 +314,17 @@ func (e *Engine) cmdLoadMonster() {
 	if s.monsterCount >= maxCombatants {
 		return
 	}
-	first := e.loadMonsterRecord(byte(e.arg(1)))
-	count := byte(e.arg(2))
+	e.addMonsters(byte(e.arg(1)), byte(e.arg(2)), byte(e.arg(3)))
+	e.partySel = saved
+}
+
+// addMonsters: LOAD MONSTER's work (monster, count, icon).
+func (e *Engine) addMonsters(block, count, icon byte) {
+	s := &e.sc
+	first := e.loadMonsterRecord(block)
 	if count == 0 {
 		count = 1
 	}
-	icon := byte(e.arg(3))
 	e.LoadIconPic("CPIC", int(icon), int(s.iconSlot))
 	first.Order = s.iconSlot
 	e.party = append(e.party, first)
@@ -340,7 +345,6 @@ func (e *Engine) cmdLoadMonster() {
 	}
 	s.iconSlot++
 	s.monstersLoaded = true
-	e.partySel = saved
 }
 
 // loadMonsterRecord = O0A1:329C (block): MON<area>CHA, SPC (affects) and
@@ -696,7 +700,6 @@ func (e *Engine) cmdCombat() {
 }
 
 // The subsystems COMBAT opens (being ported: Pool of Radiance's for now).
-func (e *Engine) shopMenu()     { e.Shop() }        // O048:06E7
 func (e *Engine) templeMenu()   { e.Temple() }      // O042:0000, temple_shop
 func (e *Engine) treasureMenu() { e.AfterCombat() } // O045:17A2
 func (e *Engine) fight()        { e.Combat() }      // O057:0100

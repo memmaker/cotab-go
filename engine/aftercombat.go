@@ -316,7 +316,7 @@ func (e *Engine) lootTake() {
 		if key != 'T' && key != 13 || it == nil {
 			break
 		}
-		if !e.buyItem(it) {
+		if !e.takeItemCopy(it) {
 			for i, t := range e.run.treasure {
 				if t == it {
 					e.run.treasure = append(e.run.treasure[:i], e.run.treasure[i+1:]...)

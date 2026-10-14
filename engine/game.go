@@ -6,10 +6,10 @@ package engine
 // Encamp = ovr04:2DD3: the camp event, the camp menu, then the area's
 // after-camp event.
 func (e *Engine) Encamp() {
-	e.RunECL(e.es.events[2])
+	e.runEvent(e.sc.events[2])
 	if e.CampMenu() {
 		e.DrawMainScreen()
-		e.RunECL(e.es.events[3])
+		e.runEvent(e.sc.events[3])
 	}
 	e.Redraw()
 	e.saved = false

@@ -35,7 +35,7 @@ func (e *Engine) DevScene(name string) func() {
 			for _, t := range []byte{0x3F, 0x15, 0x49, 0x3D, 0x32, 0x05} {
 				e.run.treasure = append(e.run.treasure, e.RandomItem(t))
 			}
-			e.Shop()
+			e.shopMenu()
 			e.DrawMainScreen()
 		}
 	case "temple":
@@ -49,7 +49,7 @@ func (e *Engine) DevScene(name string) func() {
 	case "appraise":
 		return func() {
 			e.purse.gems, e.purse.jewelry = 3, 2
-			e.Shop()
+			e.shopMenu()
 			e.DrawMainScreen()
 		}
 	case "combat":
@@ -60,7 +60,7 @@ func (e *Engine) DevScene(name string) func() {
 			if f := e.L.File("MON" + e.symDAX[4:] + "CHA"); f != nil && len(f.Entries) > 0 {
 				idx = f.Entries[0].ID
 			}
-			e.addMonsters(idx, 3, 1)
+			e.addMonsters(byte(idx), 3, 1)
 			e.Combat()
 			e.AfterCombat()
 			e.DrawMainScreen()
