@@ -33,7 +33,10 @@ env = dict(os.environ, DOSPAR_CMD='START.EXE STING Wooden', SDL_VIDEODRIVER='dum
 dos = subprocess.Popen([sys.executable, os.path.join(here, 'dosparity.py'), dos_dir, '/tmp/pc_dos'] + steps,
                        env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 penv = dict(os.environ, SDL_VIDEODRIVER='dummy', COTAB_SEED=os.environ.get('COTAB_SEED', '1'))
-subprocess.run(['go', 'run', './cmd/snap', port_dir, '/tmp/pc_port', 'game', '-', keys],
+port_copy = '/tmp/pc_portdata'
+shutil.rmtree(port_copy, ignore_errors=True)
+shutil.copytree(port_dir, port_copy)  # the game writes and deletes files
+subprocess.run(['go', 'run', './cmd/snap', port_copy, '/tmp/pc_port', 'game', '-', keys],
                cwd=os.path.dirname(here), env=penv, stdout=subprocess.DEVNULL)
 dos.wait()
 for n, t in enumerate(toks, 1):

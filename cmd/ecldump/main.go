@@ -1,7 +1,7 @@
 // Command ecldump counts the script commands in the ECL<n>.DAX blocks
 // (dev tool: a linear sweep, so data between commands can miscount).
 //
-//	ecldump DATA [AREA]
+//	ecldump DATA [AREA [BLOCK]]   (with BLOCK: the commands of that block)
 package main
 
 import (
@@ -36,7 +36,14 @@ func main() {
 		area = os.Args[2]
 	}
 	counts := map[byte]int{}
+	only := -1
+	if len(os.Args) > 3 {
+		fmt.Sscan(os.Args[3], &only)
+	}
 	for id := 0; id < 256; id++ {
+		if only >= 0 && id != only {
+			continue
+		}
 		b := l.Block("ECL"+area, id)
 		if len(b) < 2 {
 			continue
@@ -46,6 +53,27 @@ func main() {
 		for pc < len(code) {
 			c := code[pc]
 			counts[c]++
+			if only >= 0 {
+				fmt.Printf("%5d %3d", pc+32768, c)
+				if n, ok := operands[c]; ok {
+					q := pc
+					for k := 0; k < n && q+2 < len(code); k++ {
+						t, lo := code[q+1], code[q+2]
+						q += 2
+						switch t {
+						case 1, 2, 3, 129:
+							q++
+							fmt.Printf(" [%d:%d]", t, int(code[q])<<8|int(lo))
+						case 128:
+							fmt.Printf(" \"%d chars\"", lo)
+							q += int(lo)
+						default:
+							fmt.Printf(" %d", lo)
+						}
+					}
+				}
+				fmt.Println()
+			}
 			n, ok := operands[c]
 			if !ok {
 				pc++

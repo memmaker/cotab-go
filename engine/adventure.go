@@ -258,6 +258,10 @@ func (e *Engine) clearTreasure() {
 // adventureInput = O099:08DF: the command bar in a dungeon; returns the key.
 func (e *Engine) adventureInput() byte {
 	s := &e.sc
+	if f := e.DevAction; f != nil { // cmd/snap's scenes
+		e.DevAction = nil
+		f()
+	}
 	putWord(e.game, 2*gameWordSteps, 0)
 	var k byte
 	if e.gameState == stateDungeon {
