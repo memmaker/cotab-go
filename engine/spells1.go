@@ -7,8 +7,7 @@ package engine
 // [6] minimum 1 flag, [7] targeting kind, [8] save mode, [9] save type,
 // [0xA] affect type.
 
-import (
-)
+import ()
 
 // tgt / setTgt = DS:6C91 + 4*i: the spell target list (1-based). Slot 1 is
 // DS:6C95, kept in e.spellTarget.
@@ -579,7 +578,6 @@ func (e *Engine) o23_30D9(c *Character, a *Affect, flag int) {
 	}
 	e.clearCombatInfo(c)
 }
-
 
 // scrollUsed = ovr23:328A (char, item, spell): the spell is wiped from the
 // scroll; the scroll goes when the item byte +0x30 falls under 0xD2.

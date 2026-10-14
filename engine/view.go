@@ -20,7 +20,6 @@ type viewState struct {
 	start *Character // DS:471A
 }
 
-
 // Extra: the sheet lists the spell effects on the character (the camp
 // menu's Display, which is not offered) on the free row under HP. When they
 // do not all fit, the View menu offers Magic with the whole list.
@@ -55,8 +54,6 @@ func (e *Engine) sheetEffects(c *Character) {
 	e.DisplayString(1, effectsRow, 0xF, "Effects")
 	e.DisplayString(9, effectsRow, 0xA, s)
 }
-
-
 
 // ViewCharacter = ovr20:0AB3 (var quit): the View command. Returns quit,
 // which ItemsMenu sets when an item was used in combat.

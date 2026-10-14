@@ -19,7 +19,6 @@ func (it *Item) setName(s string) {
 	copy(it.PName[1:41], s)
 }
 
-
 // itemStats (extra): Angband-style base stats after the name, "(1d8) "
 // for weapon damage, "<6> " for the armour class it gives (the font has
 // no square brackets); magic pluses stay in the name.

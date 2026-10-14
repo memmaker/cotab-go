@@ -74,7 +74,7 @@ func (e *Engine) initScript() {
 // the code (its first word is the size).
 func (e *Engine) loadScript(block byte) {
 	e.sc.code = [scriptCodeSize]byte{}
-		e.ClearRow24()
+	e.ClearRow24()
 	e.displayStringBg(0, statusRow, colourGreen, colourBlack, "Loading...Please Wait")
 	b := e.L.Block("ECL"+strconv.Itoa(int(e.gameArea)), int(block))
 	if len(b) >= 2 {

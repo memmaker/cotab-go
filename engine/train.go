@@ -211,7 +211,6 @@ func (e *Engine) maxHitPoints(c *Character) byte {
 	return e.hitPointsFrom(e.selected(), sum, count) // the original reads the bonus of the selected character, not c
 }
 
-
 // o17_33E7 = ovr17:33E7: choose the portrait: Head (1..14) and Body
 // (1..12) step through the pictures, Keep accepts. There is no way out
 // without Keep (Esc just asks again).

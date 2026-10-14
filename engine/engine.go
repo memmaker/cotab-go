@@ -82,12 +82,12 @@ type Engine struct {
 	spriteFrame     byte       // b72A5
 	textWaiting     bool       // b5D0B
 	forcePicture    bool       // b4FD9: the encounter picture shows even during ENCOUNTER
-	gameSpeed       byte  // game_speed_var_4FC2
-	freeTraining    bool  // b75A1: the 'J' cheat of the party menu
-	silentTraining  bool  // b4FE1: training without questions (character creation)
-	cannotTrain     bool  // b75A0: the last training found nothing to raise
-	gameWon         bool  // b8B89: the ending was reached; training is free
-	gameState       byte  // game_state_4FD3: what the party is doing (stateCombat, ...)
+	gameSpeed       byte       // game_speed_var_4FC2
+	freeTraining    bool       // b75A1: the 'J' cheat of the party menu
+	silentTraining  bool       // b4FE1: training without questions (character creation)
+	cannotTrain     bool       // b75A0: the last training found nothing to raise
+	gameWon         bool       // b8B89: the ending was reached; training is free
+	gameState       byte       // game_state_4FD3: what the party is doing (stateCombat, ...)
 	spells          spellList
 	anim            viewAnim
 	addSource       byte // b759E: where AddPlayer loads characters from (fromCurse ...)

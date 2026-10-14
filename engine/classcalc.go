@@ -362,6 +362,7 @@ func (e *Engine) thiefSkills(c *Character) {
 		}
 	}
 }
+
 // Readied-item slots at char+0xCC (13 far pointers). Slot numbers come
 // from the base item record; 9 and 10 are the two rings, 11 arrows
 // (type 0x49), 12 quarrels (type 0x1C).
@@ -372,4 +373,3 @@ const (
 	slotArrows = 11
 	slotBolts  = 12
 )
-

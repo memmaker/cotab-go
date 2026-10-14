@@ -3,7 +3,6 @@ package engine
 // The adventuring loop: ovr04:31B4/32F8 (game loop and area change),
 // ovr15 (command input, movement, doors) and ovr21 (clock).
 
-
 // Encamp = ovr04:2DD3: the camp event, the camp menu, then the area's
 // after-camp event.
 func (e *Engine) Encamp() {

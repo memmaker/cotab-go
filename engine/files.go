@@ -196,8 +196,6 @@ func (e *Engine) WriteCharList(list []string) {
 	}
 }
 
-
-
 // LoadMonster = ovr18:0EC4 (index, c): MON<n>CHA/SPC/ITM.DAX block index.
 func (e *Engine) LoadMonster(index int, c *Character) bool {
 	n := strconv.Itoa(int(e.symDAX[4] - '0'))
@@ -284,7 +282,6 @@ func (e *Engine) partyCount() int { return int(binary.LittleEndian.Uint16(e.game
 func (e *Engine) setPartyCount(n int) {
 	binary.LittleEndian.PutUint16(e.game[gsPartyCount:], uint16(n))
 }
-
 
 // removeFromParty unlinks c (used by Remove/Drop); order values stay.
 func (e *Engine) removeFromParty(c *Character) {

@@ -56,42 +56,42 @@ type script struct {
 
 	posX, posY, facing byte // b7229, b722A, b722B
 	wallHere, cellHere byte // b722C, b722D
-	moved, redraw     bool  // b8B82, b8B81
-	look1, look2      byte  // b7602, b7603
+	moved, redraw      bool // b8B82, b8B81
+	look1, look2       byte // b7602, b7603
 
 	viewChanged   bool // b8B84: an area word the view depends on changed
 	justJoined    bool // b8B87: read once by the active-character value
 	nameCleared   bool // b8B6D
 	activeCleared bool // b8B6C
 
-	random1, random2, random3          uint16 // w7604, w7606, w7608
+	random1, random2, random3 uint16 // w7604, w7606, w7608
 
-	command, lastCommand byte  // b7619, b7618
-	block                byte  // b8B78: the ECL block of this area
-	stop                 bool  // b47F8: the event is over
-	restart              bool  // b47F9: a new script was loaded; run its start events
-	restoreSelected      bool  // b47FA: give back the selection the event started with
-	keepScript           bool  // b47FB: the loaded game's script is kept
-	wallsLoaded          bool  // b47FC
-	mapLoaded            bool  // b47FD
-	monsterCount         byte  // b47FE
-	savedSelected        *Character // p47FF
-	pictureShown         bool  // b8B62
-	pictureBig           bool  // b8B63
-	pictureOn            bool  // b8B7C
-	viewDrawn            bool  // b8B7D
-	clearPicture         bool  // b8B7E
-	spriteOn             bool  // b8B7F
-	firstLoad            bool  // b8B88
-	inSpecial            bool  // b8B7A
-	waitedKey            bool  // b8B80
-	monstersLoaded       bool  // b8B83
-	inEncounter          bool  // b8B85
-	sprite, closeup      byte  // b761B, b761C
-	iconSlot             byte  // b761D
-	lookSave             byte  // b8B79
-	faceShown            byte  // b8B86: the portrait the encounter shows
-	encounterA, encounterB, encounterC uint16 // w8B66, w8B68, w8B6A
+	command, lastCommand               byte       // b7619, b7618
+	block                              byte       // b8B78: the ECL block of this area
+	stop                               bool       // b47F8: the event is over
+	restart                            bool       // b47F9: a new script was loaded; run its start events
+	restoreSelected                    bool       // b47FA: give back the selection the event started with
+	keepScript                         bool       // b47FB: the loaded game's script is kept
+	wallsLoaded                        bool       // b47FC
+	mapLoaded                          bool       // b47FD
+	monsterCount                       byte       // b47FE
+	savedSelected                      *Character // p47FF
+	pictureShown                       bool       // b8B62
+	pictureBig                         bool       // b8B63
+	pictureOn                          bool       // b8B7C
+	viewDrawn                          bool       // b8B7D
+	clearPicture                       bool       // b8B7E
+	spriteOn                           bool       // b8B7F
+	firstLoad                          bool       // b8B88
+	inSpecial                          bool       // b8B7A
+	waitedKey                          bool       // b8B80
+	monstersLoaded                     bool       // b8B83
+	inEncounter                        bool       // b8B85
+	sprite, closeup                    byte       // b761B, b761C
+	iconSlot                           byte       // b761D
+	lookSave                           byte       // b8B79
+	faceShown                          byte       // b8B86: the portrait the encounter shows
+	encounterA, encounterB, encounterC uint16     // w8B66, w8B68, w8B6A
 }
 
 func (s *script) codeByte(a uint16) byte { return s.code[uint16(a-scriptCodeFirst)%scriptCodeSize] }

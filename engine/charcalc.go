@@ -5,9 +5,9 @@ package engine
 
 // Fields of a base item record (the ITEMS table, 16 bytes per type).
 const (
-	itemSlot        = 0  // which readied slot the item takes (9 rings)
-	itemHands       = 1  // hands it needs
-	itemDiceLarge   = 2  // damage against large creatures
+	itemSlot        = 0 // which readied slot the item takes (9 rings)
+	itemHands       = 1 // hands it needs
+	itemDiceLarge   = 2 // damage against large creatures
 	itemSidesLarge  = 3
 	itemBonusLarge  = 4
 	itemAttacks     = 5

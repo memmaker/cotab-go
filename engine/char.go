@@ -167,9 +167,6 @@ func (c *Character) SetName(s string) {
 // IntToStr = 00BA:1037.
 func itoa(n int) string { return strconv.Itoa(n) }
 
-
-
-
 func abs(n int) int {
 	if n < 0 {
 		return -n
