@@ -211,66 +211,6 @@ func (e *Engine) maxHitPoints(c *Character) byte {
 	return e.hitPointsFrom(e.selected(), sum, count) // the original reads the bonus of the selected character, not c
 }
 
-// AddCharacter = ovr17:306D: pick saved characters from the roster list
-// and add them to the party (at most 6 characters and 8 with hired NPCs).
-// Chosen entries get a "* " in the list.
-func (e *Engine) AddCharacter() {
-	e.ClearCells(1, 1, 0x26, 0x16)
-	names := e.BuildCharList() // ovr18:0010
-	if len(names) == 0 {
-		return
-	}
-	list := make([]*ListNode, len(names))
-	for i, n := range names {
-		list[i] = &ListNode{Text: n}
-	}
-	index := 0
-	redraw := true
-	var sel *ListNode
-	count := 0 // uninitialised until the first add in the original
-	for {
-		// The show-exit argument is an uninitialised local; false here.
-		key := e.ListMenu("Add a character: ", "Add Exit", 0xD, 0xA, 0xF, 1, 2, 0x26, 0x16, list, false, &redraw, &index, &sel)
-		if (key == 0xD || key == 'A') && sel != nil && (sel.Text == "" || sel.Text[0] != '*') {
-			c := &Character{}
-			if e.LoadCharacter(sel.Text, c, false) { // ovr18:0AEC
-				sel.Text = cut("* "+sel.Text, 0x28)
-				count = 0
-				if len(e.party) == 0 {
-					putWord(e.game, gsPartyCount, 0)
-					e.AddToParty(c) // ovr18:1446
-					e.BuildCharIcon(c, true)
-				} else {
-					var dup *Character
-					for _, m := range e.party {
-						if m.Name() == c.Name() && m.RandomID == c.RandomID {
-							dup = m
-							break
-						}
-						if m.Control < 0x80 {
-							count++
-						}
-					}
-					npc := c.Control >= 0x80
-					if dup == nil && (!npc && count < 6 || npc && wordAt(e.game, gsPartyCount) < 8) {
-						e.AddToParty(c)
-						e.BuildCharIcon(c, true)
-						if !npc {
-							count++
-						}
-					}
-				}
-			}
-		}
-		if key == 'E' || key == 0 || count > 5 || wordAt(e.game, gsPartyCount) > 7 {
-			break
-		}
-	}
-	for i, n := range list {
-		names[i] = n.Text
-	}
-	e.WriteCharList(names) // ovr18:01B8
-}
 
 // o17_33E7 = ovr17:33E7: choose the portrait: Head (1..14) and Body
 // (1..12) step through the pictures, Keep accepts. There is no way out

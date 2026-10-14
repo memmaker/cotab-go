@@ -95,10 +95,10 @@ func (e *Engine) ApplyItems(c *Character) {
 	for k := 0; k < len(c.Coins); k++ {
 		c.Weight += c.Coins[k] * coinWeight
 	}
-	for h := 0; h < 2; h++ {
-		c.Attacks[h] = c.BaseAttack[h]
+	for h := 0; h < 2; h++ { // attacks per round are not reset here
 		c.Dice[h] = c.BaseDice[h]
 		c.Sides[h] = c.BaseSides[h]
+		c.Bonus[h] = c.BaseBonus[h]
 	}
 	var ac [5]int8 // dexterity, shield, armour, helm-like, base
 	cursedAC := false

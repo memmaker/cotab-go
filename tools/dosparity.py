@@ -105,6 +105,14 @@ def main():
                 with client.session() as session:
                     session.execute('memwrite', {'address': ds * 16 + 18416, 'data': int(arg).to_bytes(4, 'little').hex()})
                 print('seed', arg)
+            elif kind == 'saves':
+                # copy the game's SAVE folder (as the game wrote it) to OUTDIR/arg
+                src = os.path.join(tmp, 'SAVE')
+                dst = os.path.join(out, arg)
+                shutil.rmtree(dst, ignore_errors=True)
+                if os.path.isdir(src):
+                    shutil.copytree(src, dst)
+                print('saves', arg)
             elif kind == 'status':
                 st = tools.status(client)
                 print(st)

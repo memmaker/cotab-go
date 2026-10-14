@@ -16,8 +16,8 @@ import (
 	"cotab/exe"
 )
 
-// Config mirrors POOL.CFG: graphics letter, sound letter, game dir, save dir,
-// and the 5th line ('F' = full intro with second title picture + credits).
+// Config mirrors CURSE.CFG: graphics letter, sound letter, the save directory
+// and the intro ('F' = full intro with the painting, banner and credits).
 type Config struct {
 	Graphics, Sound  byte
 	GameDir, SaveDir string
@@ -63,6 +63,7 @@ type Engine struct {
 	gameState       byte  // game_state_4FD3: what the party is doing (stateCombat, ...)
 	spells          spellList
 	anim            viewAnim
+	addSource       byte // b759E: where AddPlayer loads characters from (fromCurse ...)
 	areaKind        byte // b72AA: 'y' on the wilderness map (its cursor blinks)
 	mapMode         byte // b72A4: 'P' while a picture hides the map
 
@@ -184,7 +185,7 @@ func New(dir string, scr *ega.Screen) (*Engine, error) {
 	}
 	e := &Engine{L: l, S: scr, symDAX: "8X8D1", start: time.Now()}
 	e.Cfg = Config{Graphics: 'E', Sound: 'P', GameDir: dir, SaveDir: filepath.Join(dir, "SAVE"), FullIntro: true}
-	if p := l.Path("POOL.CFG"); p != "" {
+	if p := l.Path("CURSE.CFG"); p != "" {
 		f, err := os.Open(p)
 		if err == nil {
 			defer f.Close()
@@ -193,9 +194,10 @@ func New(dir string, scr *ega.Screen) (*Engine, error) {
 			for sc.Scan() {
 				lines = append(lines, strings.TrimSpace(sc.Text()))
 			}
-			if len(lines) >= 5 {
+			if len(lines) >= 4 && lines[0] != "" && lines[1] != "" && lines[3] != "" {
 				e.Cfg.Graphics, e.Cfg.Sound = upper(lines[0][0]), upper(lines[1][0])
-				e.Cfg.FullIntro = upper(lines[4][0]) == 'F' // main 0x461F: cmp [484C],'F'
+				e.Cfg.FullIntro = upper(lines[3][0]) == 'F'
+				// The save directory (line 3, e.g. C:\SAVE\) is kept as a SAVE folder next to the data.
 			}
 		}
 	}

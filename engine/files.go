@@ -196,62 +196,7 @@ func (e *Engine) WriteCharList(list []string) {
 	}
 }
 
-// SaveCharacter = ovr18:069E (c, name): name "" = roster save (.cha, listed
-// in charlist.txt), else <name>.sav as used by SaveGame.
-func (e *Engine) SaveCharacter(c *Character, name string) {
-	var base, ext string
-	if name == "" {
-		list := append(e.BuildCharList(), c.Name())
-		e.WriteCharList(list)
-		base, ext = e.charBase(c), ".cha"
-	} else {
-		if len(name) > 8 {
-			name = name[:8]
-		}
-		base, ext = name, ".sav"
-	}
-	os.MkdirAll(e.Cfg.SaveDir, 0o755)
-	if err := os.WriteFile(e.savePath(base+ext), c.record(), 0o644); err != nil {
-		e.fileError("write", e.savePath(base+ext))
-	}
-	os.Remove(e.savePath(base + ".itm"))
-	if len(c.Items) > 0 {
-		os.WriteFile(e.savePath(base+".itm"), writeRecords(c.Items), 0o644)
-	}
-	os.Remove(e.savePath(base + ".spc"))
-	if len(c.Affects) > 0 {
-		var recs []*affectRecord
-		for _, a := range c.Affects {
-			recs = append(recs, &a.affectRecord)
-		}
-		os.WriteFile(e.savePath(base+".spc"), writeRecords(recs), 0o644)
-	}
-}
 
-// LoadCharacter = ovr18:0AEC (name, c, useSav). Returns false when the file
-// is missing.
-func (e *Engine) LoadCharacter(name string, c *Character, useSav bool) bool {
-	nm := makeFileName(name)
-	ext := ".cha"
-	if useSav {
-		ext = ".sav"
-	}
-	b, err := os.ReadFile(e.savePath(nm + ext))
-	if err != nil {
-		e.fileError("read", e.savePath(nm+ext))
-		return false
-	}
-	c.setRecord(b)
-	c.Items, c.Affects = nil, nil
-	if b, err := os.ReadFile(e.savePath(nm + ".itm")); err == nil {
-		c.Items = readRecords[Item](b, itemRecSize)
-	}
-	if b, err := os.ReadFile(e.savePath(nm + ".spc")); err == nil {
-		c.Affects = readAffects(b)
-	}
-	e.ClearKeyboard()
-	return true
-}
 
 // LoadMonster = ovr18:0EC4 (index, c): MON<n>CHA/SPC/ITM.DAX block index.
 func (e *Engine) LoadMonster(index int, c *Character) bool {
@@ -340,27 +285,6 @@ func (e *Engine) setPartyCount(n int) {
 	binary.LittleEndian.PutUint16(e.game[gsPartyCount:], uint16(n))
 }
 
-// AddToParty = ovr18:1446 (c): append, give the lowest free order 0..7;
-// the newcomer's coins go to the party's purse.
-func (e *Engine) AddToParty(c *Character) {
-	c.Order = 0xFF
-	e.party = append(e.party, c)
-	var used [8]bool
-	for _, m := range e.party {
-		if m.Order < 8 {
-			used[m.Order] = true
-		}
-	}
-	e.partySel = len(e.party) - 1
-	o := 0
-	for o < 8 && used[o] {
-		o++
-	}
-	c.Order = byte(o)
-	e.setPartyCount(e.partyCount() + 1)
-	e.takeRecordCoins(c)
-	e.recalcClassBonuses(c) // ovr24:0000
-}
 
 // removeFromParty unlinks c (used by Remove/Drop); order values stay.
 func (e *Engine) removeFromParty(c *Character) {
