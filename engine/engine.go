@@ -55,6 +55,9 @@ type Engine struct {
 	inputTimeoutKey byte  // b72B4
 	demo            bool  // inDemo_4FD5: the game plays its demonstration
 	gameArea        byte  // game_area_5C08: 1 in the demo, 2 for the real game
+	gameAreaBackup  byte  // game_area_backup_5C09
+	lastGameState   byte  // DS:4FD4
+	sc              script
 	gameSpeed       byte  // game_speed_var_4FC2
 	freeTraining    bool  // b75A1: the 'J' cheat of the party menu
 	silentTraining  bool  // b4FE1: training without questions (character creation)
