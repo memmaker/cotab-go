@@ -56,6 +56,10 @@ def main():
         if os.path.isfile(p):
             shutil.copy(p, tmp)
             os.chmod(os.path.join(tmp, f), 0o644)  # TP opens data files read/write
+        elif os.path.isdir(p):
+            shutil.copytree(p, os.path.join(tmp, f))
+            for q in os.listdir(os.path.join(tmp, f)):
+                os.chmod(os.path.join(tmp, f, q), 0o644)
     conf = os.path.join(tmp, 'dosbox.conf')
     with open(conf, 'w') as f:
         f.write('[sdl]\noutput=surface\n[dosbox]\nmachine=svga_s3\nmemsize=16\nqmpserver=true\nqmpport=4444\n'
