@@ -277,7 +277,7 @@ func (e *Engine) adventureInput() byte {
 				case 'C':
 					if e.selected().Status == 0 {
 						e.fromCommandBar = true
-						e.CastMenu()
+						e.castMenu()
 					}
 				case 'V':
 					e.fromCommandBar = true
@@ -645,11 +645,8 @@ func (e *Engine) campEvents() {
 	e.textWaiting = false
 }
 
-// makeCamp: the camp menu (M6; Pool of Radiance's for now).
-func (e *Engine) makeCamp() bool {
-	e.Encamp()
-	return true
-}
+// makeCamp: the camp menu; true when an encounter interrupted the rest.
+func (e *Engine) makeCamp() bool { return e.campMenu() }
 
 // The EGA sky pictures (SKY.DAX 250..252, masked on colour 13).
 const (

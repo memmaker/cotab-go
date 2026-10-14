@@ -3,18 +3,6 @@ package engine
 // The adventuring loop: ovr04:31B4/32F8 (game loop and area change),
 // ovr15 (command input, movement, doors) and ovr21 (clock).
 
-// Encamp = ovr04:2DD3: the camp event, the camp menu, then the area's
-// after-camp event.
-func (e *Engine) Encamp() {
-	e.runEvent(e.sc.events[2])
-	if e.CampMenu() {
-		e.DrawMainScreen()
-		e.runEvent(e.sc.events[3])
-	}
-	e.Redraw()
-	e.saved = false
-}
-
 // normalizeClock = ovr21:02F2: carry each unit into the next; a year
 // passing ages the party.
 func (e *Engine) normalizeClock(t *[7]int) {

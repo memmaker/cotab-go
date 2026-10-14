@@ -66,7 +66,8 @@ type Engine struct {
 	canKnock        bool       // b75A4
 	fromCommandBar  bool       // b72AE: a menu was opened from the command bar
 	cheatArg        bool       // ParamStr(2) gave the map cheat
-	loadingMessage  bool       // b4FD8: show "Loading...Please Wait"
+	loadingMessage  bool       // b4FD8: show "Loading...Please Wait" (Alter Pics: animation)
+	picturesOn      bool       // b4FD7: Alter Pics
 	spriteShown     bool       // b7292
 	bigPic          *dax.Image // p72A6
 	skySun          *dax.Image // l723A

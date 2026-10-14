@@ -1,7 +1,5 @@
 package engine
 
-import "strings"
-
 // ovr20: the View screen (character sheet, items, money, spell lists).
 
 // ClearScreen = 0709:0CAB.
@@ -19,42 +17,6 @@ type viewState struct {
 	char  *Character // DS:4716
 	start *Character // DS:471A
 }
-
-// Extra: the sheet lists the spell effects on the character (the camp
-// menu's Display, which is not offered) on the free row under HP. When they
-// do not all fit, the View menu offers Magic with the whole list.
-const effectsRow = 0x13
-
-func (e *Engine) effectsLine(c *Character) (string, bool) {
-	names := e.affectList(c)
-	if len(names) == 0 {
-		return "", true
-	}
-	s := strings.Join(names, ", ")
-	if len(s) <= 0x26-9 {
-		return s, true
-	}
-	n := 0
-	for len(strings.Join(names[:n+1], ", "))+len(", +9 more") <= 0x26-9 {
-		n++
-	}
-	if n == 0 {
-		return itoa(len(names)) + " spell effects", false
-	}
-	return strings.Join(names[:n], ", ") + ", +" + itoa(len(names)-n) + " more", false
-}
-
-func (e *Engine) effectsFit(c *Character) bool { _, ok := e.effectsLine(c); return ok }
-
-func (e *Engine) sheetEffects(c *Character) {
-	s, _ := e.effectsLine(c)
-	if s == "" {
-		return
-	}
-	e.DisplayString(1, effectsRow, 0xF, "Effects")
-	e.DisplayString(9, effectsRow, 0xA, s)
-}
-
 
 // inventory runs ItemsMenu for ViewCharacter (extra:
 // leave reports that the View page should close too: F1-F6 switched to
