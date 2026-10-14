@@ -43,7 +43,7 @@ func (e *Engine) DevScene(name string) func() {
 			c := e.selected()
 			e.purse.gold = 10000
 			c.HP = 1
-			e.Temple()
+			e.templeMenu()
 			e.DrawMainScreen()
 		}
 	case "appraise":
