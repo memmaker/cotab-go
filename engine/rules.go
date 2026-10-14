@@ -345,7 +345,7 @@ func strDecode(a *Affect) (str, str00 byte) {
 // (affects 0x0C / 0x26 remember the natural value). Returns false, with
 // the request encoded, when it would lower the current strength.
 func (e *Engine) SetStrength(c *Character, str, str00 byte) (byte, bool) {
-	cur, cur00 := c.Stats[statStr], c.Str00
+	cur, cur00 := c.Stats[statStr].Cur, c.Str00.Cur
 	if str < cur || str == 18 && str00 < cur00 {
 		return strValue(str, str00) + 0x80, false
 	}
@@ -363,8 +363,8 @@ func (e *Engine) SetStrength(c *Character, str, str00 byte) (byte, bool) {
 		cur, cur00 = strDecode(keep)
 		keep.Data = v + 0x80
 	}
-	c.Stats[statStr] = str
-	c.Str00 = str00
+	c.Stats[statStr].Cur = str
+	c.Str00.Cur = str00
 	e.ApplyItems(c)
 	return strValue(cur, cur00), true
 }

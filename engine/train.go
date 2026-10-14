@@ -34,8 +34,7 @@ func (e *Engine) ModifyCharacter() {
 		return
 	}
 	e.CharacterSheet() // ovr20:004A
-	var saved [6]byte
-	copy(saved[:], c.Stats[:])
+	saved := c.Stats
 	savedStr00, savedHP := c.Str00, c.MaxHP
 	tbl := func(off int) byte { return e.X.Bytes(off, 1)[0] }
 	race, class, sex := int(c.Race), int(c.Class), int(c.Sex)
@@ -61,13 +60,13 @@ func (e *Engine) ModifyCharacter() {
 		e.wisdomSlots(c) // ovr24:01AF
 	}
 	lower := func(i int) {
-		c.Stats[i]--
-		if i == 0 && c.Str00 > 0 {
-			c.Str00--
-			c.Stats[statStr]++
-		} else if lo := tbl(minOff[i] + race*16); c.Stats[i] < lo || c.Stats[i] < tbl(0x3F81+class*6+i) {
+		c.Stats[i].Cur--
+		if i == 0 && c.Str00.Cur > 0 {
+			c.Str00.Cur--
+			c.Stats[statStr].Cur++
+		} else if lo := tbl(minOff[i] + race*16); c.Stats[i].Cur < lo || c.Stats[i].Cur < tbl(0x3F81+class*6+i) {
 			// Quirk: below the class minimum the race minimum is stored.
-			c.Stats[i] = lo
+			c.Stats[i].Cur = lo
 		}
 		switch i {
 		case 2:
@@ -80,12 +79,12 @@ func (e *Engine) ModifyCharacter() {
 		}
 	}
 	raise := func(i int) {
-		c.Stats[i]++
-		if hi := tbl(maxOff[i] + race*16); c.Stats[i] > hi {
-			if i == 0 && c.Stats[statStr] > 0x12 && int8(c.Levels[clsFighter]) > 0 && tbl(0x3DA7+race*16+sex) > c.Str00 {
-				c.Str00++ // exceptional strength for fighters
+		c.Stats[i].Cur++
+		if hi := tbl(maxOff[i] + race*16); c.Stats[i].Cur > hi {
+			if i == 0 && c.Stats[statStr].Cur > 0x12 && int8(c.Levels[clsFighter]) > 0 && tbl(0x3DA7+race*16+sex) > c.Str00.Cur {
+				c.Str00.Cur++ // exceptional strength for fighters
 			}
-			c.Stats[i] = hi
+			c.Stats[i].Cur = hi
 		}
 		switch i {
 		case 2:
@@ -102,7 +101,7 @@ func (e *Engine) ModifyCharacter() {
 		key, extra := e.DisplayInput("Modify character: ", "Keep Exit", 0xD, 0xA, 0xF, true, false)
 		e.modifyDraw(idx, false)
 		if !extra && (key == 'E' || key == 0) {
-			copy(c.Stats[:], saved[:])
+			c.Stats = saved
 			c.Str00, c.MaxHP = savedStr00, savedHP
 			c.HP = c.MaxHP
 			e.ApplyItems(c) // 00BA:0BB8
@@ -159,11 +158,11 @@ func (e *Engine) o17_3F31(c *Character) int {
 		if int8(c.Levels[i]) <= 0 {
 			continue
 		}
-		sum += e.X.Bytes(0x408E+int(c.Stats[statCon]), 1)[0]
-		if c.Stats[statCon] > 0x10 && c.Class == 2 {
+		sum += e.X.Bytes(0x408E+int(c.Stats[statCon].Cur), 1)[0]
+		if c.Stats[statCon].Cur > 0x10 && c.Class == 2 {
 			sum++
 		}
-		if c.Stats[statCon] > 0x11 && c.Class == 2 {
+		if c.Stats[statCon].Cur > 0x11 && c.Class == 2 {
 			sum++
 		}
 	}
@@ -267,7 +266,7 @@ func (e *Engine) TrainCharacter() {
 	classMask := func(i int) byte { return e.X.Bytes(0x5DE+i, 1)[0] }
 	var have, can byte
 	var best int32
-	race, str := c.Race, c.Stats[statStr]
+	race, str := c.Race, c.Stats[statStr].Cur
 	for i := 0; i <= 7; i++ {
 		lv := c.Levels[i]
 		if int8(lv) <= 0 {

@@ -88,201 +88,161 @@ func (e *Engine) partyKeypad(k byte) {
 	}
 }
 
-// Menu records from START.EXE DS:0619, 0x2A bytes each: name + enabled flag.
+// The party menu's entries (DS 1363, 42-byte records: name, enabled flag).
+// The first letter of each name is its key.
+var partyMenuEntries = [...]string{
+	"Create New Character",
+	"Drop Character",
+	"Modify Character",
+	"Train Character",
+	"Human Change Classes",
+	"View Character",
+	"Add Character to Party",
+	"Remove Character from Party",
+	"Load Saved Game",
+	"Save Current Game",
+	"BEGIN Adventuring",
+	"Exit to DOS",
+}
+
 const (
-	menuRecBase = 0x619
-	menuRecSize = 0x2A
-	menuRecFlag = 0x29
+	menuCreate = iota
+	menuDrop
+	menuModify
+	menuTrain
+	menuChangeClass
+	menuView
+	menuAdd
+	menuRemove
+	menuLoad
+	menuSave
+	menuBegin
+	menuExit
 )
 
-// PartyMenu = ovr17:0161. Returns when the player begins adventuring or
-// loads a game that starts play (beginFlag != 0).
+// The party menu's own rows: the function list starts at row 12, column 2.
+const (
+	partyMenuListRow = 12
+	partyMenuListCol = 2
+)
+
+// PartyMenu = O0A7:01CD startGameMenu. Returns when the party begins
+// adventuring (or a loaded game starts play).
 func (e *Engine) PartyMenu() {
-	e.Music(3)         // Amiga 0x2D35C
-	e.symDAX = "8X8D3" // DS:5376 = 3
-	names := make([]string, 11)
-	enabled := make([]bool, 11)
-	for i := range names {
-		names[i] = e.X.PString(menuRecBase + i*menuRecSize)
-		enabled[i] = e.X.Bytes(menuRecBase+i*menuRecSize+menuRecFlag, 1)[0] != 0
-	}
-	const (
-		mCreate = iota
-		mDrop
-		mModify
-		mTrain
-		mView
-		mAdd
-		mRemove
-		mLoad
-		mSave
-		mBegin
-		mExit
-	)
+	e.symDAX = "8X8D" + itoa(int(e.gameArea))
+	var enabled [len(partyMenuEntries)]bool
+	enabled[menuCreate], enabled[menuAdd], enabled[menuLoad], enabled[menuExit] = true, true, true, true
 	redraw := true
-	e.debug = false
+	e.freeTraining = false
 	e.beginFlag = 0
 	for {
 		if redraw {
-			e.DrawBoxTitled(1, 1, 0x26, 0x16, 0, 0, "")
+			e.drawScreenFrame()
 			if len(e.party) > 0 {
 				e.DisplayPartyList()
-				enabled[mDrop], enabled[mModify] = true, true
-				if e.partyExp() > 0 || e.debug {
-					enabled[mTrain] = true // never cleared here, only without a party
+				enabled[menuDrop], enabled[menuModify] = true, true
+				if e.partyExp() > 0 || e.freeTraining {
+					enabled[menuTrain] = true // like the original, never cleared while there is a party
 				}
-				enabled[mView], enabled[mRemove] = true, true
-				enabled[mLoad] = false
-				enabled[mSave], enabled[mBegin] = true, true
+				enabled[menuChangeClass] = (e.partyExp() > 0 || e.freeTraining) && e.mayChangeClass(e.selected())
+				enabled[menuView], enabled[menuRemove] = true, true
+				enabled[menuLoad] = false
+				enabled[menuSave], enabled[menuBegin] = true, true
 			} else {
-				for _, m := range []int{mDrop, mModify, mTrain, mView, mRemove, mSave, mBegin} {
+				for _, m := range []int{menuDrop, menuModify, menuTrain, menuChangeClass, menuView, menuRemove, menuSave, menuBegin} {
 					enabled[m] = false
 				}
-				enabled[mLoad] = true
+				enabled[menuLoad] = true
 			}
-			redraw = false
-		}
-		// The menu bar is hidden here (colours 0); the selection indicator
-		// goes on the list instead, which only offers the enabled entries.
-		quick := len(e.party) == 0 // extra: the quickstart entry, listed under Create
-		shown := ""
-		for i := range names {
-			if enabled[i] {
-				shown += names[i][:1] + " "
-				if i == mCreate && quick {
-					shown += "Q " // in list order, so the arrows step down the list
-				}
-			}
-		}
-		drawList := func(hot byte) {
 			row := 0
-			for i := range names {
-				if !enabled[i] {
-					continue
-				}
-				bg := 0
-				if names[i][0] == hot {
-					bg = selBg(0xA, 0xF)
-				}
-				e.displayCharBg(2, 12+row, 0xF, bg, names[i][0], true)
-				for j := 1; j < len(names[i]); j++ {
-					e.displayCharBg(2+j, 12+row, 0xA, bg, names[i][j], true)
-				}
-				row++
-				if i == mCreate && quick {
-					bg = 0
-					if hot == 'Q' {
-						bg = selBg(0xA, 0xF)
-					}
-					e.displayCharBg(2, 12+row, 0xF, bg, 'Q', true)
-					for j, ch := range []byte("uickstart") {
-						e.displayCharBg(3+j, 12+row, 0xA, bg, ch, true)
-					}
+			for i, name := range partyMenuEntries {
+				if enabled[i] {
+					e.DisplayString(partyMenuListCol, partyMenuListRow+row, colourWhite, name[:1])
+					e.DisplayString(partyMenuListCol+1, partyMenuListRow+row, colourGreen, name[1:])
 					row++
 				}
 			}
+			redraw = false
 		}
-		e.ext.onSelect = drawList
-		mark := e.regionMark()
-		{ // extra (nav.go): the function list and the roster take clicks
-			row := 0
-			item := func(hot byte, w int) {
-				e.addRegion(region{x0: 2, y0: 12 + row, x1: 1 + w, y1: 12 + row,
-					click: func(int, int) uint16 { return uint16(hot) },
-					hover: func() { e.ext.nav.hot(hot) }})
-				row++
-			}
-			for i := range names {
-				if enabled[i] {
-					item(names[i][0], len(names[i]))
-					if i == mCreate && quick {
-						item('Q', len("Quickstart"))
-					}
-				}
-			}
-			if len(e.party) > 0 {
-				e.rosterRegion()
-			}
-		}
-		k, extra := e.DisplayInput("Choose a function ", shown, 0xD, 0, 0, true, false)
-		e.regionCut(mark)
-		e.ext.onSelect = nil
+		// The menu bar itself is hidden (colours 0): the list above shows
+		// the functions, the keys of disabled ones do nothing.
+		k, extra := e.DisplayInput("Choose a function ", "C D M T H V A R L S B E J", colourLightMagenta, colourBlack, colourBlack, true, false)
 		e.ClearRow24()
 		if extra {
-			if k == 'G' || k == 'O' {
+			if k == 'G' || k == 'O' { // keypad up/down: select another party member
+				couldChange := e.mayChangeClass(e.selected())
 				e.partyKeypad(k)
 				e.DisplayPartyList()
+				redraw = e.mayChangeClass(e.selected()) != couldChange && e.partyExp() > 0
 			}
 			continue
 		}
 		if k != 'E' && k != 'S' {
-			e.saved = false // DS:557D
+			e.saved = false
 		}
 		switch k {
 		case 'C':
-			if enabled[mCreate] {
+			if enabled[menuCreate] {
 				e.CreateCharacter()
 			}
 		case 'D':
-			if enabled[mDrop] {
+			if enabled[menuDrop] {
 				e.DropCharacter()
 			}
 		case 'M':
-			if enabled[mModify] {
+			if enabled[menuModify] {
 				e.ModifyCharacter()
 			}
 		case 'T':
-			if enabled[mTrain] {
+			if enabled[menuTrain] {
 				e.TrainCharacter()
 			}
+		case 'H':
+			if enabled[menuChangeClass] {
+				e.ChangeClass(e.selected())
+			}
 		case 'V':
-			if enabled[mView] {
+			if enabled[menuView] {
 				e.ViewCharacter()
 			}
 		case 'A':
-			if enabled[mAdd] {
+			if enabled[menuAdd] {
 				e.AddCharacter()
 			}
 		case 'R':
-			if enabled[mRemove] && len(e.party) > 0 {
-				e.SaveCharacter(e.selected(), "")
-				e.RemoveSelected(false, true)
+			if enabled[menuRemove] && len(e.party) > 0 {
+				if c := e.selected(); !c.NPC() {
+					e.SaveCharacter(c, "")
+					e.RemoveSelected(false, true)
+				} else {
+					e.DropCharacter() // non-player characters can only be dropped
+				}
 			}
 		case 'L':
-			if enabled[mLoad] {
+			if enabled[menuLoad] {
 				e.LoadGame()
 				if e.beginFlag != 0 {
-					e.loadedGame = true // DS:49F8
+					e.loadedGame = true
 					return
 				}
 			}
 		case 'S':
-			if enabled[mSave] && len(e.party) > 0 {
+			if enabled[menuSave] && len(e.party) > 0 {
 				e.SaveGame()
 			}
 		case 'B':
-			if enabled[mBegin] && len(e.party) > 0 {
+			if enabled[menuBegin] && (len(e.party) > 0 && !e.gameFinished() || e.demo) {
 				e.beginFlag = 4
 				e.ClearRow24()
 				return
 			}
 		case 'E':
-			if enabled[mExit] {
-				if e.YesNo(0xE, 0xA, 0xF, "Quit to DOS ") == 'Y' {
-					for !e.saved && len(e.party) > 0 {
-						e.SaveGame()
-					}
-					e.Exit()
+			if enabled[menuExit] && e.YesNo(colourYellow, colourGreen, colourWhite, "Quit to DOS ") == 'Y' {
+				if len(e.party) > 0 && !e.saved &&
+					e.YesNo(colourYellow, colourGreen, colourWhite, "Game not saved.  Quit anyway? ") == 'N' {
+					e.SaveGame()
 				}
-			}
-		case 'Q':
-			if len(e.party) == 0 {
-				e.QuickStart()
-			}
-		case 'J':
-			if e.Cfg.Param == "STING" {
-				e.debug = true
-				e.BottomMessage("I Understand, master...")
+				e.Exit()
 			}
 		}
 		redraw = true

@@ -114,14 +114,14 @@ func (e *Engine) raiseDead() {
 	c.HP = 1
 	c.Status = 0
 	c.Okay = 1
-	if c.Stats[statCon] > 0 {
-		c.Stats[statCon]--
+	if c.Stats[statCon].Cur > 0 {
+		c.Stats[statCon].Cur--
 	}
 	var excess byte
 	if c.MaxHP > c.HPRoll {
 		excess = c.MaxHP - c.HPRoll
 	}
-	if c.Stats[statCon] < 0xE {
+	if c.Stats[statCon].Cur < 0xE {
 		return
 	}
 	var levels byte
@@ -132,8 +132,8 @@ func (e *Engine) raiseDead() {
 		}
 		switch {
 		case i == 2: // fighters get the exceptional bonus
-			levels += byte(int(lvl) * (int(c.Stats[statCon]) - 0xE))
-		case c.Stats[statCon] > 0xF:
+			levels += byte(int(lvl) * (int(c.Stats[statCon].Cur) - 0xE))
+		case c.Stats[statCon].Cur > 0xF:
 			levels += byte(lvl) * 2
 		default:
 			levels += byte(lvl)
@@ -142,7 +142,7 @@ func (e *Engine) raiseDead() {
 	if levels > 0 {
 		excess = byte(int(excess) / int(levels))
 	}
-	if c.Stats[statCon] < 0x11 || int8(c.Levels[clsFighter]) > 0 {
+	if c.Stats[statCon].Cur < 0x11 || int8(c.Levels[clsFighter]) > 0 {
 		c.MaxHP -= excess
 	}
 }

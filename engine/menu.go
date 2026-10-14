@@ -149,8 +149,13 @@ func (e *Engine) displayInput(prompt, menu string, promptColour, normal, highlig
 	extra := false
 	e.drawMenu(prompt, menu, start, end, e.menuSel, normal, highlight) // 048B; redrawn only on a move
 	e.menuRegions(prompt, menu, start, end, normal, highlight, allowExtra)
+	timeoutFrom := e.Ticks()
 	for {
-		// The input timeout DS:6B2E..6B32 is never set by the game.
+		// O104:05AF: with a timeout set (the main program's "Play / Demo"
+		// prompt), the default key is taken when it runs out.
+		if e.inputTimeout > 0 && e.Ticks()-timeoutFrom >= e.inputTimeout {
+			return e.inputTimeoutKey, false
+		}
 		e.animateWhileWaiting()
 		e.pollMouse()
 		e.showHint()

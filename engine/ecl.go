@@ -88,7 +88,7 @@ func (e *Engine) readSpecialGlobal(a int) (uint16, bool) {
 	c := e.selected()
 	switch off := a - 0x6B00; off {
 	case 0x18:
-		return uint16(c.Stats[statCon]), true
+		return uint16(c.Stats[statCon].Cur), true
 	case 0x9B:
 		return uint16(c.Saves[1]), true
 	case 0xA0:
@@ -133,7 +133,7 @@ func (e *Engine) readSpecialGlobal(a int) (uint16, bool) {
 	case 0x2B1, 0x2B4:
 		return uint16(e.partyIndex(c)), true
 	case 0x2CF:
-		switch v := c.Stats[statCha]; {
+		switch v := c.Stats[statCha].Cur; {
 		case v == 3:
 			return 0, true
 		case v == 4:

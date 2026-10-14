@@ -55,7 +55,7 @@ func (e *Engine) studyTime(c *Character) int {
 	if maxMem > 2 || maxScr > 2 {
 		base = 6
 	}
-	c.Study = byte(base)
+	c.SpellsToLearn = byte(base)
 	return base*60 + sumMem*15 + sumScr*15
 }
 
@@ -71,7 +71,7 @@ func clearMemorize(c *Character) {
 			c.Memorized[i] = 0
 		}
 	}
-	c.Study = 0
+	c.SpellsToLearn = 0
 }
 
 // clearScribe = ovr16:019C (char): scroll spells are no longer being scribed.
@@ -277,7 +277,7 @@ const spellCureLight = 3
 // Then they rest to learn their own spells again, and natural healing (1 HP
 // a day) does the rest.
 func (e *Engine) healParty() (interrupted bool) {
-	saved := map[*Character][21]byte{}
+	saved := map[*Character][len(charRecord{}.Memorized)]byte{}
 	for _, c := range e.party {
 		if c.spellSlot(clsCleric, 1) > 0 && c.SpellBook[spellCureLight-1] != 0 {
 			saved[c] = c.Memorized
@@ -325,7 +325,7 @@ func (e *Engine) healParty() (interrupted bool) {
 
 // restoreSpells: the spells of was, those no longer in now (cast or
 // replaced) to be memorized again.
-func restoreSpells(was, now [21]byte) [21]byte {
+func restoreSpells(was, now [len(charRecord{}.Memorized)]byte) [len(charRecord{}.Memorized)]byte {
 	left := map[byte]int{}
 	for _, v := range now {
 		if v > 0 && v < 0x80 {
@@ -347,7 +347,7 @@ func restoreSpells(was, now [21]byte) [21]byte {
 // memorizeCures replaces c's first-level cleric spells by Cure Light
 // Wounds to be memorized, one per slot.
 func (e *Engine) memorizeCures(c *Character) {
-	var m [21]byte
+	var m [len(charRecord{}.Memorized)]byte
 	k := 0
 	for _, v := range c.Memorized {
 		if v != 0 && !(e.spellClass(v) == clsCleric && e.spellLevel(v) == 1) {
@@ -1095,7 +1095,7 @@ func (e *Engine) memTick() {
 			break
 		}
 		e.camp.study[i+1]--
-		if e.camp.study[i+1] == 0 && c.Study == 0 {
+		if e.camp.study[i+1] == 0 && c.SpellsToLearn == 0 {
 			e.studyStep(i+1, c, false)
 		}
 	}
@@ -1112,9 +1112,9 @@ func (e *Engine) hourTick(count *int) {
 		if i+1 >= len(e.camp.study) {
 			break
 		}
-		if int8(c.Study) > 0 {
-			c.Study--
-			if c.Study == 0 {
+		if int8(c.SpellsToLearn) > 0 {
+			c.SpellsToLearn--
+			if c.SpellsToLearn == 0 {
 				e.studyStep(i+1, c, true)
 			}
 		}

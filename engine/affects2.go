@@ -348,7 +348,7 @@ func levelBonus(level byte) byte {
 // o13_24D9 (c, a, flag): saving throw bonus by level for save type 0.
 func (e *Engine) o13_24D9(c *Character, a *Affect, flag byte) {
 	if e.rv.saveType == 0 {
-		e.rv.save += levelBonus(c.Stats[statCon])
+		e.rv.save += levelBonus(c.Stats[statCon].Cur)
 	}
 }
 
@@ -398,7 +398,7 @@ func (e *Engine) o13_264B(c *Character, a *Affect, flag byte) {
 // o13_268A (c, a, flag): like 24D9 for save types 4 and 2.
 func (e *Engine) o13_268A(c *Character, a *Affect, flag byte) {
 	if e.rv.saveType == 4 || e.rv.saveType == 2 {
-		e.rv.save += levelBonus(c.Stats[statCon])
+		e.rv.save += levelBonus(c.Stats[statCon].Cur)
 	}
 }
 
@@ -687,7 +687,7 @@ func (e *Engine) o13_2EDA(c *Character, a *Affect, flag byte) {
 func (e *Engine) o13_2F57(c *Character, a *Affect, flag byte) {
 	if flag != 0 {
 		found := false
-		giant := c.Stats[statStr] == 0x12 && c.Str00 == 0x64
+		giant := c.Stats[statStr].Cur == 0x12 && c.Str00.Cur == 0x64
 		for _, p := range append([]*Affect(nil), c.Affects...) {
 			if found {
 				break
@@ -739,7 +739,7 @@ func (e *Engine) o13_30A5(c *Character, a *Affect, flag byte) {
 
 // o13_3134 (c, a, flag): the item needs strength 19 or more.
 func (e *Engine) o13_3134(c *Character, a *Affect, flag byte) {
-	if flag == 0 && c.Stats[statStr] < 0x13 {
+	if flag == 0 && c.Stats[statStr].Cur < 0x13 {
 		affectItem(a).Readied = 0
 		e.BottomMessage("Must have Giant Strength")
 	}

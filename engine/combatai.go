@@ -156,7 +156,7 @@ func (e *Engine) aiCastFromItem(c *Character) bool {
 // computer may cast, trying lower levels each round; true when the spell
 // call (o14_2414) returned a non-empty string.
 func (e *Engine) aiCastKnown(c *Character) bool {
-	var arr [21]byte // the original has 20 bytes: the 21st write lands on a spare local
+	var arr [len(charRecord{}.Memorized)]byte // the original has 20 bytes: the 21st write lands on a spare local
 	n := 0
 	if c.Combat.CanCast != 0 {
 		for i := 0; i <= 0x14; i++ {
@@ -482,7 +482,7 @@ func (e *Engine) aiFleeCheck(c *Character) bool {
 		e.RemoveAffect(c, 0x4B, nil)
 		return r
 	}
-	if c.Stats[statInt] > 5 {
+	if c.Stats[statInt].Cur > 5 {
 		e.KillCharacter(c, 4, "Surrenders")
 		r = e.clearCombatInfo(c)
 	}

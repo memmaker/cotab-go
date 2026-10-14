@@ -181,14 +181,14 @@ func (e *Engine) o13_01C3(c *Character, a *Affect, flag byte) {
 // o13_0233: "is hardier" (the trained Constitution grows).
 func (e *Engine) o13_0233(c *Character, a *Affect, flag byte) {
 	e.CharMessage(c, "is hardier", 0xA, true)
-	c.Stats[statCon]++
-	if c.Stats[statCon] >= 0x14 {
+	c.Stats[statCon].Cur++
+	if c.Stats[statCon].Cur >= 0x14 {
 		e.AddAffect(c, 0x3E, 0x3C, 0xFF, 1)
 		return
 	}
 	gain := c.MaxHP - c.HPRoll
 	var div byte
-	if c.Stats[statCon] < 0xF {
+	if c.Stats[statCon].Cur < 0xF {
 		return
 	}
 	for i := 0; i <= 7; i++ {
@@ -198,8 +198,8 @@ func (e *Engine) o13_0233(c *Character, a *Affect, flag byte) {
 		}
 		switch {
 		case i == 2:
-			div += byte(int(v) * (int(c.Stats[statCon]) - 0xF))
-		case c.Stats[statCon] > 0xF:
+			div += byte(int(v) * (int(c.Stats[statCon].Cur) - 0xF))
+		case c.Stats[statCon].Cur > 0xF:
 			div += byte(v * 2)
 		default:
 			div += byte(v)
@@ -209,7 +209,7 @@ func (e *Engine) o13_0233(c *Character, a *Affect, flag byte) {
 		div = 1
 	}
 	gain /= div
-	if c.Stats[statCon] < 0x11 || int8(c.Levels[clsFighter]) > 0 {
+	if c.Stats[statCon].Cur < 0x11 || int8(c.Levels[clsFighter]) > 0 {
 		c.MaxHP += gain
 		c.HP += gain
 	}
@@ -266,7 +266,7 @@ func (e *Engine) o13_04BA(c *Character, a *Affect, flag byte) {
 	if a.Data > 0x7F {
 		return
 	}
-	c.Stats[statStr], c.Str00 = strDecode(a)
+	c.Stats[statStr].Cur, c.Str00.Cur = strDecode(a)
 	var best *Affect
 	var bs, bs00 byte
 	for _, n := range c.Affects {
@@ -278,13 +278,13 @@ func (e *Engine) o13_04BA(c *Character, a *Affect, flag byte) {
 		}
 	}
 	if best != nil {
-		best.Data = strValue(c.Stats[statStr], c.Str00)
-		c.Stats[statStr], c.Str00 = bs, bs00
+		best.Data = strValue(c.Stats[statStr].Cur, c.Str00.Cur)
+		c.Stats[statStr].Cur, c.Str00.Cur = bs, bs00
 	}
 }
 
 // o13_05D6.
-func (e *Engine) o13_05D6(c *Character, a *Affect, flag byte) { c.Stats[statCha] = a.Data }
+func (e *Engine) o13_05D6(c *Character, a *Affect, flag byte) { c.Stats[statCha].Cur = a.Data }
 
 // o13_05EB: poison: damage each round.
 func (e *Engine) o13_05EB(c *Character, a *Affect, flag byte) {
@@ -558,9 +558,9 @@ func (e *Engine) o13_10DE(c *Character, a *Affect, flag byte) {
 	if !e.addAffectNow(c, 0x2B, a.Data, 0x3C) {
 		return
 	}
-	if c.Stats[statStr] > 3 {
+	if c.Stats[statStr].Cur > 3 {
 		e.CharMessage(c, "is weakened", 0xA, true)
-		c.Stats[statStr]--
+		c.Stats[statStr].Cur--
 	} else if e.FindAffect(c, 0x1F) == nil {
 		e.AddAffect(c, 0x1F, 0, 0xFF, 0)
 	}
@@ -632,13 +632,13 @@ func (e *Engine) o13_1399(c *Character, a *Affect, flag byte) {
 		return
 	}
 	e.CharMessage(c, "Rots...", 0xA, true)
-	if c.Stats[statCha] > 2 {
-		c.Stats[statCha] -= 2
+	if c.Stats[statCha].Cur > 2 {
+		c.Stats[statCha].Cur -= 2
 	} else {
-		c.Stats[statCha] = 0
+		c.Stats[statCha].Cur = 0
 	}
-	if c.Stats[statCha] < 3 {
-		c.Stats[statCha] = 3
+	if c.Stats[statCha].Cur < 3 {
+		c.Stats[statCha].Cur = 3
 	}
 	if a.Data>>4 > 1 {
 		a.Data -= 0x10
@@ -764,7 +764,7 @@ func (e *Engine) o13_18B5(c *Character, a *Affect, flag byte) {
 // o13_1935: hold: a target under 0x13 strength is held fast.
 func (e *Engine) o13_1935(c *Character, a *Affect, flag byte) {
 	t := targetOf(c)
-	if t.Stats[statStr] < 0x13 {
+	if t.Stats[statStr].Cur < 0x13 {
 		e.AddAffect(c, 0x4A, 0, byte(e.combatIndex(t)), 1)
 		e.AddAffect(t, 0x3A, 0, 0xFF, 0)
 		e.callAffect(0x3A, t, nil, 0)

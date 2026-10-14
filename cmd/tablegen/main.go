@@ -34,7 +34,21 @@ func main() {
 				fmt.Fprintf(&b, "// %s\n", l)
 			}
 		}
-		raw := img.Bytes(t.At, t.Len*t.Kind.Size())
+		n := t.Len
+		if t.Cols > 0 {
+			n *= t.Cols
+		}
+		raw := img.Bytes(t.At, n*t.Kind.Size())
+		if t.Cols > 0 {
+			typ := map[tablespec.Kind]string{tablespec.Bytes: "byte", tablespec.Signed: "int8", tablespec.Words: "uint16", tablespec.SignedWords: "int16"}[t.Kind]
+			fmt.Fprintf(&b, "var %s = [%d][%d]%s{\n", t.Name, t.Len, t.Cols, typ)
+			for r := 0; r < t.Len; r++ {
+				row := raw[r*t.Cols*t.Kind.Size() : (r+1)*t.Cols*t.Kind.Size()]
+				fmt.Fprintf(&b, "{%s},\n", list(row, t.Kind.Size(), t.Kind == tablespec.Signed || t.Kind == tablespec.SignedWords))
+			}
+			b.WriteString("}\n\n")
+			continue
+		}
 		switch t.Kind {
 		case tablespec.Bytes:
 			fmt.Fprintf(&b, "var %s = [%d]byte{%s}\n\n", t.Name, t.Len, list(raw, 1, false))

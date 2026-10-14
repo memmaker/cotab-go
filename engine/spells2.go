@@ -106,10 +106,10 @@ func (e *Engine) o23_136E() {
 // o23_13D8 = ovr23:13D8: Friends, charisma +2d4 (at most 25).
 func (e *Engine) o23_13D8() {
 	t := e.tgt(1)
-	old := t.Stats[statCha]
-	t.Stats[statCha] += byte(e.Dice(2, 4))
-	if t.Stats[statCha] > 0x19 {
-		t.Stats[statCha] = 0x19
+	old := t.Stats[statCha].Cur
+	t.Stats[statCha].Cur += byte(e.Dice(2, 4))
+	if t.Stats[statCha].Cur > 0x19 {
+		t.Stats[statCha].Cur = 0x19
 	}
 	e.o23_08C3(int(e.curSpell), int(old), 1, 0, 0, "is friendly")
 }
@@ -351,10 +351,10 @@ func (e *Engine) o23_1F41() {
 	if int8(t.Levels[clsFighter]) > 0 {
 		add = byte(e.Dice(1, 8))
 	}
-	str := t.Stats[statStr] + add
+	str := t.Stats[statStr].Cur + add
 	if str > 0x12 {
 		if int8(t.Levels[clsFighter]) > 0 {
-			ext = byte(int(str-0x12)*10 + int(t.Str00))
+			ext = byte(int(str-0x12)*10 + int(t.Str00.Cur))
 			if ext > 0x64 {
 				ext = 0x64
 			}

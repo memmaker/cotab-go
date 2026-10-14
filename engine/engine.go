@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -51,6 +50,13 @@ type Engine struct {
 	msgDelay    byte // DS:49E2, message delay factor (ovr12 sets 1)
 	menuSel     int  // DS:6B2B, DisplayInput selection
 	menuExtra   bool // DS:6B2C
+
+	inputTimeout    int64 // l72B0: DisplayInput returns inputTimeoutKey after this many ticks (0: never)
+	inputTimeoutKey byte  // b72B4
+	demo            bool  // inDemo_4FD5: the game plays its demonstration
+	gameArea        byte  // game_area_5C08: 1 in the demo, 2 for the real game
+	gameSpeed       byte  // game_speed_var_4FC2
+	freeTraining    bool  // b75A1: the 'J' cheat of the party menu
 
 	party      []*Character // DS:5D96 list head ...
 	partySel   int          // DS:5D92 selected character
@@ -205,29 +211,47 @@ func upper(c byte) byte {
 	return c
 }
 
-// Run is the program body (START.EXE main). It runs on its own goroutine and
-// blocks on keyboard reads like the DOS code did.
+// Run is the main program (START.PAS). It runs on its own goroutine and
+// blocks on keyboard reads like the DOS program did.
 func (e *Engine) Run() {
-	e.Init()  // ovr12:002D
-	e.Title() // ovr02: title pictures, lightning, credits
-	// Copy protection (ovr03:00FD code wheel) deliberately skipped.
-	if e.Trace != nil {
-		e.Trace("ovr03:00FD", "CopyProtection")
+	e.Init()
+	if e.Cfg.Param != "STING" { // ParamStr(1) = 'STING' skips the title
+		e.Title()
 	}
-	e.PartyMenu()                 // ovr17:0161
-	e.SetSkyColours(0xB, 0, 7, 6) // ovr30:0155
-	e.GameLoop()                  // ovr04:32F8
-	e.Exit()
+	e.demo = e.playOrDemo(demoTimeoutFirst)
+	// The code wheel check (copy_protection) is left out.
+	for {
+		if e.demo {
+			e.gameArea, e.gameSpeed = 1, demoSpeed
+		} else {
+			e.gameArea = 2
+		}
+		if !e.demo {
+			e.PartyMenu() // startGameMenu
+		}
+		e.GameLoop()
+		if e.demo {
+			e.Title()
+			e.ClearKeyboard()
+			e.demo = e.playOrDemo(demoTimeoutAgain)
+		}
+	}
 }
 
-// Play is the rest of main after the title: party menu, then adventure.
-func (e *Engine) Play() {
-	if !slices.ContainsFunc(e.items, func(b byte) bool { return b != 0 }) {
-		e.MessageRow24b(0xE, "ITEMS missing: import the game again") // extra (readItems): waits for a key
-	}
-	e.PartyMenu()                 // ovr17:0161
-	e.SetSkyColours(0xB, 0, 7, 6) // ovr30:0155
-	e.GameLoop()                  // ovr04:32F8
+// The "Play / Demo" prompt after the title: with no answer the demo starts.
+const (
+	demoTimeoutFirst = 3000 // ticks (30 seconds)
+	demoTimeoutAgain = 1000
+	demoSpeed        = 9
+)
+
+// playOrDemo asks "Play Demo" with a timeout that picks Demo; it tells
+// whether the demo was chosen.
+func (e *Engine) playOrDemo(timeout int64) bool {
+	e.inputTimeout, e.inputTimeoutKey = timeout, 'D'
+	k, _ := e.DisplayInput("Curse of the Azure Bonds v1.3 ", "Play Demo", colourLightMagenta, colourGreen, colourWhite, false, false)
+	e.inputTimeout, e.inputTimeoutKey = 0, 0
+	return k == 'D'
 }
 
 // Exit = 0899:0000: back to DOS.
@@ -353,4 +377,11 @@ func (e *Engine) idle() {
 		e.S.SetState(ega.Waiting)
 		ega.Delay(1)
 	}
+}
+
+// Play is the part of the main loop after the title (dev tools start here).
+func (e *Engine) Play() {
+	e.gameArea = 2
+	e.PartyMenu()
+	e.GameLoop()
 }

@@ -6,11 +6,11 @@ package engine
 // spell slots, known cleric spells, saving throws and thief skills from
 // the class levels.
 func (e *Engine) RecomputeCharacter(c *Character) {
-	c.HitDice = 0
+	c.THAC0Base = 0
 	for i := 0; i <= 7; i++ {
 		lvl := int(int8(c.Levels[i]))
-		if v := e.X.Bytes(0x3C7C+i*0xB+lvl, 1)[0]; v > c.HitDice {
-			c.HitDice = v
+		if v := e.X.Bytes(0x3C7C+i*0xB+lvl, 1)[0]; v > c.THAC0Base {
+			c.THAC0Base = v
 		}
 		if int(int8(c.MaxLevel)) < lvl {
 			c.MaxLevel = byte(lvl)
@@ -51,7 +51,7 @@ func (e *Engine) RecomputeCharacter(c *Character) {
 
 // wisdomSlots = ovr24:01AF: bonus cleric spells for wisdom 13..17.
 func (e *Engine) wisdomSlots(c *Character) {
-	w := c.Stats[statWis]
+	w := c.Stats[statWis].Cur
 	for _, b := range []struct {
 		min  byte
 		slot int
@@ -92,7 +92,7 @@ func (e *Engine) thiefSkills(c *Character) {
 		}
 		c.Thief[k-1] = byte(t + r)
 		if k < 6 {
-			c.Thief[k-1] += byte(int8(e.X.Bytes(0x3D4E+int(c.Stats[statDex])*5+k, 1)[0]))
+			c.Thief[k-1] += byte(int8(e.X.Bytes(0x3D4E+int(c.Stats[statDex].Cur)*5+k, 1)[0]))
 		}
 	}
 }
@@ -168,8 +168,8 @@ func (e *Engine) ApplyItems(c *Character) {
 	c.SaveBonus = 0
 	c.AC[0] = c.BaseAC
 	c.Move = c.BaseMove
-	c.THAC0 = c.HitDice
-	ac[0] = dexAC(c.Stats[statDex])
+	c.THAC0 = c.THAC0Base
+	ac[0] = dexAC(c.Stats[statDex].Cur)
 	if c.Slots[slotWeapon] == nil {
 		c.THAC0 += byte(strHit(c))
 		c.Bonus[0] += byte(strDamage(c))
@@ -221,9 +221,9 @@ func (e *Engine) weaponStats(c *Character) {
 	}
 	typ := w.Type
 	flags := e.baseItem(typ, 0xE)
-	c.THAC0 = c.HitDice
+	c.THAC0 = c.THAC0Base
 	if flags&2 != 0 { // missile
-		c.THAC0 += byte(dexMissile(c.Stats[statDex]))
+		c.THAC0 += byte(dexMissile(c.Stats[statDex].Cur))
 	}
 	c.Bonus[0] = e.baseItem(typ, 0xB)
 	if flags&4 != 0 { // strength applies
@@ -358,7 +358,7 @@ func dexMissile(d byte) int8 {
 
 // strIndex = 00BA:11EA: strength as one scale (18/xx = 18..23, 19+ = 24+).
 func strIndex(c *Character) byte {
-	s, x := c.Stats[statStr], c.Str00
+	s, x := c.Stats[statStr].Cur, c.Str00.Cur
 	switch {
 	case s <= 0x11:
 		return s
@@ -472,7 +472,7 @@ func (e *Engine) hasAffect286B(c *Character) bool {
 // atRaceLimit = 00BA:2F57 (char, class): the demihuman level limit is
 // reached (fighter limits depend on strength 17/18; race 4 clerics stop at 5).
 func atRaceLimit(c *Character, class int) bool {
-	lvl, str := int8(c.Levels[class]), c.Stats[statStr]
+	lvl, str := int8(c.Levels[class]), c.Stats[statStr].Cur
 	if lvl <= 0 {
 		return false
 	}

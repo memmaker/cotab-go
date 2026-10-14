@@ -18,7 +18,7 @@ func (e *Engine) o14_0000(c *Character) {
 	c.Attacks[1] = byte(e.o14_0E52(e.v681A))
 	cb.Sweeps = c.FightLevel
 	if c.Okay != 0 {
-		cb.Delay = byte(int(dexMissile(c.Stats[statDex])) + e.Dice(1, 6))
+		cb.Delay = byte(int(dexMissile(c.Stats[statDex].Cur)) + e.Dice(1, 6))
 		if int8(cb.Delay) < 1 {
 			cb.Delay = 1
 		}

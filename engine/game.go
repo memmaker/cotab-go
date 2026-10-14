@@ -427,7 +427,7 @@ func (e *Engine) bashDoor() bool {
 		if ok {
 			break
 		}
-		str, exc := c.Stats[statStr], c.Str00
+		str, exc := c.Stats[statStr].Cur, c.Str00.Cur
 		if e.DoorAt(e.posX, e.posY, e.facing) == 3 {
 			switch {
 			case str == 0x12:

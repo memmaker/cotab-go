@@ -272,7 +272,7 @@ func (e *Engine) moveAttack(c *Character) (done bool) {
 	defer e.regionCut(mark)
 	var reach map[[2]int][]int
 	var path []int // extra: the steps to a clicked square, taken one by one
-	{ // extra (nav.go): a click on a square next to the character steps there, on a farther reachable one walks there
+	{              // extra (nav.go): a click on a square next to the character steps there, on a farther reachable one walks there
 		e.addRegion(region{x0: pageCol, y0: 1, x1: pageCol + viewW*3 - 1, y1: 21, click: func(cx, cy int) uint16 {
 			sx, sy, in := e.combatSquare(cx, cy)
 			dx, dy := sx-e.combatX(c), sy-e.combatY(c)

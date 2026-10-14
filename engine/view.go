@@ -151,17 +151,17 @@ func (e *Engine) showStat(stat int, hi bool) {
 	c := e.selected()
 	x := 5
 	e.ClearCells(5, stat+7, 0xB, stat+7)
-	v := c.Stats[stat]
+	v := c.Stats[stat].Cur
 	if v < 10 {
 		x++
 	}
 	e.DisplayString(x, stat+7, col, itoa(int(v)))
-	if stat == 0 && v == 0x12 && c.Str00 > 0 {
-		s := itoa(int(c.Str00))
-		if c.Str00 < 10 {
+	if stat == 0 && v == 0x12 && c.Str00.Cur > 0 {
+		s := itoa(int(c.Str00.Cur))
+		if c.Str00.Cur < 10 {
 			s = "0" + s
 		}
-		if c.Str00 == 100 {
+		if c.Str00.Cur == 100 {
 			s = "00"
 		}
 		e.DisplayString(7, 7, col, "("+s+")")

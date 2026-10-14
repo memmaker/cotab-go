@@ -29,28 +29,89 @@ func (e *Engine) selectTemp(c *Character) func() {
 	}
 }
 
-// CreateCharacter = ovr17:056C: pick race, gender, class and alignment, roll
-// the abilities (best of six 3d6 each, then the race/class/age limits), hit
-// points and starting spells; keep it, name it, pick the pictures, save it.
+// Races.
+const (
+	raceMonster = iota
+	raceDwarf
+	raceElf
+	raceGnome
+	raceHalfElf
+	raceHalfling
+	raceHalfOrc
+	_ // raceHuman (classchange.go)
+)
+
+// Classes beyond the eight single classes: the multi-class combinations.
+const (
+	classClericFighter = iota + 8
+	classClericFighterMage
+	classClericRanger
+	classClericMage
+	classClericThief
+	classFighterMage
+	classFighterThief
+	classFighterMageThief
+	classMageThief
+)
+
+// Racial abilities given as permanent affects at creation.
+const (
+	affectProtectionFromEvil = 8
+	affectGnomeVsManSized    = 18
+	affectDwarfVsOrc         = 26
+	affectVsGiants           = 47
+	affectGnomeExtra         = 48
+	affectConSavingBonus     = 97
+	affectElfResistSleep     = 107
+	affectHalfElfResistance  = 124
+	affectRangerVsGiants     = 134
+	permanent                = 255
+)
+
+// A new character's fixed starting values.
+const (
+	startBaseAC        = 50
+	startTHAC0         = 40
+	startIconID        = 10
+	startExperience    = 25000 // one class
+	startExperience2   = 12500 // two classes
+	startExperience3   = 8333  // three classes
+	startPlatinum      = 300
+	startBaseMove      = 12
+	exceptionalStrDice = 100
+	strengthMaximum    = 18
+	multiClericWisdom  = 13
+)
+
+// classLevelsOf: the classes a class choice starts with at level 1.
+var classLevelsOf = map[int][]int{
+	classClericFighter:     {clsCleric, clsFighter},
+	classClericFighterMage: {clsCleric, clsFighter, clsMage},
+	classClericRanger:      {clsCleric, clsRanger},
+	classClericMage:        {clsCleric, clsMage},
+	classClericThief:       {clsCleric, clsThief},
+	classFighterMage:       {clsFighter, clsMage},
+	classFighterThief:      {clsFighter, clsThief},
+	classFighterMageThief:  {clsFighter, clsMage, clsThief},
+	classMageThief:         {clsMage, clsThief},
+}
+
+// CreateCharacter = O0A7:0752 createPlayer: pick race, gender, class and
+// alignment, roll the abilities (best of six 3d6 each, then the age, race
+// and class limits), hit points and starting spells, train to the starting
+// level; keep it, name it, pick the pictures, save it.
 func (e *Engine) CreateCharacter() {
 	c := &Character{}
-	ds := func(off int) int { return int(e.X.Bytes(off, 1)[0]) }
-	dsWord := func(off int) int {
-		b := e.X.Bytes(off, 2)
-		return int(b[0]) | int(b[1])<<8
+	for i, t := range defaultIconColours {
+		c.IconColour[i] = (t+8)<<4 + t
 	}
-	for i := 1; i <= 6; i++ {
-		t := ds(0x3CF5 + i)
-		c.IconColour[i-1] = byte((t+8)<<4 + t)
-	}
-	c.BaseAC = 0x32
-	c.HitDice = 0x28
+	c.BaseAC = startBaseAC
+	c.THAC0Base = startTHAC0
 	c.Status = 0
 	c.Okay = 1
-	c.PortHead = 1
-	c.PortBody = 1
 	c.Size = 1
-	c.RandomID = byte(e.Random(0x100))
+	c.RandomID = byte(e.Random(256))
+	c.Order = startIconID
 
 	// pick runs one of the four selection menus; false = left with Esc/Exit,
 	// which abandons the whole creation.
@@ -61,57 +122,50 @@ func (e *Engine) CreateCharacter() {
 		index, redraw := 1, true
 		var sel *ListNode
 		for {
-			k := e.ListMenu("", "", 0xD, 0xA, 0xF, 1, 2, 0x26, 0x16, list, true, &redraw, &index, &sel)
+			k := e.ListMenu("", "Select", colourLightMagenta, colourGreen, colourWhite, 1, 2, 38, 22, list, true, &redraw, &index, &sel)
 			if k == 0 {
 				return 0, false
 			}
-			if k == 0xD {
+			if k == 'S' || k == 13 {
 				return index, true
 			}
 		}
 	}
 
-	// Race.
+	// Race: the seven playable races (half-orcs are not offered).
 	list := newList(7)
 	list[0].Flag, list[0].Text = 1, "Pick Race"
-	raceLoop := 0 // the loop variable, left at 7 and used below (quirk)
-	for raceLoop = 1; raceLoop <= 7; raceLoop++ {
-		if raceLoop >= 1 && raceLoop <= 5 {
-			list[raceLoop].Text = "  " + e.X.PString(0xF03+raceLoop*10)
-		} else if raceLoop == 7 {
-			list[raceLoop-1].Text = "  " + e.X.PString(0xF03+raceLoop*10)
-		}
+	for i, r := range []int{raceDwarf, raceElf, raceGnome, raceHalfElf, raceHalfling, raceHuman} {
+		list[i+1].Text = "  " + raceNames[r]
 	}
-	raceLoop = 7 // for-loop exit value
 	idx, ok := pick(list)
 	if !ok {
 		return
 	}
 	if idx == 6 {
-		idx++
+		idx = raceHuman
 	}
 	c.Race = byte(idx)
-	switch c.Race {
-	case 5:
+	switch int(c.Race) {
+	case raceHalfling:
 		c.IconSize = 1
-		e.AddAffect(c, 0x5A, 0, 0xFF, 0)
-		e.AddAffect(c, 0x61, 0, 0xFF, 0)
-	case 1:
+		e.AddAffect(c, affectConSavingBonus, 0, permanent, 0)
+	case raceDwarf:
 		c.IconSize = 1
-		for _, t := range []byte{0x5A, 0x61, 0x1A, 0x2F} {
-			e.AddAffect(c, t, 0, 0xFF, 0)
+		for _, t := range []byte{affectConSavingBonus, affectDwarfVsOrc, affectVsGiants} {
+			e.AddAffect(c, t, 0, permanent, 0)
 		}
-	case 3:
+	case raceGnome:
 		c.IconSize = 1
-		for _, t := range []byte{0x61, 0x12, 0x2F, 0x30} {
-			e.AddAffect(c, t, 0, 0xFF, 0)
+		for _, t := range []byte{affectConSavingBonus, affectGnomeVsManSized, affectVsGiants, affectGnomeExtra} {
+			e.AddAffect(c, t, 0, permanent, 0)
 		}
-	case 2:
+	case raceElf:
 		c.IconSize = 2
-		e.AddAffect(c, 0x6B, 0, 0xFF, 0)
-	case 4:
+		e.AddAffect(c, affectElfResistSleep, 0, permanent, 0)
+	case raceHalfElf:
 		c.IconSize = 2
-		e.AddAffect(c, 0x7C, 0, 0xFF, 0)
+		e.AddAffect(c, affectHalfElfResistance, 0, permanent, 0)
 	default:
 		c.IconSize = 2
 	}
@@ -119,8 +173,8 @@ func (e *Engine) CreateCharacter() {
 	// Gender.
 	list = newList(3)
 	list[0].Flag, list[0].Text = 1, "Pick Gender"
-	for i := 0; i <= 1; i++ {
-		list[i+1].Text = "  " + e.X.PString(0xFEC+i*7)
+	for i, g := range genderNames {
+		list[i+1].Text = "  " + g
 	}
 	if idx, ok = pick(list); !ok {
 		return
@@ -128,265 +182,104 @@ func (e *Engine) CreateCharacter() {
 	c.Sex = byte(idx - 1)
 
 	// Class.
-	race := int(int8(c.Race))
-	cnt := ds(0x3E17 + race*12)
-	list = newList(cnt + 1)
+	race := int(c.Race)
+	classes := raceClasses[race][1 : 1+int(raceClasses[race][0])]
+	list = newList(len(classes) + 1)
 	list[0].Flag, list[0].Text = 1, "Pick Class"
-	for k := 1; k <= cnt; k++ {
-		list[k].Text = "  " + e.X.PString(0xD38+0x1B*int(int8(byte(ds(0x3E17+race*12+k)))))
+	for k, cl := range classes {
+		list[k+1].Text = "  " + classNames[cl]
 	}
 	if idx, ok = pick(list); !ok {
 		return
 	}
-	c.Class = byte(ds(0x3E17 + race*12 + idx))
+	class := int(classes[idx-1])
+	c.Class = byte(class)
+	c.Exp = startExperience
 	c.MaxLevel = 1
-	class := int(int8(c.Class))
 	switch {
-	case class >= 0 && class <= 7:
+	case class <= clsFighter || class >= clsMage && class <= clsMonk:
 		c.Levels[class] = 1
-	case class == 8:
-		c.Levels[clsCleric], c.Levels[clsFighter] = 1, 1
-	case class == 9:
-		c.Levels[clsCleric], c.Levels[clsFighter], c.Levels[clsMage] = 1, 1, 1
-	case class == 10:
-		c.Levels[clsCleric], c.Levels[clsRanger] = 1, 1
-	case class == 11:
-		c.Levels[clsCleric], c.Levels[clsMage] = 1, 1
-	case class == 12:
-		c.Levels[clsCleric], c.Levels[clsThief] = 1, 1
-	case class == 13:
-		c.Levels[clsFighter], c.Levels[clsMage] = 1, 1
-	case class == 14:
-		c.Levels[clsFighter], c.Levels[clsThief] = 1, 1
-	case class == 15:
-		c.Levels[clsFighter], c.Levels[clsMage], c.Levels[clsThief] = 1, 1, 1
-	case class == 16:
-		c.Levels[clsMage], c.Levels[clsThief] = 1, 1
+	case class == clsPaladin:
+		c.PaladinCures = 1
+		c.Levels[clsPaladin] = 1
+		e.AddAffect(c, affectProtectionFromEvil, 0, permanent, 0)
+	case class == clsRanger:
+		c.Levels[clsRanger] = 1
+		e.AddAffect(c, affectRangerVsGiants, 0, permanent, 0)
+	default:
+		levels := classLevelsOf[class]
+		for _, k := range levels {
+			c.Levels[k] = 1
+		}
+		if class == classClericRanger {
+			e.AddAffect(c, affectRangerVsGiants, 0, permanent, 0)
+		}
+		c.Exp = startExperience2
+		if len(levels) == 3 || class == classMageThief {
+			c.Exp = startExperience3
+		}
 	}
 	if int8(c.Levels[clsThief]) > 0 {
-		e.thiefSkills(c) // ovr24:0329
+		e.thiefSkills(c)
 	}
 	c.ClassMask = 0
-	c.HitDice = 0
-	for k := 0; k <= 7; k++ {
-		if int8(c.Levels[k]) > 0 {
-			if t := byte(ds(0x3C7C + k*11 + int(int8(c.Levels[k])))); t > c.HitDice {
-				c.HitDice = t
+	c.THAC0Base = 0
+	for k := 0; k <= clsMonk; k++ {
+		if lvl := int8(c.Levels[k]); lvl > 0 {
+			if t := thac0Table[k][lvl]; t > c.THAC0Base {
+				c.THAC0Base = t
 			}
-			c.ClassMask += byte(ds(0x5D6 + k))
+			c.ClassMask += classItemFlags[k]
 		}
 	}
-	e.savingThrows(c) // ovr24:0255
+	e.savingThrows(c)
 
 	// Alignment.
-	cnt = ds(0x3FE7 + class*10)
-	list = newList(cnt + 1)
+	aligns := classAlignments[class][1 : 1+int(classAlignments[class][0])]
+	list = newList(len(aligns) + 1)
 	list[0].Flag, list[0].Text = 1, "Pick Alignment"
-	for k := 1; k <= cnt; k++ {
-		list[k].Text = "  " + e.X.PString(0xF53+0x11*int(int8(byte(ds(0x3FE7+class*10+k)))))
+	for k, al := range aligns {
+		list[k+1].Text = "  " + alignmentNames[al]
 	}
 	if idx, ok = pick(list); !ok {
 		return
 	}
-	c.Alignment = byte(ds(0x3FE7 + class*10 + idx))
+	c.Alignment = aligns[idx-1]
 
-	// Starting age: single classes roll the dice, multi-classes use the
-	// maximum. Class 10 (cleric/ranger) has no case, so its age stays 0.
-	age := 0
-	base := 0x3E5B + race*0x1C
-	if class <= 7 {
-		b := base + class*4
-		age = dsWord(b) + int(byte(e.Dice(ds(b+2), ds(b+3))))
-	} else {
-		o := -1
-		switch class {
-		case 8, 9, 0xB, 0xC:
-			o = base
-		case 0xD, 0xF, 0x10:
-			o = base + 0x14
-		case 0xE:
-			o = base + 8
-		}
-		if o >= 0 {
-			age = dsWord(o) + ds(o+2)*ds(o+3)
-		}
+	// Starting age: single classes roll their dice, multi-classes take the
+	// maximum of the cleric's, fighter's or magic-user's dice.
+	ageEntry := func(k int) (base, count, sides int) {
+		row := raceAges[race][k*4:]
+		return int(row[0]) | int(row[1])<<8, int(row[2]), int(row[3])
 	}
-	c.Age = uint16(age)
+	if class <= clsMonk {
+		base, count, sides := ageEntry(class)
+		c.Age = uint16(base + int(byte(e.Dice(count, sides))))
+	} else {
+		k := clsCleric
+		switch class {
+		case classFighterMage, classFighterMageThief, classMageThief:
+			k = clsMage
+		case classFighterThief:
+			k = clsFighter
+		}
+		base, count, sides := ageEntry(k)
+		c.Age = uint16(base + count*sides)
+	}
 
 	undo := e.selectTemp(c)
-	e.CharacterSheet() // ovr20:004A
+	e.CharacterSheet()
 	for {
-		c.Str00 = 0
-		for i := 0; i <= 5; i++ {
-			st := &c.Stats[i]
-			*st = 0
-			for n := 1; n <= 6; n++ {
-				roll := byte(e.Dice(3, 6))
-				// raceLoop is 7 here, so none of these ever applies.
-				switch raceLoop {
-				case 1:
-					if i == 4 {
-						roll++
-					} else if i == 5 {
-						roll--
-					}
-				case 2:
-					if i == 3 {
-						roll++
-					} else if i == 4 {
-						roll--
-					}
-				case 5:
-					if i == 0 {
-						roll--
-					} else if i == 3 {
-						roll++
-					}
-				case 6:
-					if i == 0 || i == 4 {
-						roll++
-					} else if i == 5 {
-						roll -= 2
-					}
-				}
-				if *st < roll {
-					*st = roll
-				}
-			}
-			// Age steps DS:3F31 + race*10 (4 words) against the age word.
-			older := func(j int) bool { return dsWord(0x3F31+race*10+2*j) < int(c.Age) }
-			gender := int(int8(c.Sex))
-			switch i {
-			case 0:
-				if *st != 0 && older(0) {
-					*st++
-				}
-				if *st != 0 && older(1) {
-					*st--
-				}
-				if *st != 0 && older(2) {
-					*st -= 2
-				}
-				if *st != 0 && older(3) {
-					*st--
-				}
-			case 1:
-				if older(1) {
-					*st++
-				}
-				if older(3) {
-					*st++
-				}
-			case 2:
-				if !older(0) {
-					*st--
-				}
-				if older(1) {
-					*st++
-				}
-				if older(2) {
-					*st++
-				}
-				if older(3) {
-					*st++
-				}
-			case 3:
-				if older(2) {
-					*st -= 2
-				}
-				if older(3) {
-					*st--
-				}
-			case 4:
-				if older(1) {
-					*st--
-				}
-				if older(2) {
-					*st--
-				}
-				if older(3) {
-					*st--
-				}
-			}
-			// Race limits (DS:3DA3 + race*16; strength is by gender).
-			lo, hi := 0x3DA9+2*(i-1)+race*16, 0x3DAA+2*(i-1)+race*16
-			if i == 0 {
-				lo, hi = 0x3DA3+race*16+gender, 0x3DA5+race*16+gender
-			}
-			if int(*st) < ds(lo) {
-				*st = byte(ds(lo))
-			}
-			if int(*st) > ds(hi) {
-				*st = byte(ds(hi))
-			}
-			// Class minimum (DS:3F81 + class*6).
-			if m := ds(0x3F81 + class*6 + i); int(*st) < m {
-				*st = byte(m)
-			}
-			if i == 0 {
-				if *st == 0x12 && int8(c.Levels[clsFighter]) > 0 {
-					c.Str00 = byte(e.Random(100) + 1)
-					if m := byte(ds(0x3DA7 + race*16 + gender)); m < c.Str00 {
-						c.Str00 = m
-					}
-				}
-			}
-			if i == 2 && *st < 0xD && class >= 8 && class <= 0xC { // set [8..12] at cs:0525
-				*st = 0xD
-			}
-			e.showStat(i, false) // ovr20:0901
-		}
-
-		// Hit points: one die per class, averaged, with the constitution
-		// adjustment.
-		c.HP = c.MaxHP
-		c.BaseAttack[0], c.BaseDice[0], c.BaseSides[0], c.StrBonus, c.BaseMove = 2, 1, 2, 1, 0xC
-		var sum, count byte
-		for k := 0; k <= 7; k++ {
-			if int8(c.Levels[k]) <= 0 {
-				continue
-			}
-			if k == 0 {
-				c.SpellSlots[0] = 1
-			} else if k == 5 {
-				c.SpellSlots[3] = 1
-			}
-			sum += byte(e.Dice(ds(0x4263+k*2), ds(0x4264+k*2)))
-			count++
-			if k == 0 {
-				e.wisdomSlots(c) // ovr24:01AF
-				for s := 1; s <= 0x38; s++ {
-					if rec := e.X.Bytes(0x31FA+s*16, 2); rec[0] == 0 && rec[1] == 1 {
-						c.SpellBook[s-1] = 1
-					}
-				}
-			} else if k == 5 {
-				c.SpellBook[10], c.SpellBook[17], c.SpellBook[18], c.SpellBook[20] = 1, 1, 1, 1
-			}
-		}
-		c.Coins[3] = uint16(int16(int(sum) * 10 / int(count)))
-		c.HPRoll = byte(e.o17_4235(c, 0xFF))
-		c.MaxHP = c.HPRoll
-		adj := int(int8(e.o17_3F31(c)))
-		if adj < 0 {
-			if int(c.MaxHP) > -adj+int(count) {
-				c.MaxHP = byte((int(c.MaxHP) + adj) / int(count))
-			} else {
-				c.MaxHP = 1
-			}
-		} else {
-			c.MaxHP = byte((int(c.MaxHP) + adj) / int(count))
-		}
-		c.HP = c.MaxHP
-		c.HPRoll = byte(int(c.HPRoll) / int(count))
-		e.showCombatStats() // ovr20:0608
+		e.rollAbilities(c, class)
+		e.rollHitPoints(c)
+		e.showCombatStats()
 		if q := e.ext.quick; q != nil {
 			if q.good(c) {
 				break
 			}
 			continue
 		}
-		if e.YesNo(0xD, 0xA, 0xF, "Keep this character? ") == 'Y' {
+		if e.YesNo(colourLightMagenta, colourGreen, colourWhite, "Reroll stats? ") == 'N' {
 			break
 		}
 	}
@@ -398,19 +291,152 @@ func (e *Engine) CreateCharacter() {
 		c.PortHead, c.PortBody = q.head, q.body
 	}
 	for c.PName[0] == 0 {
-		c.SetName(e.InputString("Character name: ", 0xD, 0xF)) // 0709:09E3
-		if c.PName[0] != 0 {
-			break
-		}
+		c.SetName(e.InputString("Character name: ", colourLightMagenta, colourWhite))
 	}
 	undo = e.selectTemp(c)
 	if e.ext.quick == nil {
 		e.o17_33E7()
 		e.o17_382D()
 	}
-	e.SaveCharacter(c, "") // ovr18:069E
+	e.SaveCharacter(c, "")
 	undo()
 	e.freeCharacter(&c)
+}
+
+// rollAbilities rolls the six abilities into their full values: the best of
+// six 3d6+1 each, then the age steps, the race limits, the class minimum and
+// exceptional strength (fighters, paladins, rangers with 18).
+func (e *Engine) rollAbilities(c *Character, class int) {
+	race, gender := int(c.Race), int(c.Sex)
+	for k := 0; k <= clsMonk; k++ {
+		if int8(c.Levels[k]) > 0 {
+			c.Levels[k] = 1
+		}
+	}
+	c.Str00.Full = 0
+	limits := raceStatLimits[race]
+	older := func(step int) bool { return ageSteps[race][step] < c.Age }
+	for i := range c.Stats {
+		st := &c.Stats[i].Full
+		*st = 0
+		for range 6 {
+			if roll := byte(e.Dice(3, 6) + 1); *st < roll {
+				*st = roll
+			}
+		}
+		switch i {
+		case statStr:
+			if *st != 0 && older(0) {
+				*st++
+			}
+			if *st != 0 && older(1) {
+				*st--
+			}
+			if *st != 0 && older(2) {
+				*st -= 2
+			}
+			if *st != 0 && older(3) {
+				*st--
+			}
+		case statInt:
+			if older(1) {
+				*st++
+			}
+			if older(3) {
+				*st++
+			}
+		case statWis:
+			if !older(0) {
+				*st--
+			}
+			if older(1) {
+				*st++
+			}
+			if older(2) {
+				*st++
+			}
+			if older(3) {
+				*st++
+			}
+		case statDex:
+			if older(2) {
+				*st -= 2
+			}
+			if older(3) {
+				*st--
+			}
+		case statCon:
+			if older(1) {
+				*st--
+			}
+			if older(2) {
+				*st--
+			}
+			if older(3) {
+				*st--
+			}
+		}
+		lo, hi := limits[2*i+4], limits[2*i+5] // int .. cha: min/max pairs after the strength block
+		if i == statStr {
+			lo, hi = limits[gender], limits[2+gender]
+		}
+		*st = max(*st, lo)
+		*st = min(*st, hi)
+		*st = max(*st, classStatMinimum[class][i])
+		if i == statStr && *st == strengthMaximum &&
+			(int8(c.Levels[clsFighter]) > 0 || int8(c.Levels[clsRanger]) > 0 || int8(c.Levels[clsPaladin]) > 0) {
+			c.Str00.Full = byte(e.Random(exceptionalStrDice) + 1)
+			c.Str00.Full = min(c.Str00.Full, limits[4+gender])
+		}
+		if i == statWis && *st < multiClericWisdom && class >= classClericFighter && class <= classClericThief {
+			*st = multiClericWisdom
+		}
+		c.Stats[i].Cur = *st
+		c.Str00.Cur = c.Str00.Full
+		e.showStat(i, false)
+	}
+}
+
+// rollHitPoints sets the starting attacks, spells and hit points and trains
+// the character up to its starting experience.
+func (e *Engine) rollHitPoints(c *Character) {
+	c.HP = c.MaxHP
+	c.BaseAttack[0], c.BaseDice[0], c.BaseSides[0], c.StrBonus, c.BaseMove = 2, 1, 2, 1, startBaseMove
+	c.SpellSlots = [15]byte{}
+	count := 0
+	for k := 0; k <= clsMonk; k++ {
+		if int8(c.Levels[k]) <= 0 {
+			continue
+		}
+		switch k {
+		case clsCleric:
+			c.SpellSlots[0] = 1
+			e.wisdomSlots(c)
+			for s := 1; s < len(spellTable); s++ {
+				if spellTable[s].class() == spellClassCleric && spellTable[s].level() == 1 {
+					c.SpellBook[s-1] = 1
+				}
+			}
+		case clsMage:
+			c.SpellSlots[10] = 1
+			for _, s := range []int{spellDetectMagicMU, spellReadMagic, spellEnlarge, spellSleep} {
+				c.SpellBook[s-1] = 1
+			}
+		}
+		count++
+	}
+	c.Coins[coinPlatinum] = startPlatinum
+	c.HPRoll = byte(e.o17_4235(c, 0xFF))
+	c.MaxHP = c.HPRoll
+	adj := int(int8(e.o17_3F31(c)))
+	if adj < 0 && int(c.MaxHP) <= -adj+count {
+		c.MaxHP = 1
+	} else {
+		c.MaxHP = byte((int(c.MaxHP) + adj) / count)
+	}
+	c.HP = c.MaxHP
+	c.HPRoll = byte(int(c.HPRoll) / count)
+	e.trainSilently(c)
 }
 
 // DropCharacter = ovr17:1F37: asks twice, then the selected member leaves
