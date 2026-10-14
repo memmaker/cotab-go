@@ -60,7 +60,7 @@ func (e *Engine) loadViewPicture(name string, block byte, flags byte) {
 	e.mapMode = block
 	b := e.L.Block(name+e.areaDigit(), int(block))
 	if b == nil {
-		e.flashMessage("PIC not found", colourYellow, colourBlack)
+		e.displayAndWait(colourYellow, colourBlack, "PIC not found")
 		return
 	}
 	xor := name == "PIC" || name == "FINAL"
@@ -86,14 +86,14 @@ func (e *Engine) loadPortrait(head, body byte) {
 	if head != noPicture && (p.headID == noPicture || p.headID != int(head)) {
 		p.head = e.LoadPic("HEAD"+e.areaDigit(), int(head))
 		if p.head == nil {
-			e.flashMessage("head not found", colourYellow, colourBlack)
+			e.displayAndWait(colourYellow, colourBlack, "head not found")
 		}
 		p.headID = int(head)
 	}
 	if body != noPicture && (p.bodyID == noPicture || p.bodyID != int(body)) {
 		p.body = e.LoadPic("BODY"+e.areaDigit(), int(body))
 		if p.body == nil {
-			e.flashMessage("head not found", colourYellow, colourBlack)
+			e.displayAndWait(colourYellow, colourBlack, "head not found")
 		}
 		p.bodyID = int(body)
 	}

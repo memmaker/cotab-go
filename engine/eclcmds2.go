@@ -14,15 +14,7 @@ func (e *Engine) unported(name string) {
 }
 
 func (e *Engine) cmdCombat()       { e.unported("COMBAT") }
-func (e *Engine) cmdRob()          { e.unported("ROB") }
-func (e *Engine) cmdParlay()       { e.unported("PARLAY") }
-func (e *Engine) cmdDamage()       { e.unported("DAMAGE") }
-func (e *Engine) cmdClock()        { e.unported("CLOCK") }
-func (e *Engine) cmdAddNPC()       { e.unported("ADD NPC") }
 func (e *Engine) cmdProgram()      { e.unported("PROGRAM") }
-func (e *Engine) cmdWho()          { e.unported("WHO") }
-func (e *Engine) cmdProtection()   { e.unported("PROTECTION") }
-func (e *Engine) cmdClearBox()     { e.unported("CLEAR BOX") }
 
 // cmdOnGotoGosub = O03C:1AE5 (ON GOTO, ON GOSUB): jump to the n-th of the
 // addresses that follow.
@@ -361,7 +353,7 @@ func (e *Engine) loadMonsterRecord(block byte) *Character {
 	name := "MON" + e.areaDigit()
 	b := e.L.Block(name+"CHA", int(block))
 	if b == nil {
-		e.flashMessage("Unable to load monster", colourWhite, colourBlack)
+		e.displayAndWait(colourWhite, colourBlack, "Unable to load monster")
 		e.Exit()
 		return c
 	}
@@ -588,4 +580,21 @@ func (e *Engine) cmdEncounter() {
 	e.ClearRow24()
 	e.slowText = false
 	s.inEncounter = false
+}
+
+// cmdParlay = O03C:27B7 talk_style (results for HAUGHTY SLY NICE MEEK
+// ABUSIVE, dst): the party picks its manner; the matching result goes to
+// dst.
+func (e *Engine) cmdParlay() {
+	s := &e.sc
+	e.readArgs(6)
+	var results [5]byte
+	for k := 0; k <= 4; k++ {
+		results[k] = byte(e.arg(k + 1))
+	}
+	k := e.scriptMenu(" ", "~HAUGHTY ~SLY ~NICE ~MEEK ~ABUSIVE", colourLightMagenta, colourGreen, colourWhite, false, false)
+	dst := varAddr(s.argLo[6], s.argHi[6])
+	if int(k) < len(results) {
+		e.setVar(dst, uint16(results[k]))
+	}
 }

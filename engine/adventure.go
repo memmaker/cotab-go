@@ -717,3 +717,18 @@ const (
 	groundTop   = 62
 	groundRows  = 42
 )
+
+// displayAndWait = R4CE:094D displayAndDebug (fg, bg, text): the text on
+// the bottom row, then a key (debug_txt; in the demo only a waiting key
+// is taken).
+func (e *Engine) displayAndWait(fg, bg int, text string) {
+	e.ClearRow24()
+	e.displayStringBg(0, statusRow, fg, bg, cut(text, screenLastCol+1))
+	if e.demo {
+		if e.KeyPressed() {
+			e.ReadKeyByte()
+		}
+		return
+	}
+	e.ReadKeyByte()
+}
