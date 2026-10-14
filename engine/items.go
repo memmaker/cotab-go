@@ -1,0 +1,138 @@
+package engine
+
+// Items: names, lists and the START helpers around them.
+
+// itemWord = DS:10A7 + 0x15*n.
+func (e *Engine) itemWord(n byte) string { return e.X.PString(0x10A7 + 0x15*int(n)) }
+
+func (it *Item) Name() string {
+	n := int(it.PName[0])
+	if n > 0x28 {
+		n = 0x28
+	}
+	return string(it.PName[1 : n+1])
+}
+
+func (it *Item) setName(s string) {
+	s = cut(s, 0x28)
+	it.PName[0] = byte(len(s))
+	copy(it.PName[1:41], s)
+}
+
+// ItemName = 00BA:0442 (char, item, x, y, readied, display): builds the
+// item's shown name into its name field ("Yes"/"No" readied column, "*"
+// for magic when someone detects magic, count, the known words with the
+// plural "s" on the right one) and optionally prints it.
+func (e *Engine) ItemName(c *Character, it *Item, x, y int, readied, display bool) {
+	name := ""
+	if readied {
+		if it.Readied != 0 {
+			name = " Yes  "
+		} else {
+			name = " No   "
+		}
+	}
+	detect := false
+	for _, p := range e.party {
+		if detect {
+			break
+		}
+		if e.FindAffect(p, 5) != nil {
+			detect = true
+		}
+	}
+	if detect && (int8(it.Plus) > 0 || int8(it.Plus2) > 0 || it.Magic != 0) {
+		name = cut(name+"* ", 0x28)
+	}
+	if it.Count > 0 {
+		name = cut(name+itoa(int(it.Count))+" ", 0x28)
+	}
+	mask := 0
+	for i := 1; i <= 3; i++ {
+		if it.Words[i-1] != 0 && (it.Hidden>>(3-i))&1 == 0 {
+			mask += 1 << (i - 1)
+		}
+	}
+	plural := false
+	for i := 3; i >= 1; i-- {
+		if (mask>>(i-1))&1 == 0 {
+			continue
+		}
+		name = cut(name+e.itemWord(it.Words[i-1]), 0x28)
+		s := " "
+		if it.Count >= 2 && !plural {
+			typ := it.Type
+			switch {
+			case 1<<(i-1) == mask,
+				i == 1 && mask > 4 && typ != 0x56,
+				i == 2 && mask&1 == 0,
+				i == 3 && typ == 0x56,
+				(typ == 0x49 || typ == 0x1C) && it.Words[2] != 0xB1:
+				s = "s "
+				plural = true
+			}
+		}
+		name = cut(name+s, 0x28)
+	}
+	it.setName(name + e.itemStats(it.Type))
+	if display {
+		e.DisplayString(x, y, 0xA, it.Name())
+	}
+}
+
+// itemStats (extra): Angband-style base stats after the name, "(1d8) "
+// for weapon damage, "<6> " for the armour class it gives (the font has
+// no square brackets); magic pluses stay in the name.
+func (e *Engine) itemStats(typ byte) string {
+	s := ""
+	if n, d := e.baseItem(typ, 9), e.baseItem(typ, 0xA); n > 0 && d > 0 {
+		s = "(" + itoa(int(n)) + "d" + itoa(int(d))
+		if b := int8(e.baseItem(typ, 0xB)); b > 0 {
+			s += "+" + itoa(int(b))
+		} else if b < 0 {
+			s += itoa(int(b))
+		}
+		s += ") "
+	}
+	if v := int(e.baseItem(typ, 6)); v > 0x80 {
+		if v &= 0x7F; v >= 50 {
+			v -= 50 // body armour counts up from AC 10 = 50
+		}
+		if v > 0 {
+			s += "<" + itoa(v) + "> "
+		}
+	}
+	return s
+}
+
+// RemoveItem = 00BA:1509 (char, item): unlinks the item and frees it.
+func (e *Engine) RemoveItem(c *Character, it *Item) {
+	if it == nil {
+		e.MessageRow24b(0xE, "Nil Item pointer...")
+		return
+	}
+	for i, x := range c.Items {
+		if x == it {
+			c.Items = append(c.Items[:i:i], c.Items[i+1:]...)
+			return
+		}
+	}
+	e.MessageRow24b(0xE, "Tried to Lose item & couldn't find it!")
+}
+
+// AddItemCopy = 00BA:15F7 (char, item): a copy of the item at the end of
+// the character's list.
+func (e *Engine) AddItemCopy(c *Character, it *Item) *Item {
+	n := *it
+	c.Items = append(c.Items, &n)
+	return &n
+}
+
+// BottomMessage = 00BA:1693: the string on row 24 for the message delay.
+func (e *Engine) BottomMessage(s string) {
+	s = cut(s, 0x28)
+	e.ClearCells(0, 24, 0x27, 24)
+	e.DisplayString(0, 24, 0xA, s)
+	e.MsgDelay()
+	e.ClearCells(0, 24, 0x27, 24)
+}
