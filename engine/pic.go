@@ -2,8 +2,12 @@ package engine
 
 import "cotab/dax"
 
-// symFix = DS:2722 / coab symbol_set_fix: first symbol id of each set.
-var symFix = [5]int{0x001, 0x02E, 0x074, 0x0BA, 0x100}
+// symFix = DS 9858 symbol_set_fix: the first symbol number of each of the
+// five 8x8 symbol sets; symLast (DS 9868) the last.
+var (
+	symFix  = [5]int{1, 46, 116, 186, 256}
+	symLast = [5]int{45, 115, 185, 255, 295}
+)
 
 // LoadSymbolSet = ovr35:003B — load 8X8D<n>.DAX block into set index,
 // masked on colour 13.
@@ -75,17 +79,10 @@ func (e *Engine) Put8x8SymbolPage(x, y, id int) { e.put8x8(x, y, id, true, 0) }
 
 func (e *Engine) put8x8(x, y, id int, masked bool, mode int) {
 	set := -1
-	switch {
-	case id >= 0x001 && id <= 0x02D:
-		set = 0
-	case id >= 0x02E && id <= 0x073:
-		set = 1
-	case id >= 0x074 && id <= 0x0B9:
-		set = 2
-	case id >= 0x0BA && id <= 0x0FF:
-		set = 3
-	case id >= 0x100 && id <= 0x11E:
-		set = 4
+	for i := range symFix { // O19C:0171
+		if id >= symFix[i] && id <= symLast[i] {
+			set = i
+		}
 	}
 	if set < 0 || e.sym[set] == nil {
 		return

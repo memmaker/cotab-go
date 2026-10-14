@@ -185,14 +185,12 @@ func New(dir string, scr *ega.Screen) (*Engine, error) {
 			}
 		}
 	}
-	if !l.Exists("TITLE.DAX") || !l.Exists("8X8D1.DAX") || !l.Exists("START.EXE") {
-		return nil, fmt.Errorf("%s: not a Pool of Radiance directory (TITLE.DAX / 8X8D1.DAX / START.EXE missing)", dir)
+	if !l.Exists("TITLE.DAX") || !l.Exists("8X8D1.DAX") {
+		return nil, fmt.Errorf("%s: not a Curse of the Azure Bonds directory (TITLE.DAX / 8X8D1.DAX missing)", dir)
 	}
-	x, err := exe.Load(l.Path("START.EXE"))
-	if err != nil {
-		return nil, fmt.Errorf("START.EXE: %v", err)
+	if x, err := exe.Load(l.Path("START.EXE")); err == nil {
+		e.X = x // transitional: tables not yet moved to the tables package
 	}
-	e.X = x
 	e.pic.block = -1
 	e.port = portrait{headID: 0xFF, bodyID: 0xFF}
 	e.loadFont()

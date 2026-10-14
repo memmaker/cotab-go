@@ -101,3 +101,17 @@ func (im *Image) Bytes(ofs, n int) []byte {
 func (im *Image) Long(ofs int) uint32 {
 	return binary.LittleEndian.Uint32(im.Mem[im.DS+ofs:])
 }
+
+// cotabDataSegment is the paragraph of Curse of the Azure Bonds' data segment in
+// the unpacked load image (the startup code's `mov ax,seg DATA`).
+const cotabDataSegment = 2750
+
+// LoadCurse unpacks Curse of the Azure Bonds' START.EXE and points DS at its data segment.
+func LoadCurse(path string) (*Image, error) {
+	im, err := Load(path)
+	if err != nil {
+		return nil, err
+	}
+	im.DS = cotabDataSegment * 16
+	return im, nil
+}

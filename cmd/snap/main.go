@@ -89,8 +89,11 @@ func main() {
 		e.DrawPicture(0, 0, e.LoadPic("TITLE", 1), 0)
 		dump(scr, out+"/title1.png")
 		e.DrawPicture(0, 0, e.LoadPic("TITLE", 2), 0)
+		e.DrawPicture(6, 11, e.LoadPic("TITLE", 3), 0)
 		dump(scr, out+"/title2.png")
-		scr.PushKey(13)
+		e.DrawPicture(0, 11, e.LoadPic("TITLE", 4), 0)
+		dump(scr, out+"/title3.png")
+		e.ClearScreen()
 		e.Credits()
 		dump(scr, out+"/credits.png")
 	case "party":
