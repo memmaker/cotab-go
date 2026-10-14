@@ -62,6 +62,9 @@ type Engine struct {
 	gameWon         bool  // b8B89: the ending was reached; training is free
 	gameState       byte  // game_state_4FD3: what the party is doing (stateCombat, ...)
 	spells          spellList
+	anim            viewAnim
+	areaKind        byte // b72AA: 'y' on the wilderness map (its cursor blinks)
+	mapMode         byte // b72A4: 'P' while a picture hides the map
 
 	party      []*Character // DS:5D96 list head ...
 	partySel   int          // DS:5D92 selected character

@@ -21,7 +21,7 @@ func (e *Engine) Init() {
 	e.saved = false
 	e.flag49F5, e.flag49F6 = 1, 1         // DS:49F5/49F6
 	e.slowText = true                     // DS:4A00
-	e.listTop = 1                         // DS:6B29
+	e.listTop = 0 // w72AC
 	e.mapPairA[1], e.mapPairA[2] = -1, -1 // DS:6AAE+4i, i = 2..3
 	e.mapPairB[1], e.mapPairB[2] = -1, -1 // DS:6AB0+4i
 	e.es.v6F69, e.es.v6F68 = 0xE8, 0xDB   // DS:6F69/6F68

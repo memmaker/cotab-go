@@ -56,6 +56,9 @@ var Tables = []Table{
 	{"genderNames", 3975, 2, String(7), "Gender names.", 0},
 	{"classNames", 3256, 17, String(27), "Class names; 8.. are the multi-class combinations.", 0},
 	{"alignmentNames", 3822, 9, String(17), "Alignment names.", 0},
+	{"coinNames", 3989, 7, String(11), "Coin names: copper .. jewelry.", 0},
+	{"statusNames", 4066, 9, String(13), "Character status names (Status).", 0},
+	{"itemWords", 4162, 252, String(21), "The words item names are made of (entry 0 unused).", 0},
 
 	// Character creation (O0A7 createPlayer).
 	{"defaultIconColours", 16067, 6, Bytes, "Combat icon colours of a new character, one per icon part.", 0},
@@ -88,6 +91,9 @@ var Tables = []Table{
 	{"thiefBaseData", 16064, 96, Bytes, "Thief skills by level: entry level*8 + skill (1..8).", 0},
 	{"thiefRaceData", 16160, 64, Signed, "Thief skill adjustment by race: entry race*8 + skill.", 0},
 	{"thiefDexData", 16179, 130, Signed, "Thief skill adjustment by dexterity: entry dex*5 + skill (1..5).", 0},
+
+	// Affects.
+	{"helplessAffectData", 10187, 5, Bytes, "Entries 1..4: the affects that leave a character helpless.", 0},
 
 	// Spells.
 	{"spellNames", 10175, 101, String(41), "Spell names by spell number.", 0},

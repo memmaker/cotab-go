@@ -32,3 +32,14 @@ func (e *Engine) displayStringBg(x, y, fg, bg int, text string) {
 		e.displayCharBg(x+i, y, fg, bg, text[i], true)
 	}
 }
+
+// displayCharsBg = R4CE:01DF display_char01 (x, y, fg, bg, count, ch, upcase):
+// the character count times from x on, upcased (the font has 64 glyphs).
+func (e *Engine) displayCharsBg(x, y, fg, bg, count int, ch byte) {
+	if x > screenLastCol || y > statusRow {
+		return
+	}
+	for i := 0; i < count; i++ {
+		e.drawChar(x+i, y, fg, bg, ch, true)
+	}
+}

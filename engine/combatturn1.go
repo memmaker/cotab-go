@@ -18,7 +18,7 @@ func (e *Engine) o14_0000(c *Character) {
 	c.Attacks[1] = byte(e.o14_0E52(e.v681A))
 	cb.Sweeps = c.FightLevel
 	if c.Okay != 0 {
-		cb.Delay = byte(int(dexMissile(c.Stats[statDex].Cur)) + e.Dice(1, 6))
+		cb.Delay = byte(int(dexMissile(c)) + e.Dice(1, 6))
 		if int8(cb.Delay) < 1 {
 			cb.Delay = 1
 		}
@@ -142,7 +142,7 @@ func (e *Engine) o14_0627(c *Character) {
 			continue
 		}
 		t := e.combatant(e.targets[i])
-		if t.Combat.Guarding == 0 || e.hasAffect286B(t) {
+		if t.Combat.Guarding == 0 || e.isHelpless(t) {
 			continue
 		}
 		e.combatCentre(e.combatX(c), e.combatY(c), 2, 8)
@@ -182,7 +182,7 @@ func (e *Engine) o14_0712(c *Character, dir int) {
 	cb.Attackers, cb.Flank = 0, 0
 	e.PlaySound(sndStep)
 	e.o14_0627(c)
-	if c.Okay == 0 || e.hasAffect286B(c) {
+	if c.Okay == 0 || e.isHelpless(c) {
 		cb.Moves = 0
 	}
 }
@@ -221,7 +221,7 @@ func (e *Engine) o14_08B2(c *Character, dir int) {
 			continue
 		}
 		t := e.combatant(lst[i])
-		if e.hasAffect286B(t) || !e.o14_1085(t, c) {
+		if e.isHelpless(t) || !e.o14_1085(t, c) {
 			continue
 		}
 		if e.FindAffect(t, 0x4B) != nil || e.FindAffect(t, 0x4A) != nil {
@@ -483,7 +483,7 @@ func (e *Engine) o14_1406(a, b *Character, w int) (done bool) {
 	any, stop := false, false
 	e.rv.damage = 0
 	acb.Attacked = 1
-	if e.hasAffect286B(b) {
+	if e.isHelpless(b) {
 		e.PlaySound(sndBump)
 		for acb.AttackSlot > 0 && a.Attacks[acb.AttackSlot-1] == 0 {
 			acb.AttackSlot--
@@ -533,7 +533,7 @@ func (e *Engine) o14_1406(a, b *Character, w int) (done bool) {
 				a.Attacks[s-1]--
 				acb.AttackSlot = byte(s)
 				e.shots6E2C[s]++
-				if e.AttackHits(a, b, int(need)) || e.hasAffect286B(b) {
+				if e.AttackHits(a, b, int(need)) || e.isHelpless(b) {
 					e.hits6822[s]++
 					e.PlaySound(sndBump)
 					any = true

@@ -404,7 +404,7 @@ func (e *Engine) aiAttackLoop(c *Character) bool {
 // on is cleared, otherwise 00BA:2686 finishes it.
 func (e *Engine) aiGiveUp(c *Character) bool {
 	e.ClearMessageArea()
-	if e.hasAffect286B(c) || e.rangedWeapon(c) || c.Combat.Delay == 0 {
+	if e.isHelpless(c) || e.rangedWeapon(c) || c.Combat.Delay == 0 {
 		return e.clearCombatInfo(c)
 	}
 	return e.guard(c)

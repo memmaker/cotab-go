@@ -722,18 +722,19 @@ var silentMageSpells = map[byte][]int{
 func (e *Engine) trainSilently(c *Character) {
 	undo := e.selectTemp(c)
 	defer undo()
-	savedMask := e.area[trainingMaskByte]
-	e.area[trainingMaskByte] = 255
+	savedMask := e.game[trainingMaskByte]
+	e.game[trainingMaskByte] = 255
 	e.cannotTrain = false
 	e.silentTraining = true
 	for !e.cannotTrain {
 		e.TrainCharacter()
 	}
 	e.silentTraining = false
-	e.area[trainingMaskByte] = savedMask
+	e.game[trainingMaskByte] = savedMask
 }
 
-// trainingMaskByte: the area byte holding the classes the local trainer teaches.
+// trainingMaskByte: the byte of the second area record (p4FB6) holding the
+// classes the local trainer teaches.
 const trainingMaskByte = 1360
 
 // TrainCharacter = O0A7:4D07 train_player: raise every class of the selected
@@ -750,7 +751,7 @@ func (e *Engine) TrainCharacter() {
 	}
 	var ready, have byte // classes with enough experience, classes the character has
 	var cap int32        // the experience to keep: just short of the second level up
-	trainer := e.area[trainingMaskByte]
+	trainer := e.game[trainingMaskByte]
 	lastLevel := 0
 	for k := 0; k <= clsMonk; k++ {
 		lvl := int8(c.Levels[k])

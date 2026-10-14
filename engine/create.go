@@ -272,7 +272,9 @@ func (e *Engine) CreateCharacter() {
 	for {
 		e.rollAbilities(c, class)
 		e.rollHitPoints(c)
+		e.showLevels(c)
 		e.showCombatStats()
+		e.showCoins()
 		if q := e.ext.quick; q != nil {
 			if q.good(c) {
 				break
@@ -410,7 +412,13 @@ func (e *Engine) rollHitPoints(c *Character) {
 		}
 		switch k {
 		case clsCleric:
-			c.SpellSlots[0] = 1
+			c.SpellSlots[slotsCleric] = 1
+		case clsMage:
+			c.SpellSlots[slotsMage] = 1
+		}
+		e.Dice(int(classHitDice[k][0]), int(classHitDice[k][1])) // rolled and not used (sic): keeps the random sequence
+		switch k {
+		case clsCleric:
 			e.wisdomSlots(c, false)
 			for s := 1; s < len(spellTable); s++ {
 				if spellTable[s].class() == spellClassCleric && spellTable[s].level() == 1 {
@@ -418,7 +426,6 @@ func (e *Engine) rollHitPoints(c *Character) {
 				}
 			}
 		case clsMage:
-			c.SpellSlots[10] = 1
 			for _, s := range []int{spellDetectMagicMU, spellReadMagic, spellEnlarge, spellSleep} {
 				c.SpellBook[s-1] = 1
 			}

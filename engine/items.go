@@ -19,66 +19,6 @@ func (it *Item) setName(s string) {
 	copy(it.PName[1:41], s)
 }
 
-// ItemName = 00BA:0442 (char, item, x, y, readied, display): builds the
-// item's shown name into its name field ("Yes"/"No" readied column, "*"
-// for magic when someone detects magic, count, the known words with the
-// plural "s" on the right one) and optionally prints it.
-func (e *Engine) ItemName(c *Character, it *Item, x, y int, readied, display bool) {
-	name := ""
-	if readied {
-		if it.Readied != 0 {
-			name = " Yes  "
-		} else {
-			name = " No   "
-		}
-	}
-	detect := false
-	for _, p := range e.party {
-		if detect {
-			break
-		}
-		if e.FindAffect(p, 5) != nil {
-			detect = true
-		}
-	}
-	if detect && (int8(it.Plus) > 0 || int8(it.Plus2) > 0 || it.Cursed != 0) {
-		name = cut(name+"* ", 0x28)
-	}
-	if it.Count > 0 {
-		name = cut(name+itoa(int(it.Count))+" ", 0x28)
-	}
-	mask := 0
-	for i := 1; i <= 3; i++ {
-		if it.Words[i-1] != 0 && (it.Hidden>>(3-i))&1 == 0 {
-			mask += 1 << (i - 1)
-		}
-	}
-	plural := false
-	for i := 3; i >= 1; i-- {
-		if (mask>>(i-1))&1 == 0 {
-			continue
-		}
-		name = cut(name+e.itemWord(it.Words[i-1]), 0x28)
-		s := " "
-		if it.Count >= 2 && !plural {
-			typ := it.Type
-			switch {
-			case 1<<(i-1) == mask,
-				i == 1 && mask > 4 && typ != 0x56,
-				i == 2 && mask&1 == 0,
-				i == 3 && typ == 0x56,
-				(typ == 0x49 || typ == 0x1C) && it.Words[2] != 0xB1:
-				s = "s "
-				plural = true
-			}
-		}
-		name = cut(name+s, 0x28)
-	}
-	it.setName(name + e.itemStats(it.Type))
-	if display {
-		e.DisplayString(x, y, 0xA, it.Name())
-	}
-}
 
 // itemStats (extra): Angband-style base stats after the name, "(1d8) "
 // for weapon damage, "<6> " for the armour class it gives (the font has

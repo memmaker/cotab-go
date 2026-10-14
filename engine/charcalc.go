@@ -1,8 +1,41 @@
 package engine
 
-// Derived character values, ported from ovr24.
+// What a character's items make of it: readied slots, weight, attack,
+// damage, armour class, movement (unit O0ED of the reconstruction).
 
-// baseItem returns byte k of the DS:5582 base record of an item type.
+// Fields of a base item record (the ITEMS table, 16 bytes per type).
+const (
+	itemSlot        = 0  // which readied slot the item takes (9 rings)
+	itemHands       = 1  // hands it needs
+	itemDiceLarge   = 2  // damage against large creatures
+	itemSidesLarge  = 3
+	itemBonusLarge  = 4
+	itemAttacks     = 5
+	itemACBonus     = 6 // above 127: armour class bonus (low bits: 0 shield-like, else armour base)
+	itemDiceNormal  = 9
+	itemSidesNormal = 10
+	itemBonusNormal = 11
+	itemRange       = 12
+	itemFlags       = 14 // 1 uses arrows, 2 dexterity to hit, 4 strength to hit and damage, 128 uses bolts
+)
+
+// Item slot classes (itemSlot).
+const (
+	slotClassArmour = 2
+	slotClassRing   = 9
+	slotClassShield = 1
+	slotClassHelm   = 9 + 0 // (rings share 9)
+)
+
+// Item types with special treatment.
+const (
+	itemTypeArrows  = 73
+	itemTypeBolts   = 28
+	itemTypeElfBow1 = 37
+	itemTypeElfBow2 = 36
+)
+
+// baseItem returns byte k of the base record of an item type.
 func (e *Engine) baseItem(typ byte, k int) byte {
 	if o := int(typ)*16 + k; o < len(e.items) {
 		return e.items[o]
@@ -10,15 +43,22 @@ func (e *Engine) baseItem(typ byte, k int) byte {
 	return 0
 }
 
-// readiedWeight = DS:4846.
+// readiedWeight = DS 19664: the weight of the readied items (ApplyItems).
 var readiedWeight uint16
 
-// ApplyItems = 00BA:0BB8: everything that follows from the items carried
+// Movement limits by weight carried over the strength allowance.
+const (
+	moveLight  = 9
+	moveMedium = 6
+	moveHeavy  = 3
+	coinWeight = 1 // every coin weighs one unit
+)
+
+// ApplyItems = O0ED:0C20: everything that follows from the items carried
 // and readied: slots, weight, hands, attack and damage, armour class,
-// movement and saving throw bonus.
+// movement and the fighter's attack level.
 func (e *Engine) ApplyItems(c *Character) {
 	c.Slots = [13]*Item{}
-	bag := false
 	c.ItemCount = 0
 	c.Hands = 0
 	c.Weight = 0
@@ -29,191 +69,193 @@ func (e *Engine) ApplyItems(c *Character) {
 		if it.Count > 0 {
 			w *= uint16(it.Count)
 		}
-		c.Weight = c.Weight + w
+		c.Weight += w
 		if it.Readied == 0 {
 			continue
 		}
 		readiedWeight += w
-		typ := it.Type
-		switch s := e.baseItem(typ, 0); {
-		case s <= 8:
-			c.Slots[s] = it
-		case s == 9:
+		switch slot := e.baseItem(it.Type, itemSlot); {
+		case slot < slotClassRing:
+			c.Slots[slot] = it
+		case slot == slotClassRing:
 			if c.Slots[slotRing1] == nil {
 				c.Slots[slotRing1] = it
 			} else if c.Slots[slotRing2] == nil {
 				c.Slots[slotRing2] = it
 			}
 		}
-		if typ == 0x49 {
+		if it.Type == itemTypeArrows {
 			c.Slots[slotArrows] = it
 		}
-		if typ == 0x1C {
+		if it.Type == itemTypeBolts {
 			c.Slots[slotBolts] = it
 		}
-		if it.Words[0] == 0xBA {
-			bag = true
-		}
-		c.Hands += e.baseItem(typ, 1)
+		c.Hands += e.baseItem(it.Type, itemHands)
 	}
-	c.Dice, c.Sides, c.Bonus = c.BaseDice, c.BaseSides, c.BaseBonus
-	var ac [5]int8
-	ringOnly := false
+	for k := 0; k < len(c.Coins); k++ {
+		c.Weight += c.Coins[k] * coinWeight
+	}
+	for h := 0; h < 2; h++ {
+		c.Attacks[h] = c.BaseAttack[h]
+		c.Dice[h] = c.BaseDice[h]
+		c.Sides[h] = c.BaseSides[h]
+	}
+	var ac [5]int8 // dexterity, shield, armour, helm-like, base
+	cursedAC := false
 	c.SaveBonus = 0
 	c.AC[0] = c.BaseAC
 	c.Move = c.BaseMove
 	c.THAC0 = c.THAC0Base
-	ac[0] = dexAC(c.Stats[statDex].Cur)
+	ac[0] = dexAC(c)
 	if c.Slots[slotWeapon] == nil {
 		c.THAC0 += byte(strHit(c))
-		c.Bonus[0] += byte(strDamage(c))
+		c.Bonus[0] = byte(int8(c.Bonus[0]) + strDamage(c))
 	}
 	e.weaponStats(c)
 	for _, it := range c.Items {
-		if it.Readied == 0 {
-			continue
-		}
-		e.armourMove(it, c)
-		if e.itemAC(c, it, &ac) {
-			ringOnly = true
+		if it.Readied != 0 {
+			e.armourMove(c, it)
+			e.itemAC(c, it, &ac, &cursedAC)
 		}
 	}
-	if ringOnly {
+	if cursedAC {
 		ac[3] = 0
-	}
-	if bag {
-		if c.Weight < 5000 {
-			c.Weight = 0
-		} else {
-			c.Weight = c.Weight - 5000
-		}
-		if c.Weight < readiedWeight {
-			c.Weight = readiedWeight
-		}
 	}
 	e.encumbrance(c)
 	if int(ac[4]) < int(c.AC[0]) {
 		ac[4] = int8(c.AC[0])
 	}
 	c.AC[0] = 0
-	for i := 0; i <= 4; i++ {
-		c.AC[0] += byte(ac[i])
+	for k := range ac {
+		c.AC[0] += byte(ac[k])
 	}
-	c.AC[1] = byte(int(ac[4]) + int(ac[2]) + int(ac[3]) - 2)
-	if int8(c.Levels[clsFighter]) > 0 && int8(c.Race) > 0 {
-		c.FightLevel = c.Levels[clsFighter]
-	} else {
+	c.AC[1] = byte(ac[4] + ac[2] + ac[3] - 2)
+	fighter := int8(c.Levels[clsFighter])
+	old := int8(c.OldLevels[clsFighter])
+	if fighter < 1 && (old < 1 || !oldClassUsable(c)) || int8(c.Race) < 1 {
 		c.FightLevel = 1
+	} else {
+		c.FightLevel = byte(fighter + old*b2i8(oldClassUsable(c)))
 	}
 }
 
-// weaponStats = 00BA:0000: to-hit and damage of the readied weapon.
+func b2i8(b bool) int8 {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+// weaponStats = O0ED:0023: to-hit and damage of the readied weapon:
+// dexterity for missiles, strength for melee, the ammunition's bonus, elves
+// with their bows.
 func (e *Engine) weaponStats(c *Character) {
 	w := c.Slots[slotWeapon]
 	if w == nil {
 		return
 	}
-	typ := w.Type
-	flags := e.baseItem(typ, 0xE)
+	t := w.Type
+	flags := e.baseItem(t, itemFlags)
 	c.THAC0 = c.THAC0Base
-	if flags&2 != 0 { // missile
-		c.THAC0 += byte(dexMissile(c.Stats[statDex].Cur))
+	if flags&2 != 0 {
+		c.THAC0 += byte(dexMissile(c))
 	}
-	c.Bonus[0] = e.baseItem(typ, 0xB)
-	if flags&4 != 0 { // strength applies
+	c.Bonus[0] = e.baseItem(t, itemBonusNormal)
+	if flags&4 != 0 {
 		c.THAC0 += byte(strHit(c))
-		c.Bonus[0] += byte(strDamage(c))
+		c.Bonus[0] = byte(int8(c.Bonus[0]) + strDamage(c))
 	}
 	plus := int8(w.Plus)
-	if flags > 0x7F && c.Slots[slotBolts] != nil {
+	if flags > 127 && c.Slots[slotBolts] != nil {
 		plus += int8(c.Slots[slotBolts].Plus)
 	}
 	if flags&1 != 0 && c.Slots[slotArrows] != nil {
 		plus += int8(c.Slots[slotArrows].Plus)
 	}
-	c.Bonus[0] += byte(plus)
-	if c.Race == 2 && (w.Type > 0x28 && w.Type < 0x2D || w.Type == 0x25 || w.Type == 0x24) {
-		plus++ // elves with bows and swords
+	c.Bonus[0] = byte(int8(c.Bonus[0]) + plus)
+	if c.Race == raceElf && (t > 40 && t < 45 || t == itemTypeElfBow1 || t == itemTypeElfBow2) {
+		plus++
 	}
 	c.THAC0 += byte(plus)
-	c.Dice[0] = e.baseItem(typ, 9)
-	c.Sides[0] = e.baseItem(typ, 0xA)
+	c.Dice[0] = e.baseItem(t, itemDiceNormal)
+	c.Sides[0] = e.baseItem(t, itemSidesNormal)
 }
 
-// armourMove = 00BA:01FB (char, item): body armour sets the movement by
-// its weight; magical armour moves 3 faster up to 9.
-func (e *Engine) armourMove(it *Item, c *Character) {
-	if e.baseItem(it.Type, 0) != 2 {
+// armourMove = O0ED:021E (c, item): body armour sets the movement by its weight.
+func (e *Engine) armourMove(c *Character, it *Item) {
+	if e.baseItem(it.Type, itemSlot) != slotClassArmour {
 		return
 	}
-	switch w := it.Weight; {
-	case w <= 0x96:
+	switch {
+	case it.Weight <= 150:
 		c.Move = c.BaseMove
-	case w <= 0x18F:
-		c.Move = 9
+	case it.Weight <= 399:
+		c.Move = moveLight
 	default:
-		c.Move = 6
+		c.Move = moveMedium
 	}
-	if it.Plus != 0 && c.Move <= 9 {
+	if it.Plus != 0 && c.Move <= moveLight {
 		c.Move += 3
 	}
 }
 
-// itemAC = 00BA:0282 (char, item, ac, ringOnly): ac[1] shield, ac[2]
-// protective items, ac[3] best ring, ac[4] best armour; magical body
-// armour cancels rings.
-func (e *Engine) itemAC(c *Character, it *Item, ac *[5]int8) (ringOnly bool) {
-	typ := it.Type
-	v := e.baseItem(typ, 6)
-	if v <= 0x7F {
+// itemAC = O0ED:02A6 (c, item, ac, cursed): an armour class item adds to
+// its part of ac (shields and rings add up, cloaks keep the best, armour
+// sets the base); its second plus is a saving throw bonus.
+func (e *Engine) itemAC(c *Character, it *Item, ac *[5]int8, cursed *bool) {
+	bonus := e.baseItem(it.Type, itemACBonus)
+	if bonus <= 127 {
 		return
 	}
-	v &= 0x7F
-	slot := e.baseItem(typ, 0)
-	plus := int8(it.Plus)
-	switch {
-	case slot == 1:
-		ac[1] = int8(v) + plus
-	case v == 0:
-		if slot == 9 {
-			if plus > ac[3] {
-				ac[3] = plus
+	bonus &= 127
+	slot := e.baseItem(it.Type, itemSlot)
+	if slot == slotClassShield {
+		ac[1] = int8(bonus) + int8(it.Plus)
+		return
+	}
+	if bonus == 0 {
+		if slot == slotClassRing {
+			if int8(it.Plus) > ac[3] {
+				ac[3] = int8(it.Plus)
 			}
 		} else {
-			ac[2] += plus
+			ac[2] += int8(it.Plus)
 		}
-		c.SaveBonus += it.Plus2
-	case int(v)+int(plus) > int(ac[4]):
-		ac[4] = int8(v) + plus
-		if plus > 0 && slot == 2 {
-			ringOnly = true
+		c.SaveBonus = byte(int8(c.SaveBonus) + int8(it.Plus2))
+		return
+	}
+	if int8(bonus)+int8(it.Plus) > ac[4] {
+		ac[4] = int8(bonus) + int8(it.Plus)
+		if int8(it.Plus) > 0 && slot == slotClassArmour {
+			*cursed = true
 		}
 	}
-	return
 }
 
-// encumbrance = 00BA:03A0: movement by the weight over the allowance.
+// encumbrance = O0ED:03C4: movement by the weight over the strength allowance.
 func (e *Engine) encumbrance(c *Character) {
-	over := int(int16(c.Weight - uint16(strCarry(c))))
+	over := int(c.Weight) - int(strCarry(c))
 	if over < 0 {
 		over = 0
 	}
-	m := byte(3)
+	m := c.Move
 	switch {
-	case over <= 0x200:
-		m = c.Move
-	case over <= 0x300:
-		m = 9
-	case over <= 0x400:
-		m = 6
+	case over <= 512:
+	case over <= 768:
+		m = moveLight
+	case over <= 1024:
+		m = moveMedium
+	default:
+		m = moveHeavy
 	}
 	if m < c.Move {
 		c.Move = m
 	}
 }
 
-// dexAC = 00BA:10E6.
-func dexAC(d byte) int8 {
+// dexAC = O0ED:117B stat_bonus: armour class from dexterity (full value).
+func dexAC(c *Character) int8 {
+	d := c.Stats[statDex].Full
 	switch {
 	case d >= 1 && d <= 3:
 		return -4
@@ -221,151 +263,153 @@ func dexAC(d byte) int8 {
 		return int8(d) - 7
 	case d >= 15 && d <= 18:
 		return int8(d) - 14
-	case d >= 19 && d <= 20:
+	case d == 19 || d == 20:
 		return 4
 	case d >= 21 && d <= 23:
 		return 5
-	case d >= 24 && d <= 25:
+	case d == 24 || d == 25:
 		return 6
 	}
 	return 0
 }
 
-// dexMissile = 00BA:1168.
-func dexMissile(d byte) int8 {
+// dexMissile = O0ED:11FD stat_bonus02: to-hit with missiles from dexterity.
+func dexMissile(c *Character) int8 {
+	d := c.Stats[statDex].Full
 	switch {
 	case d <= 2:
 		return -4
-	case d <= 5:
+	case d >= 3 && d <= 5:
 		return int8(d) - 6
 	case d >= 16 && d <= 18:
 		return int8(d) - 15
-	case d >= 19 && d <= 20:
+	case d == 19 || d == 20:
 		return 3
 	case d >= 21 && d <= 23:
 		return 4
-	case d >= 24 && d <= 25:
+	case d == 24 || d == 25:
 		return 5
 	}
 	return 0
 }
 
-// strIndex = 00BA:11EA: strength as one scale (18/xx = 18..23, 19+ = 24+).
+// strIndex = O0ED:127F: strength as one scale (18/xx = 18..23, 19+ = 24+).
 func strIndex(c *Character) byte {
-	s, x := c.Stats[statStr].Cur, c.Str00.Cur
+	s := c.Stats[statStr].Full
 	switch {
-	case s <= 0x11:
+	case s <= 17:
 		return s
-	case s == 0x12:
-		switch {
+	case s == 18:
+		switch x := c.Str00.Cur; {
 		case x == 0:
-			return 0x12
-		case x <= 0x32:
-			return 0x13
-		case x <= 0x4B:
-			return 0x14
-		case x <= 0x5A:
-			return 0x15
-		case x <= 0x63:
-			return 0x16
-		case x == 0x64:
-			return 0x17
+			return 18
+		case x <= 50:
+			return 19
+		case x <= 75:
+			return 20
+		case x <= 90:
+			return 21
+		case x <= 99:
+			return 22
+		case x == 100:
+			return 23
 		}
-	case s <= 0x19:
+		return 0 // the original leaves the result undefined above 100 (sic)
+	case s <= 25:
 		return s + 5
 	}
-	return 0 // the original returns an unset local here
+	return 0
 }
 
-// strHit = 00BA:1282.
+// strHit = O0ED:1317: to-hit from strength (only for StrBonus characters).
 func strHit(c *Character) int8 {
 	if c.StrBonus == 0 {
 		return 0
 	}
-	switch i := strIndex(c); {
-	case i >= 1 && i <= 3:
+	switch v := strIndex(c); {
+	case v >= 1 && v <= 3:
 		return -3
-	case i >= 4 && i <= 5:
+	case v == 4 || v == 5:
 		return -2
-	case i >= 6 && i <= 7:
+	case v == 6 || v == 7:
 		return -1
-	case i >= 0x11 && i <= 0x13:
+	case v >= 17 && v <= 19:
 		return 1
-	case i >= 0x14 && i <= 0x16:
+	case v >= 20 && v <= 22:
 		return 2
-	case i >= 0x17 && i <= 0x19:
+	case v >= 23 && v <= 25:
 		return 3
-	case i >= 0x1A && i <= 0x1B:
+	case v == 26 || v == 27:
 		return 4
-	case i >= 0x1C && i <= 0x1E:
-		return int8(i) - 0x17
+	case v >= 28 && v <= 30:
+		return int8(v) - 23
 	}
 	return 0
 }
 
-// strDamage = 00BA:1325.
+// strDamage = O0ED:13BA: damage from strength (only for StrBonus characters).
 func strDamage(c *Character) int8 {
 	if c.StrBonus == 0 {
 		return 0
 	}
-	switch i := strIndex(c); {
-	case i >= 1 && i <= 2:
+	switch v := strIndex(c); {
+	case v == 1 || v == 2:
 		return -2
-	case i >= 3 && i <= 5:
+	case v >= 3 && v <= 5:
 		return -1
-	case i == 0x10:
+	case v == 16:
 		return 1
-	case i >= 0x11 && i <= 0x13:
-		return int8(i) - 0x10
-	case i >= 0x14 && i <= 0x1D:
-		return int8(i) - 0x11
-	case i == 0x1E:
-		return 0xE
+	case v >= 17 && v <= 19:
+		return int8(v) - 16
+	case v >= 20 && v <= 29:
+		return int8(v) - 17
+	case v == 30:
+		return 14
 	}
 	return 0
 }
 
-// strCarry = 00BA:13AB: weight allowance change.
+// strCarry = O0ED:1440: the weight allowance change from strength.
 func strCarry(c *Character) int16 {
-	switch i := int16(strIndex(c)); {
-	case i >= 1 && i <= 3:
+	switch v := int16(strIndex(c)); {
+	case v >= 1 && v <= 3:
 		return -350
-	case i >= 4 && i <= 5:
+	case v == 4 || v == 5:
 		return -250
-	case i >= 6 && i <= 7:
+	case v == 6 || v == 7:
 		return -150
-	case i >= 0xC && i <= 0xD:
+	case v == 12 || v == 13:
 		return 100
-	case i >= 0xE && i <= 0xF:
+	case v == 14 || v == 15:
 		return 200
-	case i == 0x10:
+	case v == 16:
 		return 350
-	case i >= 0x11 && i <= 0x15:
-		return (i-0x11)*250 + 500
-	case i >= 0x16 && i <= 0x1A:
-		return (i-0x16)*1000 + 2000
-	case i == 0x1B:
+	case v >= 17 && v <= 21:
+		return (v-17)*250 + 500
+	case v >= 22 && v <= 26:
+		return (v-22)*1000 + 2000
+	case v == 27:
 		return 7500
-	case i >= 0x1C && i <= 0x1E:
-		return (i-0x1C)*3000 + 9000
+	case v >= 28 && v <= 30:
+		return (v-28)*3000 + 9000
 	}
 	return 0
 }
 
-// hasAffect286B = 00BA:0B73: any of the four affects in DS:286C.
-func (e *Engine) hasAffect286B(c *Character) bool {
+// isHelpless = O0ED:0BDB: the character has one of the four helpless affects.
+func (e *Engine) isHelpless(c *Character) bool {
 	found := false
-	for i := 1; i <= 4; i++ {
-		if e.FindAffect(c, e.X.Bytes(0x286B+i, 1)[0]) != nil {
+	for _, a := range helplessAffectData[1:] {
+		if e.FindAffect(c, a) != nil {
 			found = true
 		}
 	}
 	return found
 }
 
-// atRaceLimit = 00BA:2F57 (char, class): the demihuman level limit is
+// atRaceLimitPOR = 00BA:2F57 (char, class) (Pool of Radiance; replaced as its callers are ported): the demihuman level limit is
 // reached (fighter limits depend on strength 17/18; race 4 clerics stop at 5).
-func atRaceLimit(c *Character, class int) bool {
+func atRaceLimitPOR(c *Character, class int) bool {
 	lvl, str := int8(c.Levels[class]), c.Stats[statStr].Cur
 	if lvl <= 0 {
 		return false

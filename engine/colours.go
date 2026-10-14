@@ -29,3 +29,15 @@ const (
 	stateAfterCombat
 	stateEndGame
 )
+
+// Scan codes of the extended keys the menus read (displayInput's extra keys).
+const (
+	scanHome     = 'G'
+	scanUp       = 'H'
+	scanPageUp   = 'I'
+	scanLeft     = 'K'
+	scanRight    = 'M'
+	scanEnd      = 'O'
+	scanDown     = 'P'
+	scanPageDown = 'Q'
+)

@@ -1,6 +1,7 @@
 package engine
 
-// List menu, ported from ovr26:0D9A (the node count of ovr26:0067 is len(list)).
+// The list menu (O104:0E9F and its nested procedures; the node count of
+// O104:0076 is len(list)).
 
 // ListNode is the ovr26 list node: 0x2E bytes, text string[40] at +0, flag at
 // +0x29 (non-zero = header row, drawn in promptColour and skipped by the
@@ -57,12 +58,9 @@ func (e *Engine) lmDrawRows(c *listMenuCtx, first int) {
 		if p.Flag != 0 {
 			col = c.promptColour
 		}
-		if p.Dim {
-			col = dimColour
-		}
-		e.DisplayString(c.x1, y, col, p.Text)
+		e.displayStringBg(c.x1, y, col, colourBlack, p.Text)
 		if len(p.Text) < c.width {
-			e.displayCharN(c.x1+len(p.Text), y, 0, c.width-len(p.Text), ' ', true) // 0709:01DF
+			e.displayCharsBg(c.x1+len(p.Text), y, colourBlack, colourBlack, c.width-len(p.Text), ' ')
 		}
 		y++
 	}
@@ -84,41 +82,25 @@ func lastNonSpace(s string) int {
 	return i
 }
 
-// lmDrawRow = ovr26:0969 (highlighted) / ovr26:0A08 (normal): recolours only the
-// trimmed text of row i.
+// lmDrawRow = O104:0A65 (highlighted: black on the highlight colour) /
+// O104:0B07 (normal): redraw only the trimmed text of row i.
 func (e *Engine) lmDrawRow(c *listMenuCtx, i int, highlighted bool) {
 	p := c.nth(i)
 	if p == nil {
 		return
 	}
 	a, b := firstNonSpace(p.Text), lastNonSpace(p.Text)
-	col := c.hi
-	if !highlighted {
-		col = c.normal
-		if p.Flag != 0 {
-			col = c.promptColour
-		}
-		if p.Dim {
-			col = dimColour
-		}
-	}
 	if b < a {
 		return
 	}
-	if !highlighted {
-		e.DisplayString(c.x1+a-1, c.y1+i-e.listTop, col, p.Text[a-1:b]) // 09FD: Copy(text, a, b-a+1)
-		return
-	}
-	bg := selBg(c.normal, c.hi) // extra: selection background, the line keeps its colour
-	col = c.normal
-	if p.Flag != 0 {
-		col = c.promptColour
-	}
-	if p.Dim {
-		col = dimColour
-	}
-	for j := a; j <= b; j++ {
-		e.displayCharBg(c.x1+j-1, c.y1+i-e.listTop, col, bg, p.Text[j-1], true)
+	x, y, text := c.x1+a-1, c.y1+i-e.listTop, p.Text[a-1:b]
+	switch {
+	case highlighted:
+		e.displayStringBg(x, y, colourBlack, c.hi, text)
+	case p.Flag != 0:
+		e.displayStringBg(x, y, c.promptColour, colourBlack, text)
+	default:
+		e.displayStringBg(x, y, c.normal, colourBlack, text)
 	}
 }
 
@@ -157,13 +139,8 @@ func (e *Engine) lmSkipHeaders(c *listMenuCtx, forward bool) {
 
 // lmMoveCursor = ovr26:0CC5.
 func (e *Engine) lmMoveCursor(c *listMenuCtx, forward bool) {
-	from := *c.index
 	e.lmStep(c, forward)
 	e.lmSkipHeaders(c, forward)
-	if p := c.nth(*c.index); p != nil && p.Dim { // (extra) only grey lines on the page: step through them
-		*c.index = from
-		e.lmStep(c, forward)
-	}
 }
 
 // lmPageScroll = ovr26:0C33.
@@ -219,22 +196,6 @@ func (e *Engine) ListMenu(title, menu string, promptColour, normal, hi, x1, y1, 
 	}
 	*index++
 	e.lmMoveCursor(c, false)
-	{ // extra (nav.go): a click moves the cursor to the line, a second one is Enter
-		mark := e.regionMark()
-		defer e.regionCut(mark)
-		e.addRegion(region{x0: x1, y0: y1, x1: x2, y1: y2, click: func(_, cy int) uint16 {
-			i := e.listTop + cy - y1
-			if p := c.nth(i); p == nil || p.skipped() {
-				return 0
-			}
-			if i == *index {
-				return 13
-			}
-			e.lmDrawRow(c, *index, false)
-			*index = i
-			return keyNone
-		}})
-	}
 	if *redraw {
 		e.lmDrawRows(c, e.listTop)
 	}
@@ -254,27 +215,22 @@ func (e *Engine) ListMenu(title, menu string, promptColour, normal, hi, x1, y1, 
 		if showExit {
 			m += " Exit"
 		}
-		e.ext.list = true
 		key, extra := e.DisplayInput(title, m, promptColour, normal, hi, true, false)
-		e.ext.list = false
 		e.lmDrawRow(c, *index, false)
 		if extra {
 			switch key {
-			case 0x47, 0x48: // Home, cursor up
+			case scanHome: // keypad 7: one line up
 				e.lmMoveCursor(c, false)
-			case 0x4F, 0x50: // End, cursor down
+			case scanEnd: // keypad 1: one line down
 				e.lmMoveCursor(c, true)
-			case 0x49:
+			case scanPageUp:
 				if hasPrev {
 					e.lmPageScroll(c, false)
 				}
-			case 0x51:
+			case scanPageDown:
 				if hasNext {
 					e.lmPageScroll(c, true)
 				}
-			case keyRelist >> 8: // (extra) the caller rebuilds the list (another member: F1-F6)
-				*selected = nil
-				return keyRelist >> 8
 			}
 			continue
 		}

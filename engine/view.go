@@ -20,62 +20,6 @@ type viewState struct {
 	start *Character // DS:471A
 }
 
-// CharacterSheet = ovr20:004A.
-func (e *Engine) CharacterSheet() {
-	c := e.selected()
-	e.view.char = c
-	e.ClearScreen()
-	e.DrawBorder(1, 1, 0x26, 0x16, 0)
-	e.displayName(c, 1, 1, false)
-	if c.Control > 0x7F {
-		e.DisplayString(len(c.Name())+3, 1, 0xA, "(NPC)")
-	}
-	x := 1
-	s := e.X.PString(0xFEC + 7*int(int8(c.Sex)))
-	e.DisplayString(x, 3, 0xF, s)
-	x += len(s) + 1
-	s = e.X.PString(0xF03 + 0xA*int(int8(c.Race)))
-	e.DisplayString(x, 3, 0xF, s)
-	x += len(s) + 1
-	e.DisplayString(x, 3, 0xF, "Age "+itoa(int(c.Age)))
-	e.DisplayString(1, 4, 0xF, e.X.PString(0xF53+0x11*int(int8(c.Alignment))))
-	e.DisplayString(1, 5, 0xF, e.X.PString(0xD38+0x1B*int(int8(c.Class))))
-	for i, l := range []string{"STR ", "INT ", "WIS ", "DEX ", "CON ", "CHA "} {
-		e.DisplayString(1, i+7, 0xA, l)
-		e.showStat(i, false)
-	}
-	e.showMoney()
-	e.DisplayString(1, 0xF, 0xF, "Level")
-	s = ""
-	for i := 0; i <= 7; i++ {
-		if l := int8(c.Levels[i]); l > 0 {
-			if s != "" {
-				s += "/"
-			}
-			s += itoa(int(l))
-		}
-	}
-	e.DisplayString(7, 0xF, 0xF, s)
-	e.DisplayString(0x11, 0xF, 0xF, "Exp "+itoa(int(int32(c.Exp))))
-	e.showCombatStats()
-	y := 0x14
-	if w := c.Slots[0]; w != nil {
-		e.DisplayString(1, y, 0xF, "Weapon")
-		e.ItemName(c, w, 8, y, false, true)
-	}
-	y++
-	if a := c.Slots[2]; a != nil {
-		e.DisplayString(2, y, 0xF, "Armor")
-		e.ItemName(c, a, 8, y, false, true)
-	}
-	y++
-	e.DisplayString(1, y, 0xF, "Status")
-	e.DisplayString(8, y, 0xA, e.statusName(c.Status))
-	e.sheetEffects(c)
-	if e.flag49F5 != 0 && e.symDAX == "8X8D3" { // DS:5376 == 3
-		e.SheetPortrait()
-	}
-}
 
 // Extra: the sheet lists the spell effects on the character (the camp
 // menu's Display, which is not offered) on the free row under HP. When they
@@ -112,61 +56,7 @@ func (e *Engine) sheetEffects(c *Character) {
 	e.DisplayString(9, effectsRow, 0xA, s)
 }
 
-// showCombatStats = ovr20:0608: AC, HP, THAC0, damage, weight, movement.
-func (e *Engine) showCombatStats() {
-	c := e.selected()
-	e.ApplyItems(c)
-	y := 0x11
-	e.DisplayString(1, y, 0xF, "AC    ")
-	e.displayAC(c, 4, y)
-	e.DisplayString(1, y+1, 0xF, "HP    ")
-	e.displayHP(c, 4, y+1, false)
-	x := 8
-	e.DisplayString(x+1, y, 0xF, "THAC0   ")
-	e.DisplayString(x+7, y, 0xA, itoa(int(byte(0x3C-c.THAC0))))
-	d := cut(damageText(c), 0x28)
-	e.DisplayString(x, y+1, 0xF, "Damage        ")
-	e.DisplayString(x+7, y+1, 0xA, d)
-	x = 0x16
-	e.DisplayString(x, y, 0xF, "Encumbrance      ")
-	e.DisplayString(x+0xC, y, 0xA, itoa(int(c.Weight)))
-	m := c.Move
-	if e.FindAffect(c, 0x2A) != nil {
-		m <<= 1
-	}
-	if e.FindAffect(c, 0x27) != nil {
-		m >>= 1
-	}
-	e.DisplayString(x+3, y+1, 0xF, "Movement   ")
-	e.DisplayString(x+0xC, y+1, 0xA, itoa(int(m)))
-}
 
-// showStat = ovr20:0901 (stat, highlight): one ability score, with the
-// exceptional strength in brackets.
-func (e *Engine) showStat(stat int, hi bool) {
-	col := 0xA
-	if hi {
-		col = 0xD
-	}
-	c := e.selected()
-	x := 5
-	e.ClearCells(5, stat+7, 0xB, stat+7)
-	v := c.Stats[stat].Cur
-	if v < 10 {
-		x++
-	}
-	e.DisplayString(x, stat+7, col, itoa(int(v)))
-	if stat == 0 && v == 0x12 && c.Str00.Cur > 0 {
-		s := itoa(int(c.Str00.Cur))
-		if c.Str00.Cur < 10 {
-			s = "0" + s
-		}
-		if c.Str00.Cur == 100 {
-			s = "00"
-		}
-		e.DisplayString(7, 7, col, "("+s+")")
-	}
-}
 
 // ViewCharacter = ovr20:0AB3 (var quit): the View command. Returns quit,
 // which ItemsMenu sets when an item was used in combat.

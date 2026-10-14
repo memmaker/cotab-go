@@ -99,6 +99,12 @@ def main():
                 a, n = arg.split(',')
                 r = tools.read_memory(client, int(a, 16), int(n), allow_running=True)
                 print('peek', a, r['data_hex'])
+            elif kind == 'seed':
+                # Turbo Pascal's RandSeed: DS offset 18416 in Curse of the Azure Bonds
+                ds = tools.status(client)['cpu']['ds']
+                with client.session() as session:
+                    session.execute('memwrite', {'address': ds * 16 + 18416, 'data': int(arg).to_bytes(4, 'little').hex()})
+                print('seed', arg)
             elif kind == 'status':
                 st = tools.status(client)
                 print(st)

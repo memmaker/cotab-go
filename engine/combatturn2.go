@@ -86,7 +86,7 @@ func (e *Engine) chooseSpellTarget(spell, silent, allowGround int, t *aimTarget)
 					}
 				}
 			}
-			if e.hasAffect286B(tp) {
+			if e.isHelpless(tp) {
 				for i := 1; i <= 4; i++ {
 					if e.spellData(spell, 4) == e.X.Bytes(0x286B+i, 1)[0] {
 						ok = false

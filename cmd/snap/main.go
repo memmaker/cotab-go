@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -124,6 +125,10 @@ func main() {
 			keys = os.Args[5]
 		}
 		e.Init()
+		if seed := os.Getenv("COTAB_SEED"); seed != "" {
+			n, _ := strconv.ParseUint(seed, 10, 32)
+			e.RandSeed = uint32(n)
+		}
 		if len(os.Args) > 6 {
 			e.DevAction = e.DevScene(os.Args[6])
 		}

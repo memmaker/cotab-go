@@ -1,121 +1,77 @@
 package engine
 
-// Menu input, ported from ovr26.
+// The bottom-row menu (displayInput) and the yes/no question (unit O104 of
+// the reconstruction).
 
-func isHotkey(c byte) bool { return c >= '0' && c <= '9' || c >= 'A' && c <= 'Z' } // set [0-9A-Z]
+// isHotkey: the characters that start a menu item ([0-9A-Z]).
+func isHotkey(c byte) bool { return c >= '0' && c <= '9' || c >= 'A' && c <= 'Z' }
 
-// menuItems = ovr26:00CB: every [0-9A-Z] character starts an item; an item
-// runs to two cells before the next hotkey. Returns (start,end) pairs for
-// items 1..n; slot 0 is unused (DS locals -0x8f/-0x8e hold the count there).
-func menuItems(menu string) (start, end []int) {
-	start, end = []int{0, 0}, []int{0, 0}
+// menuItem is the span of one menu item: from its hotkey to two cells
+// before the next item's hotkey (1-based positions in the menu text).
+type menuItem struct{ first, last int }
+
+// menuItemsOf = O104:00DA (nested in displayInput): split the menu text into
+// its items; every hotkey starts one.
+func menuItemsOf(menu string) []menuItem {
+	items := []menuItem{{}}
 	for i := 1; i <= len(menu); i++ {
 		if !isHotkey(menu[i-1]) {
 			continue
 		}
-		if start[len(start)-1] == 0 {
-			start[len(start)-1] = i
+		cur := &items[len(items)-1]
+		if cur.first == 0 {
+			cur.first = i
 		} else {
-			end[len(end)-1] = i - 2
-			start = append(start, i)
-			end = append(end, 0)
+			cur.last = i - 2
+			items = append(items, menuItem{first: i})
 		}
 	}
-	end[len(end)-1] = len(menu)
-	return
+	items[len(items)-1].last = len(menu)
+	return items
 }
 
-// itemSpan (extra): the cells highlighted for item j, the word holding its
-// hotkey ("color-1" for 1, where the original lights "1 color-"); the
-// original span when the word holds more than one hotkey.
-func itemSpan(menu string, start, end []int, j int) (a, b int) {
-	if j < 1 || j >= len(start) || start[j] < 1 {
-		return 0, 0
-	}
-	a, b = start[j], start[j]
-	for a > 1 && menu[a-2] != ' ' {
-		a--
-	}
-	for b < len(menu) && menu[b] != ' ' {
-		b++
-	}
-	for i := a; i <= b; i++ {
-		if i != start[j] && isHotkey(menu[i-1]) {
-			return start[j], max(end[j], start[j])
-		}
-	}
-	return a, b
-}
+// keypadMap = DS 10192: the digits 1..9 as the scan codes of the keypad keys
+// (End Down PgDn Left - Right Home Up PgUp).
+var keypadMap = []byte("OPQK MGHI")
 
-// drawMenu = ovr26:01DA.
-func (e *Engine) drawMenu(prompt, menu string, start, end []int, sel, normal, highlight int) {
+// The wilderness map cursor blinks while a menu waits.
+const (
+	cursorShowDelay = 30 // ticks
+	cursorHideDelay = 50
+	areaPictureWord = 1022 // area word: a picture changed, restart the animation
+	wildernessArea  = 'y'  // b72AA: the area that has a blinking map cursor
+	notOnMap        = 'P'
+)
+
+// drawMenuBar = O104:01E9 (nested in displayInput): the menu text after the
+// prompt; the selected item black on the highlight colour, hotkeys in the
+// highlight colour, the rest in the normal colour; the row cleared after it.
+func (e *Engine) drawMenuBar(x0 int, menu string, items []menuItem, sel, normal, highlight int) {
 	if len(menu) == 0 {
 		return
 	}
-	x0 := len(prompt)
-	s0, e0 := itemSpan(menu, start, end, sel)
-	e.ext.padHot = 0
-	for i := s0; i >= 1 && i <= e0 && i <= len(menu); i++ {
-		if isHotkey(menu[i-1]) {
-			e.ext.padHot = menu[i-1] // gamepad "select" picks this item
-			break
-		}
-	}
-	if e.ext.onSelect != nil {
-		e.ext.onSelect(e.ext.padHot)
-	}
-	bg := selBg(normal, highlight)
 	for i := 1; i <= len(menu); i++ {
 		c := menu[i-1]
 		switch {
-		case s0 <= i && i <= e0 && highlight != 0: // extra: the item keeps its colours on the selection background
-			col := normal
-			if isHotkey(c) {
-				col = highlight
-			}
-			e.displayCharBg(x0+i-1, 24, col, bg, c, true)
+		case items[sel-1].first <= i && i <= items[sel-1].last && highlight != 0:
+			e.displayCharsBg(x0+i-1, statusRow, colourBlack, highlight, 1, c)
 		case isHotkey(c):
-			e.DisplayChar(x0+i-1, 24, highlight, c, true)
+			e.displayCharsBg(x0+i-1, statusRow, highlight, colourBlack, 1, c)
 		default:
-			e.DisplayChar(x0+i-1, 24, normal, c, true)
+			e.displayCharsBg(x0+i-1, statusRow, normal, colourBlack, 1, c)
 		}
 	}
-	if x0+len(menu) < 0x27 {
-		e.displayCharN(x0+len(menu), 24, 0, 0x27-len(menu)-x0+1, ' ', true)
+	if x0+len(menu) < screenLastCol {
+		e.displayCharsBg(x0+len(menu), statusRow, colourBlack, colourBlack, screenLastCol-len(menu)-x0+1, ' ')
 	}
 }
 
-// keypadMap = DS:288C: digits 1..9 -> scan-code letters (End Down PgDn
-// Left - Right Home Up PgUp).
-var keypadMap = []byte("OPQK MGHI")
-
-// DisplayInput = ovr26:03BD (prompt, menu, promptColour, normalColour,
-// highlightColour, allowExtra, anim). Returns the key and whether it was a
-// keypad/extended key. e.menuSel (DS:6B2B) persists between calls.
-func (e *Engine) DisplayInput(prompt, menu string, promptColour, normal, highlight int, allowExtra, anim bool) (byte, bool) {
-	last := e.pic.last // [bp-57] is per call: an outer DisplayInput keeps its own
-	// extra: each menu starts where it was left (the original shares one highlight)
-	if e.ext.selSet {
-		e.ext.selSet = false
-	} else {
-		e.menuSel = max(e.ext.sels[menu], 1)
-	}
-	k, x := e.displayInput(prompt, menu, promptColour, normal, highlight, allowExtra, anim)
-	if e.ext.sels == nil {
-		e.ext.sels = map[string]int{}
-	}
-	e.ext.sels[menu] = e.menuSel
-	e.pic.last = last
-	if len(e.area) > 0x3FF {
-		putWord(e.area, 0x3FE, 0) // 06D8 (not deferred: a trace run must stop with the original's state)
-	}
-	return k, x
-}
-
-func (e *Engine) displayInput(prompt, menu string, promptColour, normal, highlight int, allowExtra, anim bool) (byte, bool) {
-	saved := e.animInput // [bp+0xA], read by the wait loop (animateWhileWaiting)
-	e.animInput = anim
-	defer func() { e.animInput = saved }()
+// DisplayInput = O104:03D8 displayInput (prompt, menu, promptColour,
+// normal, highlight, allowExtra, animate): the prompt and the menu on the
+// bottom row; returns the key (the item's hotkey for Enter, 0 for Escape)
+// and whether it was a keypad / extended key. The selected item
+// (menuSel) is kept between calls.
+func (e *Engine) DisplayInput(prompt, menu string, promptColour, normal, highlight int, allowExtra, animate bool) (byte, bool) {
 	if len(prompt) > 40 {
 		prompt = prompt[:40]
 	}
@@ -123,147 +79,125 @@ func (e *Engine) displayInput(prompt, menu string, promptColour, normal, highlig
 		menu = menu[:40]
 	}
 	e.menuExtra = false
-	e.ext.menu++
-	nav, mark := e.ext.nav, e.regionMark()
-	defer func() {
-		e.ext.padHot = 0
-		e.ext.menu--
-		e.ext.nav = nav
-		e.regionCut(mark)
-		if e.ext.menu == 0 && e.tr == nil {
-			e.S.SetHint("")
-			e.ext.hint = ""
-		}
-	}()
-	allowEnter := normal != 0 || highlight != 0
-	start, end := menuItems(menu)
-	count := len(start) - 1
-	if e.menuSel > count || e.menuSel < 1 { // extra: never start with nothing highlighted
+	hasHighlight := normal != 0 || highlight != 0
+	items := menuItemsOf(menu)
+	if e.menuSel > len(items) || e.menuSel < 1 {
 		e.menuSel = 1
 	}
-	e.pic.last = e.Ticks() // 0432: [bp-57], the animation timer starts over in every call
-	e.Ticks()              // 043D: the unused timeout base
-	if len(prompt) > 0 {
-		e.DisplayString(0, 24, promptColour, prompt)
+	key, extra, done := byte(0), false, false
+	since := e.Ticks()
+	cursorShow := since + cursorShowDelay
+	cursorHide := cursorShow + cursorHideDelay
+	if prompt != "" {
+		e.displayStringBg(0, statusRow, promptColour, colourBlack, prompt)
 	}
-	extra := false
-	e.drawMenu(prompt, menu, start, end, e.menuSel, normal, highlight) // 048B; redrawn only on a move
-	e.menuRegions(prompt, menu, start, end, normal, highlight, allowExtra)
-	timeoutFrom := e.Ticks()
-	for {
-		// O104:05AF: with a timeout set (the main program's "Play / Demo"
-		// prompt), the default key is taken when it runs out.
-		if e.inputTimeout > 0 && e.Ticks()-timeoutFrom >= e.inputTimeout {
-			return e.inputTimeoutKey, false
+	x0 := len(prompt)
+	e.drawMenuBar(x0, menu, items, e.menuSel, normal, highlight)
+	mapCursor := e.gameState == stateWilderness && e.areaKind == wildernessArea && e.mapMode != notOnMap
+	if mapCursor {
+		e.mapCursorPlace()
+		e.mapCursorShow()
+		e.mapCursorHide()
+	}
+	for !done {
+		if mapCursor && e.Ticks() >= cursorShow {
+			e.mapCursorShow()
+			cursorShow = cursorHide + cursorShowDelay
 		}
-		e.animateWhileWaiting()
-		e.pollMouse()
-		e.showHint()
-		if !e.keyWaiting() { // 0566
-			e.idle()
-			continue
-		}
-		k := e.ReadKeyByte()
-		if k == 0 {
-			k = e.ReadKeyByte()
-			if allowExtra {
-				e.menuExtra = true
-				return k, true
-			}
-			continue
-		}
-		switch k {
-		case 27:
-			return 0, false
-		case 13:
-			if allowEnter {
-				return 13, false
-			}
-			continue
-		case ',':
-			if e.menuSel == 1 {
-				e.menuSel = count
-			} else {
-				e.menuSel--
-			}
-			e.drawMenu(prompt, menu, start, end, e.menuSel, normal, highlight)
-			continue
-		case '.':
-			if e.menuSel == count {
-				e.menuSel = 1
-			} else {
-				e.menuSel++
-			}
-			e.drawMenu(prompt, menu, start, end, e.menuSel, normal, highlight)
-			continue
-		}
-		k = upper(k)
-		done := false
-		if k == ' ' {
-			done = true
-		} else if isHotkey(k) {
-			for i := 1; i <= len(menu); i++ {
-				if menu[i-1] != k {
-					continue
+		if (wordAt(e.area, areaPictureWord) != 0 || animate) && e.anim.frame > 0 {
+			e.drawAnimationFrame(animate)
+			if e.Ticks()-since >= int64(e.anim.delay[e.anim.frame])*10 || wordAt(e.area, areaPictureWord) != 0 {
+				e.anim.frame++
+				if e.anim.frame > e.anim.frames {
+					e.anim.frame = 1
 				}
-				done = true
-				for j := 1; j < len(start); j++ {
-					if start[j] == i {
+				since = e.Ticks()
+			}
+		}
+		switch {
+		case e.inputTimeout > 0 && e.Ticks()-since >= e.inputTimeout:
+			key, done = e.inputTimeoutKey, true
+		case e.keyWaiting():
+			key = e.ReadKeyByte()
+			if key == 0 {
+				key = e.ReadKeyByte()
+				if allowExtra {
+					extra, done = true, true
+				}
+				break
+			}
+			switch key {
+			case 27:
+				key, done = 0, true
+			case 13:
+				if hasHighlight {
+					key = menu[items[e.menuSel-1].first-1]
+					if key == 0 {
+						key = 13
+					}
+					done = true
+				}
+			case ',':
+				if e.menuSel == 1 {
+					e.menuSel = len(items)
+				} else {
+					e.menuSel--
+				}
+				e.drawMenuBar(x0, menu, items, e.menuSel, normal, highlight)
+			case '.':
+				if e.menuSel == len(items) {
+					e.menuSel = 1
+				} else {
+					e.menuSel++
+				}
+				e.drawMenuBar(x0, menu, items, e.menuSel, normal, highlight)
+			default:
+				key = upper(key)
+				if key == ' ' {
+					done = true
+				} else if isHotkey(key) {
+					for i := 1; i <= len(menu); i++ {
+						if menu[i-1] != key {
+							continue
+						}
+						done = true
+						j := 1
+						for items[j-1].first != i {
+							j++
+						}
 						e.menuSel = j
-						e.drawMenu(prompt, menu, start, end, e.menuSel, normal, highlight) // ovr26:0685
-						break
+						e.drawMenuBar(x0, menu, items, e.menuSel, normal, highlight)
 					}
 				}
+				if allowExtra && (key >= '1' && key <= '9' || key == '\\') {
+					if key == '\\' {
+						key = '7' // the original stores '7' itself, not the keypad code (sic)
+					} else {
+						key = keypadMap[key-'1']
+					}
+					extra, done = true, true
+				}
 			}
+		default:
+			e.idle()
 		}
-		if allowExtra && (k >= '1' && k <= '9' || k == '\\') {
-			if k == '\\' {
-				k = '7' // 0899:06AD stores 0x37 itself, not the keypad table entry (original quirk)
-			} else {
-				k = keypadMap[k-'1']
-			}
-			extra, done = true, true
-		}
-		if done {
-			e.menuExtra = extra
-			return k, extra
+		if mapCursor && e.Ticks() >= cursorHide {
+			e.mapCursorHide()
+			cursorHide = cursorShow + cursorHideDelay
 		}
 	}
+	putWord(e.area, areaPictureWord, 0)
+	if mapCursor {
+		e.mapCursorHide()
+	}
+	e.menuExtra = extra
+	return key, extra
 }
 
-// menuRegions (extra, nav.go): the items of the menu bar highlight under
-// the pointer and are picked by a click.
-func (e *Engine) menuRegions(prompt, menu string, start, end []int, normal, highlight int, allowExtra bool) {
-	sel := func(j int) {
-		if e.menuSel != j {
-			e.menuSel = j
-			e.drawMenu(prompt, menu, start, end, j, normal, highlight)
-		}
-	}
-	e.ext.nav = navCtx{menu: menu, extraOK: allowExtra, exit: menuHasExit(menu), hot: func(h byte) {
-		for j := 1; j < len(start); j++ {
-			if start[j] >= 1 && menu[start[j]-1] == h {
-				sel(j)
-				return
-			}
-		}
-	}}
-	for j := 1; j < len(start); j++ {
-		if start[j] < 1 {
-			continue
-		}
-		j, hot := j, menu[start[j]-1]
-		a, b := itemSpan(menu, start, end, j)
-		e.addRegion(region{x0: len(prompt) + a - 1, y0: 24, x1: len(prompt) + b - 1, y1: 24,
-			click: func(int, int) uint16 { return uint16(hot) },
-			hover: func() { sel(j) }})
-	}
-}
-
-// YesNo = ovr26:10D1 (c1, c2, c3, prompt): "Yes No" on row 24, 'N' preselected.
+// YesNo = O104:11E4 (prompt, c1, c2, c3): "Yes No" on the bottom row with
+// No preselected, until Y or N is chosen.
 func (e *Engine) YesNo(c1, c2, c3 int, prompt string) byte {
 	e.menuSel = 2
-	e.ext.selSet = true // (extra) keep the preselected No
 	for {
 		k, _ := e.DisplayInput(prompt, "Yes No", c1, c2, c3, false, false)
 		if k == 'N' || k == 'Y' {

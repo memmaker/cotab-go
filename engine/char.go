@@ -79,8 +79,8 @@ type charRecord struct {
 	Order           byte        // 323
 	IconSize        byte        // 324
 	IconColour      [6]byte     // 325 icon parts, low nibble and high nibble
-	ItemCount       byte        // 331
-	Pad332          byte        // 332
+	Pad331          byte        // 331
+	ItemCount       byte        // 332
 	_               [4]byte     // 333 item list pointer
 	_               [52]byte    // 337 readied item pointers
 	Hands           byte        // 389
@@ -167,44 +167,8 @@ func (c *Character) SetName(s string) {
 // IntToStr = 00BA:1037.
 func itoa(n int) string { return strconv.Itoa(n) }
 
-// displayAC = 00BA:08EF (char, x, y): |ac60-60|, with "-" when ac60 > 60, colour 0xA.
-func (e *Engine) displayAC(c *Character, x, y int) {
-	v := int(c.AC[0])
-	s := itoa(abs(v - 60))
-	if v > 60 {
-		s = "-" + s
-	}
-	e.DisplayString(x, y, 0xA, s)
-}
 
-// displayHP = 00BA:0973 (char, x, y, flag): yellow when below max, white
-// otherwise, magenta when flag set.
-func (e *Engine) displayHP(c *Character, x, y int, flag bool) {
-	col := 0xA
-	if c.HP < c.MaxHP {
-		col = 0xE
-	}
-	if flag {
-		col = 0xD
-	}
-	e.DisplayString(x, y, col, itoa(int(c.HP)))
-}
 
-// displayName = 00BA:1816 (char, x, y, possessive): red when not okay,
-// yellow for NPCs, cyan otherwise; optional "'s" suffix.
-func (e *Engine) displayName(c *Character, x, y int, possessive bool) {
-	col := 0xC
-	if c.Okay != 0 {
-		col = 0xB
-		if c.Side == 1 {
-			col = 0xE
-		}
-	}
-	e.DisplayString(x, y, col, c.Name())
-	if possessive {
-		e.DisplayString(x+len(c.Name()), y, col, "'s")
-	}
-}
 
 func abs(n int) int {
 	if n < 0 {

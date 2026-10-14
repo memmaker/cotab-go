@@ -368,7 +368,7 @@ func (e *Engine) moveAttack(c *Character) (done bool) {
 				done = e.clearCombatInfo(c)
 			}
 			e.stinkingCloud(c)
-			if e.hasAffect286B(c) {
+			if e.isHelpless(c) {
 				done = e.clearCombatInfo(c)
 			}
 		}
@@ -607,7 +607,7 @@ func (e *Engine) combatPanel(c *Character) {
 	switch {
 	case c.Okay == 0:
 		e.DisplayString(x, 0x17, 0xF, cut(e.X.PString(0x1047+0xD*int(c.Status)), 0x27-x))
-	case e.hasAffect286B(c):
+	case e.isHelpless(c):
 		e.DisplayString(x, 0x17, 0xF, "(Helpless)")
 	default:
 		e.DisplayString(x, 0x17, 0xF, "Damage")

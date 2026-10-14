@@ -469,7 +469,7 @@ func (e *Engine) fxRestore() {
 		if xp <= 0 || xp >= bestXP {
 			continue
 		}
-		if atRaceLimit(t, k) {
+		if atRaceLimitPOR(t, k) {
 			continue
 		}
 		best, bestClass, bestXP = lvl, k, xp
