@@ -237,7 +237,7 @@ func (e *Engine) Temple() {
 				e.templeHeal()
 			}
 		case 'V':
-			e.ViewCharacter()
+			e.viewPlayer()
 		case 'A':
 			appraised = e.Appraise()
 		case 'E':

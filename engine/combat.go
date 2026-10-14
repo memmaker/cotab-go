@@ -120,7 +120,7 @@ func (e *Engine) playerTurn(c *Character) {
 		case 'M':
 			done = e.moveAttack(c)
 		case 'V':
-			done = e.ViewCharacter() // ovr20:0AB3 (var done): ItemsMenu sets it
+			done = e.viewPlayer() // ovr20:0AB3 (var done): ItemsMenu sets it
 			e.o14_0D23(c)
 			if !done {
 				e.combatUseHook()

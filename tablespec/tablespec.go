@@ -108,6 +108,7 @@ var Tables = []Table{
 	{"stepX", 9878, 8, Signed, "Column step by facing 0..7.", 0},
 	{"stepY", 9887, 8, Signed, "Row step by facing 0..7.", 0},
 	{"itemTemplates", 2094, 57, Words, "Magic item templates read by the treasure generator: from entry n, name words n..n+2, weight n+3, price n+4, spells n+5..n+7 (low bytes).", 0},
+	{"diseaseAffects", 2090, 6, Bytes, "The affects a paladin's Cure removes (diseases).", 0},
 	{"clockLimits", 15916, 7, Words, "Clock carries: minutes per ten, tens per hour, hours per day ... (area words 198..204).", 0},
 
 	// Affects.

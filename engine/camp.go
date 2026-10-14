@@ -911,7 +911,7 @@ func (e *Engine) CampMenu() bool {
 				e.Exit()
 			}
 		case 'V':
-			e.ViewCharacter()
+			e.viewPlayer()
 		case 'M':
 			e.magicMenu(&interrupted)
 		case 'R':

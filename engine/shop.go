@@ -195,6 +195,3 @@ func (e *Engine) shopMenu() {
 	}
 }
 
-// viewPlayer = O0AF:0B64 (var done): the character sheet with its menu
-// (being audited: Pool of Radiance's View for now).
-func (e *Engine) viewPlayer() bool { return e.ViewCharacter() }

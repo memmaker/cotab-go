@@ -115,47 +115,45 @@ func (e *Engine) addNPC(block byte) {
 func (e *Engine) cmdWho() {
 	e.readArgs(1)
 	e.ClearCells(textLeft, textTop, textRight, textBottom)
-	e.selectMemberMenu(e.sc.text[1], false)
+	e.selectMember(e.selectMemberMenu(e.sc.text[1], false, e.selected()))
 }
 
-// selectMemberMenu = O0ED:2E2E selectAPlayer (prompt, allowExit): Select
-// (and Exit) with Home / End stepping through the party; returns false on
-// Exit.
-func (e *Engine) selectMemberMenu(prompt string, allowExit bool) bool {
+// selectMemberMenu = O0ED:2E2E selectAPlayer (prompt, allowExit, start):
+// Select (and Exit) with Home / End stepping through the party from start;
+// nil on Exit.
+func (e *Engine) selectMemberMenu(prompt string, allowExit bool, start *Character) *Character {
 	menu := "Select"
 	if allowExit {
 		menu += " Exit"
 	}
+	cur := start
 	k := byte(' ')
-	none := false
 	for k != keyEnter && k != keyEsc && k != 'E' && k != 'S' {
-		var sel *Character
-		if !none {
-			sel = e.selected()
-		}
-		e.playerSummary(sel)
+		e.playerSummary(cur)
 		animate := e.gameState == stateCamp || e.gameState == stateAfterCombat
 		var extra bool
 		k, extra = e.DisplayInput(prompt+" ", menu, colourLightMagenta, colourGreen, colourWhite, true, animate)
 		if extra {
-			none = false
+			i := e.partyIndex(cur)
 			switch k {
 			case scanEnd:
-				e.partySel++
-				if e.partySel >= len(e.party) {
-					e.partySel = 0
+				if i+1 < len(e.party) {
+					cur = e.party[i+1]
+				} else {
+					cur = e.party[0]
 				}
 			case scanHome:
-				e.partySel--
-				if e.partySel < 0 {
-					e.partySel = len(e.party) - 1
+				if i > 0 {
+					cur = e.party[i-1]
+				} else {
+					cur = e.party[len(e.party)-1]
 				}
 			}
 		} else if allowExit && (k == 'E' || k == 0) {
-			none = true
+			cur = nil
 		}
 	}
-	return !none
+	return cur
 }
 
 const keyEsc = 27

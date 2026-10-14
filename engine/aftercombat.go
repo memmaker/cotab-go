@@ -353,7 +353,7 @@ func (e *Engine) lootMenu() {
 		key, _ := e.DisplayInput("", menu, 0xD, 0xA, 0xF, true, true) // ovr06:101F: anim
 		switch key {
 		case 'V':
-			e.ViewCharacter()
+			e.viewPlayer()
 		case 'T':
 			e.lootTake()
 		case 'D':

@@ -204,7 +204,7 @@ func (e *Engine) PartyMenu() {
 			}
 		case 'V':
 			if enabled[menuView] {
-				e.ViewCharacter()
+				e.viewPlayer()
 			}
 		case 'A':
 			if enabled[menuAdd] {
