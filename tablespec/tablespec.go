@@ -97,6 +97,18 @@ var Tables = []Table{
 	{"thiefRaceData", 16160, 64, Signed, "Thief skill adjustment by race: entry race*8 + skill.", 0},
 	{"thiefDexData", 16179, 130, Signed, "Thief skill adjustment by dexterity: entry dex*5 + skill (1..5).", 0},
 
+	// The adventuring screen.
+	{"skyColours", 2698, 16, Bytes, "The sky colour by the area's sky word.", 0},
+	{"viewFrameTop", 3014, 15, Bytes, "Symbols of the 3D view frame's top row, columns 2..14.", 0},
+	{"viewFrameBottom", 3027, 15, Bytes, "Symbols of the 3D view frame's bottom row, columns 2..14.", 0},
+	{"viewFrameLeft", 3105, 15, Bytes, "Symbols of the 3D view frame's left column, rows 2..14.", 0},
+	{"viewFrameRight", 3118, 15, Bytes, "Symbols of the 3D view frame's right column, rows 2..14.", 0},
+	{"viewDivider", 3066, 17, Bytes, "Symbols of the column-16 rule beside the view, rows 0..16.", 0},
+	{"directionNames", 9538, 8, String(3), "Compass point names by facing 0..7.", 0},
+	{"stepX", 9878, 8, Signed, "Column step by facing 0..7.", 0},
+	{"stepY", 9887, 8, Signed, "Row step by facing 0..7.", 0},
+	{"clockLimits", 15916, 7, Words, "Clock carries: minutes per ten, tens per hour, hours per day ... (area words 198..204).", 0},
+
 	// Affects.
 	{"helplessAffectData", 10187, 5, Bytes, "Entries 1..4: the affects that leave a character helpless.", 0},
 

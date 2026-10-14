@@ -130,6 +130,8 @@ const (
 // adventuring (or a loaded game starts play).
 func (e *Engine) PartyMenu() {
 	e.symDAX = "8X8D" + itoa(int(e.gameArea))
+	stateBefore := e.gameState
+	e.gameState = stateStartMenu
 	var enabled [len(partyMenuEntries)]bool
 	enabled[menuCreate], enabled[menuAdd], enabled[menuLoad], enabled[menuExit] = true, true, true, true
 	redraw := true
@@ -232,8 +234,19 @@ func (e *Engine) PartyMenu() {
 			}
 		case 'B':
 			if enabled[menuBegin] && (len(e.party) > 0 && !e.gameFinished() || e.demo) {
-				e.beginFlag = 4
+				e.gameState = stateBefore
+				if !e.loadedGame && e.mapMode != mapPicture {
+					if e.gameState == stateWilderness {
+						e.drawWildernessFrame()
+					} else {
+						e.drawAdventureFrame()
+					}
+					e.playerSummary(e.selected())
+				} else if wordAt(e.area, 2*areaWordLastECL) == 0 {
+					e.drawAdventureFrame()
+				}
 				e.ClearRow24()
+				putWord(e.game, trainingMaskByte, 0)
 				return
 			}
 		case 'E':

@@ -224,6 +224,36 @@ var thiefRaceData = [64]int8{60, 100, 77, 75, 94, 77, 35, 99, 65, 0, 10, 15, 0, 
 // Thief skill adjustment by dexterity: entry dex*5 + skill (1..5).
 var thiefDexData = [130]int8{0, 5, 10, 5, 0, 0, 0, 5, 10, 5, 5, 10, -15, 0, 10, 0, 0, 0, 5, 0, 0, 0, 5, 5, 5, 10, 15, 5, -15, -5, -5, 5, 5, 0, 0, 5, 5, -10, 0, 0, 0, 0, 0, 0, 0, 0, -15, -10, -10, -20, -10, -19, -5, -10, -15, -5, -5, 0, -5, -10, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 5, 10, 0, 5, 5, 10, 15, 5, 10, 10, 15, 20, 10, 12, 12, 8, 8, 18, 17, 99, 0, 3, 18, 3, 18, 3, 17, 12, 19, 3, 16, 3, 3, 18, 16, 75, 0, 8, 18, 3, 18, 7, 19, 6}
 
+// The sky colour by the area's sky word.
+var skyColours = [16]byte{0, 15, 4, 11, 13, 2, 9, 14, 0, 15, 4, 11, 13, 2, 9, 14}
+
+// Symbols of the 3D view frame's top row, columns 2..14.
+var viewFrameTop = [15]byte{4, 3, 0, 6, 1, 1, 1, 1, 8, 1, 1, 4, 1, 1, 2}
+
+// Symbols of the 3D view frame's bottom row, columns 2..14.
+var viewFrameBottom = [15]byte{1, 2, 1, 4, 1, 1, 1, 1, 1, 1, 8, 4, 1, 1, 3}
+
+// Symbols of the 3D view frame's left column, rows 2..14.
+var viewFrameLeft = [15]byte{5, 2, 0, 2, 7, 2, 2, 2, 2, 5, 2, 2, 2, 2, 1}
+
+// Symbols of the 3D view frame's right column, rows 2..14.
+var viewFrameRight = [15]byte{2, 1, 2, 5, 9, 2, 2, 2, 7, 5, 2, 2, 2, 2, 3}
+
+// Symbols of the column-16 rule beside the view, rows 0..16.
+var viewDivider = [17]byte{0, 7, 5, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 5, 2, 9, 4}
+
+// Compass point names by facing 0..7.
+var directionNames = [8]string{"N", "NE", "E", "SE", "S", "SW", "W", "NW"}
+
+// Column step by facing 0..7.
+var stepX = [8]int8{0, 1, 1, 1, 0, -1, -1, -1}
+
+// Row step by facing 0..7.
+var stepY = [8]int8{-1, -1, 0, 1, 1, 1, 0, -1}
+
+// Clock carries: minutes per ten, tens per hour, hours per day ... (area words 198..204).
+var clockLimits = [7]uint16{10, 10, 6, 24, 30, 12, 256}
+
 // Entries 1..4: the affects that leave a character helpless.
 var helplessAffectData = [5]byte{1, 51, 52, 53, 31}
 

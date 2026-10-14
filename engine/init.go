@@ -26,6 +26,7 @@ func (e *Engine) Init() {
 	e.mapPairB[1], e.mapPairB[2] = -1, -1 // DS:6AB0+4i
 	e.es.v6F69, e.es.v6F68 = 0xE8, 0xDB   // DS:6F69/6F68
 	e.symPrev = e.symDAX                  // DS:5377
+	e.newGameState()
 
 	e.font = e.L.Block(e.symDAX, 201) // 0709:017C
 	e.ClearRow24()
@@ -38,6 +39,10 @@ func (e *Engine) Init() {
 		e.LoadIconPic("COMSPR", i, i+0xD) // ovr33:01C8
 	}
 	e.LoadIconPic("COMSPR", 0x19, 0x19)
+	if e.Cfg.Graphics == 'E' {
+		e.videoMode = 1 // b5000
+		e.loadSkyPictures()
+	}
 	e.items = e.readItems() // ITEMS file, 2-byte header then 0x810 bytes → DS:5582
 	e.ClearRow24()
 	e.Randomize()      // 0AF8:1247
@@ -67,3 +72,66 @@ func (e *Engine) InitGraphics() {
 	e.LoadSymbolSet(4, 202)
 	e.LoadSymbolSet(0, 203)
 }
+
+// newGameState = O060:06E5: the state of a fresh game (also after the
+// party is lost).
+func (e *Engine) newGameState() {
+	s := &e.sc
+	for i := range e.area {
+		e.area[i] = 0
+	}
+	putWord(e.area, 2*areaWordFreeSteps, 1)
+	putWord(e.area, 2*areaWordLastECL, 0)
+	for i := range e.game {
+		e.game[i] = 0
+	}
+	for i := range e.aux {
+		e.aux[i] = 0
+	}
+	s.code = [scriptCodeSize]byte{}
+	s.posX, s.posY, s.facing = startX, startY, dirEast
+	s.wallHere, s.cellHere = 0, 0
+	e.canBash, e.canPick, e.canKnock = true, true, true
+	for k := 2; k <= 3; k++ {
+		e.mapPairA[k-1], e.mapPairB[k-1] = -1, -1
+	}
+	e.debug = false
+	e.slowText = true
+	e.loadedGame = false
+	e.party, e.partySel = nil, 0
+	s.pc = scriptCodeFirst
+	e.gameSpeed = defaultGameSpeed
+	e.gameArea, e.gameAreaBackup = 1, 1
+	e.gs.overhead = false
+	putWord(e.game, 2*cvPartyCount, 0)
+	e.listTop = 0
+	s.lookSave = 0
+	s.inSpecial = false
+	e.textNewLine = false
+	s.pictureOn = false
+	e.partyDead = false
+	s.spriteOn = false
+	e.spriteShown = false
+	e.picFrame = 0
+	e.mapMode = noPicture
+	e.spriteFrame = noPicture
+	e.textWaiting = false
+	s.look2, s.look1 = lookStart2, lookStart1
+	s.inEncounter = false
+	e.areaKind = noPicture
+	e.silentTraining = false
+	e.ClearRow24()
+	e.fromCommandBar = true
+	e.gameState = stateDungeon
+	e.lastGameState = stateStartMenu
+	e.gameWon = false
+}
+
+// Where a new party wakes up, and the start's look values.
+const (
+	startX           = 7
+	startY           = 13
+	defaultGameSpeed = 4
+	lookStart1       = 219
+	lookStart2       = 232
+)

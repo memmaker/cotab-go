@@ -950,7 +950,7 @@ func (e *Engine) subRest(count, unit int) {
 		}
 		for j := k; j >= unit+1; j-- {
 			r[j]--
-			r[j-1] += clockLimits[j-1]
+			r[j-1] += int(clockLimits[j-1])
 		}
 	}
 	r[unit] -= count
@@ -961,13 +961,13 @@ func (e *Engine) subRest(count, unit int) {
 func (e *Engine) normalizeRest() {
 	r := &e.camp.rest
 	for i := 0; i < 5; i++ {
-		if r[i] >= clockLimits[i] {
-			r[i+1] += r[i] / clockLimits[i]
-			r[i] %= clockLimits[i]
+		if r[i] >= int(clockLimits[i]) {
+			r[i+1] += r[i] / int(clockLimits[i])
+			r[i] %= int(clockLimits[i])
 		}
 	}
 	if r[5] > 0 {
-		r[4] += clockLimits[4] * r[5]
+		r[4] += int(clockLimits[4]) * r[5]
 		r[5] = 0
 		if r[4] > 0x63 {
 			r[4] = 0x63

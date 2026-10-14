@@ -124,6 +124,10 @@ func (e *Engine) SetSkyColours(a, b, c, d byte) { e.gs.sky = [4]byte{a, b, c, d}
 // drawSky = ovr30:0174: the four colour bands behind the walls (0464:2632
 // fills x=2 cells, 11 cells wide, between the given pixel rows).
 func (e *Engine) drawSky() {
+	if e.videoMode != 0 {
+		e.drawSkyEGA()
+		return
+	}
 	for i, band := range [4][2]int{{0x10, 0x2B}, {0x3B, 1}, {0x3C, 2}, {0x3E, 0x2A}} {
 		e.FillRect(viewX-1, band[0], 0xB, band[1], e.gs.sky[i])
 	}
@@ -347,9 +351,6 @@ func (e *Engine) LoadWalldef(block, slot int) {
 		} else {
 			e.LoadSymbolSet(s, block)
 		}
-	}
-	if block == 0xA { // ovr30:1061: block 10 is recorded as 0 (quirk)
-		block = 0
 	}
 	e.mapPairA[slot-1], e.mapPairB[slot-1] = block, slot
 }

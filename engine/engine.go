@@ -58,6 +58,30 @@ type Engine struct {
 	gameAreaBackup  byte  // game_area_backup_5C09
 	lastGameState   byte  // DS:4FD4
 	sc              script
+	partyDead       bool       // b4FE0: everyone is down; back to the party menu
+	viewReset       bool       // b759A: the view must be drawn from scratch
+	videoMode       byte       // b5000: 0 EGA
+	canBash         bool       // b75A2: the locked door may still be bashed
+	canPick         bool       // b75A3
+	canKnock        bool       // b75A4
+	fromCommandBar  bool       // b72AE: a menu was opened from the command bar
+	cheatArg        bool       // ParamStr(2) gave the map cheat
+	loadingMessage  bool       // b4FD8: show "Loading...Please Wait"
+	spriteShown     bool       // b7292
+	bigPic          *dax.Image // p72A6
+	skySun          *dax.Image // l723A
+	skyMoon         *dax.Image // l723E
+	skyFloor        *dax.Image // l7242
+	shopFrame       bool       // b8B6E
+	shopHead        byte       // b4FDE: the shop keeper's portrait
+	shopBody        byte       // b4FDF
+	treasureCoins   [7]int32   // a6F8A: the treasure's money
+	treasureItems   []*Item    // p6FA6: the treasure's items
+	textNewLine     bool       // b8B7B
+	picFrame        byte       // b729B
+	spriteFrame     byte       // b72A5
+	textWaiting     bool       // b5D0B
+	forcePicture    bool       // b4FD9: the encounter picture shows even during ENCOUNTER
 	gameSpeed       byte  // game_speed_var_4FC2
 	freeTraining    bool  // b75A1: the 'J' cheat of the party menu
 	silentTraining  bool  // b4FE1: training without questions (character creation)
@@ -242,7 +266,7 @@ func (e *Engine) Run() {
 		if !e.demo {
 			e.PartyMenu() // startGameMenu
 		}
-		e.GameLoop()
+		e.Adventure()
 		if e.demo {
 			e.Title()
 			e.ClearKeyboard()
@@ -396,5 +420,5 @@ func (e *Engine) idle() {
 func (e *Engine) Play() {
 	e.gameArea = 2
 	e.PartyMenu()
-	e.GameLoop()
+	e.Adventure()
 }

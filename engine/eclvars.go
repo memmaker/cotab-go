@@ -1,5 +1,10 @@
 package engine
 
+import (
+	"fmt"
+	"os"
+)
+
 // Script variables (O04C:0D52 setVar, 0F16 getVar and the character values
 // behind area2 addresses, 07E4 / 0B4F).
 
@@ -272,6 +277,9 @@ func (e *Engine) getVar(a uint16) uint16 {
 // setVar = O04C:0D52.
 func (e *Engine) setVar(a, val uint16) {
 	s := &e.sc
+	if scriptTrace {
+		fmt.Fprintf(os.Stderr, "    set %d = %d\n", a, val)
+	}
 	switch addrKindOf(a) {
 	case addrArea:
 		w := a - scriptAreaFirst
