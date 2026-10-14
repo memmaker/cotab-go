@@ -106,8 +106,7 @@ func (e *Engine) flyMissile(x1, y1, x2, y2, frames, delay int) {
 		return
 	}
 	path = append(path, 8) // the rest of the 0x94 byte buffer
-	ddx := e.X.Bytes(0x2736, 9)
-	ddy := e.X.Bytes(0x273F, 9)
+	ddx, ddy := stepBytes(stepX), stepBytes(stepY)
 	dX, dY := x2-x1, y2-y1
 	var done bool
 	var cx, cy int

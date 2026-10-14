@@ -281,8 +281,7 @@ func (e *Engine) o23_1B11() {
 	cl.Num = byte(n)
 	cl.X = byte(e.tgtX)
 	cl.Y = byte(e.tgtY)
-	dx := e.X.Bytes(0x2736, 9)
-	dy := e.X.Bytes(0x273F, 9)
+	dx, dy := stepBytes(stepX), stepBytes(stepY)
 	var who [5]byte
 	for k := 1; k <= 4; k++ {
 		dir := int(e.X.Bytes(0x290D+k, 1)[0])

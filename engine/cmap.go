@@ -57,13 +57,13 @@ func (e *Engine) footprint(size, part int) (int, int, bool) {
 	if size == 0 {
 		return 0, 0, false
 	}
-	b := e.X.Bytes(0x2844+size*8+part*2, 2)
+	b := []byte{byte(footprints[size][part*2]), byte(footprints[size][part*2+1])}
 	return int(int8(b[0])), int(int8(b[1])), int8(b[0]) >= 0
 }
 
 // groundInfo = DS:2744: 4 bytes per ground type: move cost (0xFF wall),
 // view height, blocking height, tile.
-func (e *Engine) groundInfo(g byte) []byte { return e.X.Bytes(0x2744+int(g)*4, 4) }
+func (e *Engine) groundInfo(g byte) []byte { return groundInfo[g%64][:] }
 
 // tileOf: the original indexes the 50-wide grid flat, so a square just off a
 // row reads its neighbour.
@@ -475,7 +475,7 @@ func (e *Engine) recentre(x, y, r int) bool {
 // combatCentre = ovr32:0996 (x, y, margin, dir): bring the square next to
 // (x,y) in direction dir (8 = itself) into view and draw the cursor there.
 func (e *Engine) combatCentre(x, y, r, dir int) {
-	dd := e.X.Bytes(0x2736, 18)
+	dd := stepTable()
 	nx, ny := x+int(int8(dd[dir])), y+int(int8(dd[9+dir]))
 	if e.recentre(nx, ny, r) {
 		for i := 1; i <= e.ncomb; i++ {
@@ -533,7 +533,7 @@ func (e *Engine) groundAt(c *Character, dir int) (byte, byte) {
 	gr := byte(0x17)
 	best := byte(1)
 	idx := e.combatIndex(c)
-	dd := e.X.Bytes(0x2736, 18)
+	dd := stepTable()
 	for part := 0; part <= 3; part++ {
 		dx, dy, ok := e.footprint(int(e.cpos[idx].size), part)
 		if !ok {
@@ -696,7 +696,7 @@ func (e *Engine) inArc(x1, y1, x2, y2, dir int) bool {
 	if dir == 0xFF {
 		dir = 8
 	}
-	dd := e.X.Bytes(0x2736, 18)
+	dd := stepTable()
 	nx, ny := x1+int(int8(dd[dir])), y1+int(int8(dd[9+dir]))
 	if (x1 == x2 && y1 == y2) || (nx == x2 && ny == y2) {
 		return true

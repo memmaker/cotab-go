@@ -106,7 +106,6 @@ type Engine struct {
 	debug      bool         // DS:470C
 
 	game, area, aux, ecl []byte // DS:49D6, 49D2, 49DA, 49DE records
-	posX, posY, facing   int    // DS:6AAD, 6AAE, 6AAF
 	eclPC                int    // DS:49ED
 	viewMode             int    // DS:49FA (1 = 3D view)
 	prevViewMode         int    // DS:49F9

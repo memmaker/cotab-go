@@ -40,13 +40,13 @@ func (e *Engine) walkOp(op byte) {
 
 // startWalk sets off for (tx, ty); false when no known way leads there.
 func (e *Engine) startWalk(tx, ty int) bool {
-	if e.posX == tx && e.posY == ty {
+	if e.partyX() == tx && e.partyY() == ty {
 		return true // there already
 	}
 	if e.viewMode != 1 || e.walkDir(tx, ty) < 0 {
 		return false
 	}
-	e.ext.walk = &walkState{tx: tx, ty: ty, area: e.areaKey(), ex: e.posX, ey: e.posY, ef: e.facing}
+	e.ext.walk = &walkState{tx: tx, ty: ty, area: e.areaKey(), ex: e.partyX(), ey: e.partyY(), ef: e.partyFacing()}
 	return true
 }
 
@@ -63,8 +63,8 @@ func (e *Engine) walkFeed() {
 		return
 	}
 	if !e.ext.inCommand || e.ext.fullMap || w.event || e.viewMode != 1 || e.areaKey() != w.area ||
-		e.posX != w.ex || e.posY != w.ey || e.facing != w.ef ||
-		e.posX == w.tx && e.posY == w.ty {
+		e.partyX() != w.ex || e.partyY() != w.ey || e.partyFacing() != w.ef ||
+		e.partyX() == w.tx && e.partyY() == w.ty {
 		stop()
 		return
 	}
@@ -78,13 +78,13 @@ func (e *Engine) walkFeed() {
 	}
 	w.last = time.Now()
 	k := uint16(0x4800) // Up: a step ahead
-	switch (d - e.facing + 8) % 8 {
+	switch (d - e.partyFacing() + 8) % 8 {
 	case 0:
-		w.ex, w.ey = e.posX+dirDX[d], e.posY+dirDY[d]
+		w.ex, w.ey = e.partyX()+dirDX[d], e.partyY()+dirDY[d]
 	case 6:
-		k, w.ef = 0x4B00, (e.facing+6)%8 // Left
+		k, w.ef = 0x4B00, (e.partyFacing()+6)%8 // Left
 	default:
-		k, w.ef = 0x4D00, (e.facing+2)%8 // Right (twice to turn round)
+		k, w.ef = 0x4D00, (e.partyFacing()+2)%8 // Right (twice to turn round)
 	}
 	e.ext.ahead = append(e.ext.ahead, k)
 }
@@ -93,14 +93,14 @@ func (e *Engine) walkFeed() {
 // way from the party to (tx, ty) through open sides, or -1. Doors that are
 // locked count as walls; the map shows every wall, so does the way.
 func (e *Engine) walkDir(tx, ty int) int {
-	if !onMap(e.posX, e.posY) || !onMap(tx, ty) {
+	if !onMap(e.partyX(), e.partyY()) || !onMap(tx, ty) {
 		return -1
 	}
 	from := [256]int{}
 	for i := range from {
 		from[i] = -1
 	}
-	start, goal := e.posY<<4|e.posX, ty<<4|tx
+	start, goal := e.partyY()<<4|e.partyX(), ty<<4|tx
 	from[goal] = goal
 	queue := []int{goal} // from the target, so from[] points the way back
 	for len(queue) > 0 {
@@ -118,7 +118,7 @@ func (e *Engine) walkDir(tx, ty int) int {
 			if n == start {
 				nxt := s
 				for d := range dirDX {
-					if d%2 == 0 && e.posX+dirDX[d] == nxt&15 && e.posY+dirDY[d] == nxt>>4 {
+					if d%2 == 0 && e.partyX()+dirDX[d] == nxt&15 && e.partyY()+dirDY[d] == nxt>>4 {
 						return d
 					}
 				}

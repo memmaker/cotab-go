@@ -206,7 +206,7 @@ func (e *Engine) FullMap() {
 		restore()
 		e.ext.inCommand, e.menuSel, e.menuExtra, e.ext.fullMap = inCommand, sel, extra, false
 	}()
-	cx, cy := e.posX, e.posY
+	cx, cy := e.partyX(), e.partyY()
 	if !onMap(cx, cy) {
 		cx, cy = 0, 0
 	}
@@ -355,7 +355,7 @@ func (e *Engine) drawFullMap(m map[int]mapLabel, cx, cy int) ([]string, map[stri
 				e.S.Fill(px, py, px+fmCell, py+fmCell, 1)
 			}
 			e.mapWalls(x, y, px, py, fmCell, s)
-			if l, ok := m[y<<4|x]; ok && (x != e.posX || y != e.posY) {
+			if l, ok := m[y<<4|x]; ok && (x != e.partyX() || y != e.partyY()) {
 				g, _ := e.glyph(letter[l.text], true)
 				for r := 0; r < 8; r++ {
 					for b := 0; b < 8; b++ {
@@ -414,10 +414,10 @@ func (e *Engine) mapWalls(x, y, px, py, size int, s uint8) {
 // mapParty draws the party on a map at (ox, oy): a dot of 2r-1 pixels with
 // a tick towards the facing.
 func (e *Engine) mapParty(ox, oy, size, r int) {
-	if !onMap(e.posX, e.posY) {
+	if !onMap(e.partyX(), e.partyY()) {
 		return
 	}
-	cx, cy := ox+e.posX*size+size/2, oy+e.posY*size+size/2
+	cx, cy := ox+e.partyX()*size+size/2, oy+e.partyY()*size+size/2
 	e.S.Fill(cx-r+1, cy-r+1, cx+r, cy+r, 12)
 	for i := r + 1; i <= r+2; i++ {
 		tx, ty := cx+i*dirDX[e.viewFacing()], cy+i*dirDY[e.viewFacing()]

@@ -71,7 +71,7 @@ func (e *Engine) drawAreaMapParty() {
 		y = 4
 	}
 	c := e.areaIconTick
-	e.drawIcon(int(v), int(y), byte(e.facing), c%2, c/2+9)
+	e.drawIcon(int(v), int(y), byte(e.partyFacing()), c%2, c/2+9)
 	e.areaIconTick = (c + 1) % 6
 	e.Flip()
 }

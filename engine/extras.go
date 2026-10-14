@@ -157,16 +157,16 @@ func (e *Engine) markSeen() {
 		m = &[256]uint8{}
 		e.ext.seen[k] = m
 	}
-	x, y := e.posX, e.posY
+	x, y := e.partyX(), e.partyY()
 	if !onMap(x, y) {
 		return
 	}
 	m[y<<4|x] = seenVisited
 	for i := 0; i < 3; i++ {
-		if e.WallAt(x, y, e.facing) != 0 {
+		if e.WallAt(x, y, e.partyFacing()) != 0 {
 			break
 		}
-		x, y = x+dirDX[e.facing], y+dirDY[e.facing]
+		x, y = x+dirDX[e.partyFacing()], y+dirDY[e.partyFacing()]
 		if !onMap(x, y) {
 			break
 		}

@@ -343,7 +343,7 @@ func (e *Engine) fxHaste() { e.removeAffectFromSide(0x2A, int(e.selected().Side)
 func (e *Engine) strikeSquare(x, y, dmg, saveType int) bool {
 	blocked := false
 	who, ground := e.mapAt(x, y)
-	if ground > 0 && e.X.Bytes(0x2744+int(ground)*4, 1)[0] == 0xFF {
+	if ground > 0 && groundInfo[ground%64][0] == 0xFF {
 		blocked = true
 	}
 	if who > 0 {
@@ -392,7 +392,7 @@ func (e *Engine) boltPath(reach, dmg, saveType, bounce int) {
 					if who > 0 && who != prevWho {
 						break
 					}
-					if ground == 0 || e.X.Bytes(0x2744+int(ground)*4, 1)[0] > 1 {
+					if ground == 0 || groundInfo[ground%64][0] > 1 {
 						break
 					}
 					if byte(l.steps) >= r {

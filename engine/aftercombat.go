@@ -365,7 +365,7 @@ func (e *Engine) lootMenu() {
 			}
 			e.DisplayTextBlock(1, 0x11, 0x26, 0x16, 0xA, true, "There is still treasure left.  ")
 			e.DisplayTextBlock(1, 0x11, 0x26, 0x16, 0xF, false, "Do you want to go back and claim your treasure?")
-			if e.MenuInput(false, 0xF, 0xA, 0xD, "~Yes ~No", "") == 1 {
+			if e.scriptMenu("", "~Yes ~No", colourLightMagenta, colourGreen, colourWhite, false, false) == 1 {
 				return
 			}
 			e.ClearBox(1, 0x11, 0x26, 0x16)

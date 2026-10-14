@@ -20,7 +20,7 @@ while i < len(keys):
         toks.append(keys[i]); i += 1
 
 qmp = {'^': 'up', 'v': 'down', '<': 'left', '>': 'right', '|': 'ret', '%e': 'esc', ' ': 'spc'}
-steps = ['wait:8', 'key:p', 'wait:3']
+steps = ['wait:8', 'seed:' + os.environ.get('COTAB_SEED', '1'), 'key:p', 'wait:3']
 for n, t in enumerate(toks, 1):
     if t != '_':
         steps.append('key:' + qmp.get(t, t.lower()))

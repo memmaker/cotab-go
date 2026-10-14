@@ -41,7 +41,7 @@ func (e *Engine) Redraw() {
 	}
 	switch {
 	case mode == 1:
-		e.es.cell = e.MapCell(e.posX, e.posY)
+		e.es.cell = e.MapCell(e.partyX(), e.partyY())
 		sky := wordAt(e.area, 0x1FA)
 		if e.es.cell > 0x7F {
 			sky = wordAt(e.area, 0x1FC)
@@ -57,7 +57,7 @@ func (e *Engine) Redraw() {
 		if wordAt(e.area, 0x1F6) != 0 {
 			e.gs.overhead = false
 		}
-		e.Draw3DView(e.posX, e.posY, e.viewFacing())
+		e.Draw3DView(e.partyX(), e.partyY(), e.viewFacing())
 		e.viewDrawn()
 	case mode >= 2 && mode <= 4:
 		// ovr27:0250/0272: byte locals, signed clamps
@@ -125,7 +125,7 @@ func pad2(n int) string {
 // StatusLine = 00BA:290B: "x,y dir hh:mm" (+ camping/search) under the
 // party list.
 func (e *Engine) StatusLine() {
-	x, y := e.posX, e.posY
+	x, y := e.partyX(), e.partyY()
 	if e.viewMode > 1 {
 		x, y = int(e.area[0x186]), int(e.area[0x188])
 		if e.viewMode == 3 {

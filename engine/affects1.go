@@ -504,7 +504,7 @@ func (e *Engine) o13_0CC3(c *Character, a *Affect, flag byte) {
 	}
 	cl := e.clouds[ci]
 	e.BottomMessage("The air clears a little...")
-	ddx, ddy := e.X.Bytes(0x2736, 9), e.X.Bytes(0x273F, 9)
+	ddx, ddy := stepBytes(stepX), stepBytes(stepY)
 	square := func(cl *cloud, k int) (x, y byte) {
 		idx := e.X.Bytes(0x290D+k, 1)[0]
 		return byte(int(int8(ddx[idx])) + int(cl.X)), byte(int(int8(ddy[idx])) + int(cl.Y))

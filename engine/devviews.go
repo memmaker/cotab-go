@@ -14,12 +14,12 @@ func (e *Engine) DevViews() []DevView {
 		d := d
 		v = append(v, DevView{"nesw"[d/2 : d/2+1], func() {
 			e.ClearCells(0, 0, 39, 24)
-			e.Draw3DView(e.posX, e.posY, d)
+			e.Draw3DView(e.partyX(), e.partyY(), d)
 		}})
 	}
 	v = append(v, DevView{"overhead", func() {
 		e.gs.overhead = true
-		e.Draw3DView(e.posX, e.posY, e.facing)
+		e.Draw3DView(e.partyX(), e.partyY(), e.partyFacing())
 		e.gs.overhead = false
 	}})
 	return v

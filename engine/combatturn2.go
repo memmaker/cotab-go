@@ -23,7 +23,7 @@ func (e *Engine) spellData(spell, k int) byte { return e.X.Bytes(0x3200+(spell&0
 // under half its hit points), or the first body lying there when no one
 // with fewer than 8 hit points is.
 func (e *Engine) o14_1BF8(c *Character, who **Character) bool {
-	dxs, dys := e.X.Bytes(0x2736, 9), e.X.Bytes(0x273F, 9)
+	dxs, dys := stepBytes(stepX), stepBytes(stepY)
 	var best *Character
 	bestHP, body := byte(0xFF), 0
 	for dir := 0; dir <= 8; dir++ {
@@ -404,7 +404,7 @@ func (e *Engine) aimConfirm(c, cand *Character, mode int, found *bool, t *aimTar
 // var t): move a cursor over the map with the arrow keys; Enter or T takes
 // the square (and who stands on it), Esc or E gives up.
 func (e *Engine) aimManual(c, cand *Character, rng, showRange, allowGround int, found *bool, t *aimTarget) {
-	dxs, dys := e.X.Bytes(0x2736, 9), e.X.Bytes(0x273F, 9)
+	dxs, dys := stepBytes(stepX), stepBytes(stepY)
 	*t = aimTarget{}
 	x, y := int8(e.combatX(cand)), int8(e.combatY(cand))
 	key, dir := byte(0x20), 8

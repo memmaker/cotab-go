@@ -166,8 +166,8 @@ func (e *Engine) o14_0712(c *Character, dir int) {
 	cb.Moves -= cost
 	idx := e.combatIndex(c)
 	ox, oy := e.cpos[idx].x, e.cpos[idx].y
-	nx := ox + byte(int8(e.X.Bytes(0x2736+dir, 1)[0]))
-	ny := oy + byte(int8(e.X.Bytes(0x273F+dir, 1)[0]))
+	nx := ox + byte(stepX[dir])
+	ny := oy + byte(stepY[dir])
 	margin := 1
 	if c.Auto != 0 {
 		margin = 3
@@ -199,7 +199,7 @@ func (e *Engine) o14_08B2(c *Character, dir int) {
 	for i := 1; i <= n; i++ {
 		lst[i] = e.targets[i]
 	}
-	dx, dy := byte(int8(e.X.Bytes(0x2736+dir, 1)[0])), byte(int8(e.X.Bytes(0x273F+dir, 1)[0]))
+	dx, dy := byte(stepX[dir]), byte(stepY[dir])
 	e.cpos[idx].x += dx
 	e.cpos[idx].y += dy
 	m := e.nearEnemies(c, 1)

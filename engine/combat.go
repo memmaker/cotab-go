@@ -289,7 +289,7 @@ func (e *Engine) moveAttack(c *Character) (done bool) {
 				}
 				return 0
 			}
-			dxs, dys := e.X.Bytes(0x2736, 8), e.X.Bytes(0x273F, 8)
+			dxs, dys := stepBytes(stepX), stepBytes(stepY)
 			for d := 0; d < 8; d++ {
 				if int(int8(dxs[d])) == dx && int(int8(dys[d])) == dy {
 					return stepKeys[d]
@@ -396,7 +396,7 @@ func (e *Engine) moveReach(c *Character) map[[2]int][]int {
 	}
 	best := map[[2]int]node{{int(ox), int(oy)}: {left: int(c.Combat.Moves)}}
 	queue := [][2]int{{int(ox), int(oy)}}
-	dd := e.X.Bytes(0x2736, 18)
+	dd := stepTable()
 	for len(queue) > 0 {
 		at := queue[0]
 		queue = queue[1:]

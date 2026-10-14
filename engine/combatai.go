@@ -203,7 +203,7 @@ func (e *Engine) aiCanStep(c *Character, i, dir int) (ok, blocked bool) {
 	if who != 0 {
 		return false, false
 	}
-	gc := e.X.Bytes(0x2744+int(ground)*4, 1)[0]
+	gc := groundInfo[ground%64][0]
 	if gc >= ci.Moves {
 		return false, false
 	}
@@ -241,7 +241,7 @@ func (e *Engine) aiMoveStep(c *Character) {
 		dir = e.o14_263D(c, ci.Target)
 	} else {
 		ci.Pattern = byte(e.Dice(1, 2))
-		f := int(e.facing)
+		f := int(e.partyFacing())
 		dir = f - ((f+2)%4)>>1
 		if c.Side == 0 {
 			dir += 4

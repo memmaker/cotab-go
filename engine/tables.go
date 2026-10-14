@@ -245,11 +245,127 @@ var viewDivider = [17]byte{0, 7, 5, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 5, 2, 9, 4}
 // Compass point names by facing 0..7.
 var directionNames = [8]string{"N", "NE", "E", "SE", "S", "SW", "W", "NW"}
 
-// Column step by facing 0..7.
-var stepX = [8]int8{0, 1, 1, 1, 0, -1, -1, -1}
+// Column step by facing 0..7 (8: none).
+var stepX = [9]int8{0, 1, 1, 1, 0, -1, -1, -1, 0}
 
-// Row step by facing 0..7.
-var stepY = [8]int8{-1, -1, 0, 1, 1, 1, 0, -1}
+// Row step by facing 0..7 (8: none).
+var stepY = [9]int8{-1, -1, 0, 1, 1, 1, 0, -1, 0}
+
+// Combat ground tiles: move cost (255 blocks), two flags and the tile's kind.
+var groundInfo = [64][4]byte{
+	{1, 0, 255, 0},
+	{255, 1, 2, 0},
+	{255, 1, 2, 1},
+	{255, 1, 2, 2},
+	{255, 1, 2, 3},
+	{1, 1, 0, 4},
+	{255, 1, 2, 5},
+	{255, 1, 2, 6},
+	{255, 1, 2, 7},
+	{1, 1, 0, 8},
+	{255, 1, 2, 9},
+	{1, 1, 0, 10},
+	{255, 1, 2, 11},
+	{1, 1, 0, 12},
+	{255, 1, 2, 13},
+	{1, 1, 0, 14},
+	{255, 1, 2, 15},
+	{1, 1, 0, 16},
+	{255, 1, 2, 17},
+	{255, 1, 2, 18},
+	{255, 1, 2, 19},
+	{255, 1, 2, 20},
+	{255, 1, 2, 21},
+	{1, 1, 0, 22},
+	{1, 1, 0, 23},
+	{255, 1, 2, 24},
+	{2, 2, 0, 34},
+	{1, 1, 0, 35},
+	{1, 1, 0, 36},
+	{1, 1, 0, 37},
+	{1, 1, 0, 38},
+	{1, 1, 0, 39},
+	{255, 1, 2, 0},
+	{255, 1, 2, 1},
+	{255, 1, 2, 2},
+	{255, 1, 2, 3},
+	{255, 1, 2, 4},
+	{1, 1, 0, 5},
+	{1, 1, 0, 6},
+	{1, 1, 0, 7},
+	{1, 1, 0, 8},
+	{1, 1, 0, 9},
+	{255, 1, 2, 10},
+	{255, 1, 2, 11},
+	{1, 1, 0, 12},
+	{1, 1, 0, 13},
+	{1, 1, 0, 14},
+	{1, 1, 0, 15},
+	{2, 1, 0, 16},
+	{2, 1, 0, 17},
+	{2, 1, 0, 18},
+	{2, 1, 0, 19},
+	{2, 1, 0, 20},
+	{2, 1, 0, 21},
+	{1, 1, 0, 22},
+	{1, 1, 0, 23},
+	{1, 1, 0, 24},
+	{1, 1, 0, 25},
+	{2, 1, 0, 26},
+	{2, 1, 0, 27},
+	{4, 0, 0, 28},
+	{4, 0, 0, 29},
+	{4, 0, 0, 30},
+	{4, 0, 0, 31},
+}
+
+// Squares a combatant of size 0..4 covers: column and row offsets of its four parts (-1 none).
+var footprints = [5][8]int8{
+	{1, 1, 0, 32, 1, 1, 0, 33},
+	{0, 0, -1, -1, -1, -1, -1, -1},
+	{0, 0, 0, 1, -1, -1, -1, -1},
+	{0, 0, 1, 0, -1, -1, -1, -1},
+	{0, 0, 1, 0, 0, 1, 1, 1},
+}
+
+// Formation: the side each of the four teams of a facing looks to.
+var teamSides = [4][4]byte{
+	{8, 4, 6, 2},
+	{8, 6, 4, 0},
+	{8, 0, 6, 2},
+	{8, 2, 0, 4},
+}
+
+// Formation: each team's direction (times 2) for the facing.
+var teamDirs = [4][4]byte{
+	{0, 0, 2, 6},
+	{2, 2, 0, 4},
+	{4, 4, 2, 6},
+	{6, 6, 4, 0},
+}
+
+// Combat facing for the party's map facing / 2.
+var combatFacings = [4]byte{7, 2, 3, 6}
+
+// Formation start column: first team / other teams, by direction.
+var formationStartX = [2][4]int8{
+	{5, 4, 5, 6},
+	{3, 8, 7, 2},
+}
+
+// Formation start row: first team / other teams, by direction.
+var formationStartY = [2][4]int8{
+	{3, 2, 2, 3},
+	{0, 2, 5, 3},
+}
+
+// Formation slots: per direction, rows 0..5 of first and last column.
+var formationRows = [4][12]int8{
+	{1, 0, 1, 0, 1, 0, 2, 9, 3, 10, 4, 10},
+	{0, 2, 0, 3, 1, 4, 2, 5, 3, 6, 4, 7},
+	{0, 6, 0, 7, 1, 8, 1, 0, 1, 0, 1, 0},
+	{3, 6, 4, 7, 5, 8, 6, 9, 7, 10, 8, 10},
+}
 
 // Magic item templates read by the treasure generator: from entry n, name words n..n+2, weight n+3, price n+4, spells n+5..n+7 (low bytes).
 var itemTemplates = [57]uint16{14642, 185, 187, 64, 1, 800, 3, 99, 0, 239, 167, 64, 1, 1100, 1, 59, 0, 185, 167, 64, 1, 400, 1, 3, 0, 173, 167, 64, 1, 450, 1, 48, 0, 206, 167, 69, 1, 11000, 30, 15, 0, 226, 167, 100, 10, 15000, 0, 38, 131, 157, 167, 21, 20, 3000, 1, 51, 0}
