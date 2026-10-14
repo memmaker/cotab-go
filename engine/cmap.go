@@ -210,11 +210,11 @@ func (e *Engine) LoadBackpacIcons(name string, first, n int) {
 
 // recolour = 0464:1E5C with DS:0CD2 → to: map the colours of frame 0 (the
 // original takes a frame number, always passed 0, so only that frame changes).
-func (e *Engine) recolour(im *dax.Image, to int) {
+func (e *Engine) recolour(im *dax.Image, tt [16]byte) {
 	if im == nil || im.Count == 0 {
 		return
 	}
-	from, tt := e.X.Bytes(0xCD2, 16), e.X.Bytes(to, 16)
+	from := recolourFrom
 	d := im.Frame(0)
 	for i, p := range d {
 		for k := 0; k < 16; k++ {
@@ -243,14 +243,14 @@ func (e *Engine) LoadIconPic(name string, block, slot int) {
 	case up == "COMSPR" || up == "ICON":
 		ic[0], ic[1] = load(name, block), load(name, block+0x80)
 		if up == "ICON" {
-			e.recolour(ic[0], 0xCF2)
-			e.recolour(ic[1], 0xCF2)
+			e.recolour(ic[0], recolourIcon)
+			e.recolour(ic[1], recolourIcon)
 		}
 	default:
 		n := name + e.symDAX[4:] // DS:5376 digit
 		ic[0], ic[1] = load(n, block), load(n, block+0x80)
-		e.recolour(ic[0], 0xCE2)
-		e.recolour(ic[1], 0xCE2)
+		e.recolour(ic[0], recolourCombat)
+		e.recolour(ic[1], recolourCombat)
 	}
 }
 
@@ -789,13 +789,12 @@ func (e *Engine) nearCombatants(c *Character, x, y, r int) {
 // slot +0xBF; with recolour the six icon colour pairs (+0xC1..) replace
 // the DS:3CF5 colours. The original works on the selected character.
 func (e *Engine) BuildCharIcon(c *Character, recolour bool) {
-	e.symPrev, e.symDAX = e.symDAX, "8X8D3" // 0802:094A(3), restored by 0802:095D
-	size := string(e.X.Bytes(0x8C5+int(c.IconSize), 1))
+	size := iconSizeLetters[c.IconSize]
 	slot := int(c.Order)
-	e.LoadIconPic("CHEAD"+size, int(c.IconHead), 0xB)
+	e.LoadIconPic("CHEAD"+size, int(c.IconHead), iconWorkHead)
 	e.LoadIconPic("CBODY"+size, int(c.IconBody), slot)
 	for p := 0; p < 2; p++ {
-		head, body := e.icons[0xB][p], e.icons[slot][p]
+		head, body := e.icons[iconWorkHead][p], e.icons[slot][p]
 		if head == nil || body == nil {
 			continue
 		}
@@ -817,17 +816,22 @@ func (e *Engine) BuildCharIcon(c *Character, recolour bool) {
 		for i := range to {
 			to[i] = byte(i)
 		}
-		pos := e.X.Bytes(0x3CF5, 7)
-		for i := 1; i <= 6; i++ {
+		for i := 1; i <= len(c.IconColour); i++ {
 			v := c.IconColour[i-1]
-			to[pos[i]] = v & 0xF
-			to[int(pos[i])+8] = v >> 4
+			pos := defaultIconColours[i-1] // the icon part's colour index
+			to[pos] = v & 15
+			to[int(pos)+8] = v >> 4
 		}
 		for p := 0; p < 2; p++ {
-			recolourIcon(e.icons[slot][p], to)
+			recolourPicture(e.icons[slot][p], to)
 		}
 	}
-	e.freeIcon(0xB)
-	e.symDAX = e.symPrev
+	e.freeIcon(iconWorkHead)
 	e.ClearKeyboard()
 }
+
+// Icon size letters (DS 1303): the file letter of small (S) and large (T) icons.
+var iconSizeLetters = [3]string{"", "S", "T"}
+
+// iconWorkHead: the icon slot the head picture is loaded into while building.
+const iconWorkHead = 11

@@ -857,7 +857,7 @@ func (e *Engine) alterMenu() {
 		case 'S':
 			e.campSpeedMenu()
 		case 'I':
-			e.o17_382D()
+			e.iconBuilder()
 			e.DrawMainScreen()
 		case 'P':
 			for k := byte(' '); k != 0 && k != 'E'; {

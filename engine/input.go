@@ -64,7 +64,7 @@ func (e *Engine) DisplaySpaces(x, y, colour, count int) {
 // ClearRow24 = ovr26:06FB: blank the message/menu row.
 func (e *Engine) ClearRow24() { e.DisplaySpaces(0, 24, 0, 40) }
 
-// InputString = 0709:09E3 (prompt, colour, maxlen): line editor on row 24.
+// InputString = R4CE:0716 (prompt, colour, maxlen): line editor on row 24.
 // Characters 0x20..0x7A are accepted while len < maxlen and echoed in white
 // one cell right of the last; backspace erases; Enter or Esc ends; the
 // result is upcased.
@@ -94,7 +94,7 @@ func (e *Engine) InputString(prompt string, colour, maxlen int) string {
 				x--
 			}
 		}
-		if k == 13 || k == 27 {
+		if k == 13 || k == 27 || e.demo {
 			break
 		}
 	}

@@ -342,14 +342,14 @@ func (e *Engine) iconCopy(src, dst byte, recolour bool) {
 	for i := range to {
 		to[i] = byte(i)
 	}
-	pos := e.X.Bytes(0x3CF5, 7)
-	for i := 1; i <= 6; i++ {
+	for i := 1; i <= len(c.IconColour); i++ {
 		v := c.IconColour[i-1]
-		to[pos[i]] = v & 0xF
-		to[pos[i]+8] = v >> 4
+		pos := defaultIconColours[i-1] // the icon part's colour index
+		to[pos] = v & 15
+		to[pos+8] = v >> 4
 	}
 	for p := 0; p < 2; p++ {
-		recolourIcon(e.icons[dst][p], to)
+		recolourPicture(e.icons[dst][p], to)
 	}
 }
 
@@ -357,7 +357,7 @@ func (e *Engine) iconCopy(src, dst byte, recolour bool) {
 // to[i] for i = 0..15 in turn, so a pixel already moved to a later colour
 // moves again (3 -> 15 -> to[15]). Mask pixels are left alone. Amiga
 // pixels (extra) take the same end result through amigaIconColour.
-func recolourIcon(im *dax.Image, to [16]byte) {
+func recolourPicture(im *dax.Image, to [16]byte) {
 	if im == nil {
 		return
 	}
@@ -389,191 +389,6 @@ func recolourIcon(im *dax.Image, to [16]byte) {
 // left over pair by shade. So the DOS default colours give the Amiga
 // default icon and each step shows another Amiga colour.
 var amigaIconColour = [16]byte{0, 9, 10, 11, 6, 4, 5, 15, 12, 1, 2, 3, 7, 13, 8, 14}
-
-// o17_382D = ovr17:382D: the combat icon editor (called from the
-// character creation and the camp). States (menus DS:7BF + 0x29*state):
-// 1 Parts/color-1/color-2/Size/Exit, 2 Head/Weapon, 3 the part to colour,
-// 4 Size, 5 the Next/Prev/Keep/Exit stepping for the choice made before.
-// The old icon is shown above the new one; Is this icon ok? ends it.
-func (e *Engine) o17_382D() {
-	c := e.selected()
-	e.DrawBoxTitled(1, 1, 0x26, 0x16, 0, 0, "")
-	e.combatViewLeave() // ovr32:00E3
-	menu3 := e.X.PString(0x83A)
-	var state, parent, part int // parent and part are uninitialised until set
-	var sub, key byte
-	var face bool
-	for {
-		e.BuildCharIcon(c, false) // ovr18:0482
-		state = 1
-		var colours [6]byte
-		copy(colours[:], c.IconColour[:])
-		order := c.Order
-		c.Order = 0xC // the working copy is built into slot 0xC
-		e.BuildCharIcon(c, false)
-		c.Order = order
-		head, weapon, size := c.IconHead, c.IconBody, c.IconSize
-		e.iconCopy(order, 0xC, true)
-		e.iconPane(1, 2)
-		e.DisplayString(8, 6, 0xF, "old")
-		e.DisplayString(3, 0xA, 0xF, "ready   action")
-		e.DisplayString(8, 0xC, 0xF, "new")
-		e.DisplayString(3, 0x10, 0xF, "ready   action")
-		for {
-			e.iconPane(1, 4)
-			sizeStr := ""
-			if state == 4 {
-				sizeStr = "Large"
-				if c.IconSize == 2 {
-					sizeStr = "Small" // as in the original
-				}
-			}
-			m := e.X.PString(0x7BF + state*0x29)
-			if state == 3 {
-				m = menu3
-			}
-			k, extra := e.DisplayInput("", sizeStr+m, 0xD, 0xA, 0xF, false, false)
-			key = k
-			if !extra {
-				done := key == 0 || key == 'E'
-				switch state {
-				case 1:
-					parent = 1
-					switch key {
-					case 'P':
-						state = 2
-					case '1', '2':
-						state, face = 3, key == '2'
-						label := "Hair"
-						if face {
-							label = "Face"
-						}
-						// Delete(s, 13, 4); Insert(label, s, 13) on DS:83A.
-						s := menu3[:12] + menu3[16:]
-						menu3 = cut(s[:12]+label+s[12:], 0x28)
-					case 'S':
-						state = 4
-					}
-				case 2:
-					parent = 2
-					if done {
-						state = 1
-					} else {
-						sub, state = key, 5
-					}
-				case 3:
-					parent = 3
-					part = 1
-					switch key {
-					case 'W':
-						part = 6
-					case 'B':
-						part = 1
-					case 'H', 'F':
-						part = 4
-					case 'S':
-						part = 5
-					case 'A':
-						part = 2
-					case 'L':
-						part = 3
-					}
-					if done {
-						state = 1
-					} else {
-						state = 5
-					}
-				case 4:
-					switch {
-					case key == 'L':
-						c.IconSize = 2
-						e.BuildCharIcon(c, false)
-					case key == 'S':
-						c.IconSize = 1
-						e.BuildCharIcon(c, false)
-					case key == 'K':
-						size, state, key = c.IconSize, 1, ' '
-					case done:
-						c.IconSize = size
-						state, key = 1, ' '
-					}
-					e.BuildCharIcon(c, false)
-				case 5:
-					switch parent {
-					case 2:
-						// Step head (0..13) or weapon (0..31) pictures.
-						pic, saved, top := &c.IconHead, &head, byte(0xD)
-						if sub == 'W' {
-							pic, saved, top = &c.IconBody, &weapon, 0x1F
-						}
-						if sub == 'H' || sub == 'W' {
-							switch {
-							case key == 'P':
-								if *pic > 0 {
-									*pic--
-								} else {
-									*pic = top
-								}
-							case key == 'N':
-								if *pic < top {
-									*pic++
-								} else {
-									*pic = 0
-								}
-							case key == 'K':
-								*saved, state, key = *pic, parent, ' '
-							case done:
-								*pic = *saved
-								state, key = parent, ' '
-							}
-							e.BuildCharIcon(c, false)
-						}
-					case 3:
-						lo, hi := c.IconColour[part-1]&0xF, c.IconColour[part-1]>>4
-						switch {
-						case key == 'N', key == 'P':
-							d := byte(1)
-							if key == 'P' {
-								d = 0xF // (n-1) and 15
-							}
-							if face {
-								hi = (hi + d) & 0xF
-							} else {
-								lo = (lo + d) & 0xF
-							}
-							c.IconColour[part-1] = hi<<4 + lo
-						case key == 'K':
-							copy(colours[:], c.IconColour[:])
-							state, key = parent, ' '
-						case done:
-							copy(c.IconColour[:], colours[:])
-							state, key = parent, ' '
-						}
-					}
-				}
-			}
-			e.iconCopy(c.Order, 0xC, true)
-			if parent == 1 && (key == 0 || key == 'E') {
-				break
-			}
-		}
-		c.IconHead, c.IconBody, c.IconSize = head, weapon, size
-		copy(c.IconColour[:], colours[:])
-		e.iconCopy(c.Order, 0xC, true)
-		e.iconCopy(0xC, c.Order, false)
-		e.ClearRow24()
-		e.freeIcon(0xC) // ovr33:014E
-		if e.viewMode > 1 {
-			e.LoadIconPic("ICON", 0, 0xB)
-			e.LoadIconPic("ICON", 1, 0xC)
-		}
-		if e.YesNo(0xD, 0xA, 0xF, "Is this icon ok? ") == 'Y' {
-			e.Music(3) // Amiga 0x2F33E
-			break
-		}
-	}
-	e.combatViewEnter() // ovr32:0105
-}
 
 // Experience bits of the classes, for the trainer's mask and the mask of
 // classes being trained.

@@ -51,6 +51,11 @@ var Tables = []Table{
 	{"frameLeft", 3042, 24, Bytes, "Frame symbols down the left column (x 0).", 0},
 	{"frameRight", 3083, 24, Bytes, "Frame symbols down the right column (x 39).", 0},
 
+	// Picture recolouring (R226:15F3 from/to tables).
+	{"recolourFrom", 2848, 16, Bytes, "The colours recolouring maps from (identity).", 0},
+	{"recolourCombat", 2864, 16, Bytes, "Combat pictures (COMSPR and the area's own icons) recoloured to.", 0},
+	{"recolourIcon", 2880, 16, Bytes, "The ICON pictures recoloured to (colour 13 becomes 0).", 0},
+
 	// Names.
 	{"raceNames", 3742, 8, String(10), "Race names: monster, dwarf, elf, gnome, half-elf, halfling, half-orc, human.", 0},
 	{"genderNames", 3975, 2, String(7), "Gender names.", 0},

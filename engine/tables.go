@@ -17,6 +17,15 @@ var frameLeft = [24]byte{0, 2, 9, 5, 2, 2, 2, 2, 2, 2, 5, 7, 2, 2, 2, 2, 2, 9, 7
 // Frame symbols down the right column (x 39).
 var frameRight = [24]byte{2, 2, 9, 7, 2, 2, 2, 5, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7, 2, 2, 2, 2, 5, 2}
 
+// The colours recolouring maps from (identity).
+var recolourFrom = [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+
+// Combat pictures (COMSPR and the area's own icons) recoloured to.
+var recolourCombat = [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+
+// The ICON pictures recoloured to (colour 13 becomes 0).
+var recolourIcon = [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 0, 14, 15}
+
 // Race names: monster, dwarf, elf, gnome, half-elf, halfling, half-orc, human.
 var raceNames = [8]string{"Monster", "Dwarf", "Elf", "Gnome", "Half-Elf", "Halfling", "Half-Orc", "Human"}
 

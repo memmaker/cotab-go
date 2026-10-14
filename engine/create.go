@@ -81,6 +81,7 @@ const (
 	exceptionalStrDice = 100
 	strengthMaximum    = 18
 	multiClericWisdom  = 13
+	maxNameLength      = 15
 )
 
 // classLevelsOf: the classes a class choice starts with at level 1.
@@ -290,17 +291,21 @@ func (e *Engine) CreateCharacter() {
 
 	for q := e.ext.quick; q != nil; q = nil {
 		c.SetName(q.name)
-		c.PortHead, c.PortBody = q.head, q.body
 	}
 	for c.PName[0] == 0 {
-		c.SetName(e.InputString("Character name: ", colourLightMagenta, colourWhite))
+		c.SetName(e.InputString("Character name: ", colourLightMagenta, maxNameLength))
 	}
 	undo = e.selectTemp(c)
 	if e.ext.quick == nil {
-		e.o17_33E7()
-		e.o17_382D()
+		e.iconBuilder()
 	}
-	e.SaveCharacter(c, "")
+	for i := range c.Stats {
+		c.Stats[i].Cur = c.Stats[i].Full
+	}
+	c.Str00.Full = c.Str00.Cur
+	if e.YesNo(colourLightMagenta, colourGreen, colourWhite, "Save "+c.Name()+"? ") == 'Y' {
+		e.SaveCharacter(c, "")
+	}
 	undo()
 	e.freeCharacter(&c)
 }
@@ -315,7 +320,7 @@ func (e *Engine) rollAbilities(c *Character, class int) {
 			c.Levels[k] = 1
 		}
 	}
-	c.Str00.Full = 0
+	c.Str00.Cur = 0
 	limits := raceStatLimits[race]
 	older := func(step int) bool { return ageSteps[race][step] < c.Age }
 	for i := range c.Stats {
@@ -387,14 +392,12 @@ func (e *Engine) rollAbilities(c *Character, class int) {
 		*st = max(*st, classStatMinimum[class][i])
 		if i == statStr && *st == strengthMaximum &&
 			(int8(c.Levels[clsFighter]) > 0 || int8(c.Levels[clsRanger]) > 0 || int8(c.Levels[clsPaladin]) > 0) {
-			c.Str00.Full = byte(e.Random(exceptionalStrDice) + 1)
-			c.Str00.Full = min(c.Str00.Full, limits[4+gender])
+			c.Str00.Cur = byte(e.Random(exceptionalStrDice) + 1)
+			c.Str00.Cur = min(c.Str00.Cur, limits[4+gender])
 		}
 		if i == statWis && *st < multiClericWisdom && class >= classClericFighter && class <= classClericThief {
 			*st = multiClericWisdom
 		}
-		c.Stats[i].Cur = *st
-		c.Str00.Cur = c.Str00.Full
 		e.showStat(i, false)
 	}
 }
