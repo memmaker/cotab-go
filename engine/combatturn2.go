@@ -48,7 +48,7 @@ func (e *Engine) healTarget(c *Character, who **Character) bool {
 					best, bestHP = t, t.HP
 				}
 			}
-		} else if ground == 0x1F {
+		} else if ground == groundBody {
 			for b := 1; b <= e.nbodies; b++ {
 				bd := e.bodies[b]
 				// ponytail: the set [6,7,8] is the dead, stoned and gone

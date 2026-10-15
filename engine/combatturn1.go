@@ -581,6 +581,9 @@ func (e *Engine) attackSlots(a, b *Character, w int, it *Item) (done bool) {
 					if b.Okay == 0 {
 						stop = true
 					}
+					if a.Okay == 0 { // a fire shield or the like killed the attacker
+						a.Attacks[s-1] = 0
+					}
 				}
 			}
 		}
