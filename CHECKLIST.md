@@ -35,7 +35,8 @@ no hex/magic numbers, readable names).
   - [x] O05D combat setup: CotAB wilderness map (cliffs, trees, scatter), dungeon map with rubble, placement, blocks
   - [x] O057 combat loop: turn order, camp_menu/combat_menu (extended keys step at once), move/attack, delay menu, speed, quick; battle01 with the 15-round limit (reset by every attack)
   - [x] O08D aiming (manual aim, target picking by hit dice/area, ranged rule), casterLevel (paladin/ranger offsets), god_intervene (debug word "Wooden")
-  - [ ] O08D rest, O0C2 spells, O11C/O121/O12A map and AI, O05A/O045 (remaining Pool stand-ins: o14_*, o23_*)
+  - [x] O0C2 spells 1-100 (setup_spells) and the breath/gaze/spit handlers it adds (affects 83, 86, 88, 90, 126, 128, 131, 132); cone (17CF), bolt (3986/3A44), hold (1B24), dispel with clouds (31E4)
+  - [ ] O08D rest, O11C/O121/O12A map and AI, O05A/O045 (remaining Pool stand-ins: o14_*, some o23_* names)
 - [ ] M8 sound: the PC speaker driver as Go data
 - [ ] M9 goplay: games.js, deploy.sh, README tables, hardware cursor n/a (no pointer), wasm build, box art
 - [ ] M10 publish (GitHub + deploy)
@@ -63,4 +64,9 @@ raw EGA colour indices.
 - Constitution save bonus (O064:1E42) below 4 adds an unset local; the port adds nothing.
 - Appraise "Keep" with no items lost the gem; the port keeps it.
 - ENCOUNTER with a digit that is no menu item read past its reaction table; the port asks again.
+- Cones (O0C2:17CF) hand lineOfSight an unset local as the range; the port gives no range limit (walls still
+  cut the cone).
+- Kept as in the original (not bugs to the player): Dispel Magic looks for Cloudkill's squares in Stinking
+  Cloud's table run on (DS:27D9); Entangle's duration comes from bytes past the spell table (6 + 3/level);
+  once Fear's cone meets a combatant twice, later ones on the line are left out.
 - The shop's "Excuse me" text: unchanged; DIVIDE by zero in scripts gives 0 instead of a runtime error.

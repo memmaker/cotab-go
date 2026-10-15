@@ -561,19 +561,17 @@ func (e *Engine) fxDamage2d8() {
 	e.o23_08C3(int(e.curSpell), 0, 0, e.RollDice(2, 8)+1, 8, "")
 }
 
-// fxNone = ovr23:3092: does nothing.
-func (e *Engine) fxNone() {}
 
-// fxReading = ovr23:30A2: level 0xFF, call 1.
-func (e *Engine) fxReading() { e.o23_08C3(int(e.curSpell), 0xFF, 1, 0, 0, "is Reading") }
 
-// o23_30D9 = ovr23:30D9 (char, affect, flag): the breath weapon affect
-// (type 0x58). Half the time (when DS:6DE3 is set) nothing happens; the
-// monster breathes at the target square with its hit points as damage.
+// o23_30D9 = O0C2:5A5D cast_breath (char, affect, flag): the lightning
+// breath (affect 88). After the first round, half the time nothing
+// happens; the monster breathes at the target square with its hit points
+// as damage.
 func (e *Engine) o23_30D9(c *Character, a *Affect, flag int) {
 	if e.combatRound != 0 && e.Dice(1, 100) <= 0x32 {
 		return
 	}
+	e.rv.dmgType = dmgElectricity | dmgType32
 	cx, cy := e.combatX(c), e.combatY(c)
 	e.combatName(c, "Breathes!", 0xA, true)
 	e.spellTargetHook(0x33, 1) // the result (DS:70C6) is not used
@@ -594,7 +592,7 @@ func (e *Engine) o23_30D9(c *Character, a *Affect, flag int) {
 	if a.Data > 0xFD {
 		a.Data--
 	} else {
-		e.RemoveAffect(c, 0x58, a)
+		e.RemoveAffect(c, affectBreathLightning, a)
 	}
 	e.endTurn(c)
 }
@@ -645,7 +643,15 @@ func (e *Engine) spellTableInit() {
 	e.usingItem = false
 	e.spellCaster = nil
 	e.itemsRedraw = true // DS:6821
-	affectHandlers[0x58] = func(e *Engine, c *Character, a *Affect, flag byte) { e.o23_30D9(c, a, int(flag)) }
+	h := &affectHandlers
+	h[affectStoningGaze] = (*Engine).stoningGazeHandler
+	h[affectSpitAcid] = (*Engine).spitAcidHandler
+	h[affectBreathLightning] = func(e *Engine, c *Character, a *Affect, flag byte) { e.o23_30D9(c, a, int(flag)) }
+	h[affectBreathAcid] = (*Engine).breathAcidHandler
+	h[affectGazeParalyse] = (*Engine).gazeParalyseHandler
+	h[affectBreathFire] = (*Engine).breathFireHandler
+	h[affectBreathFireClose] = (*Engine).breathFireCloseHandler
+	h[affectThrowLightning] = (*Engine).throwLightningHandler
 	e.spellFx[1] = e.o23_100F
 	e.spellFx[2] = e.o23_1040
 	e.spellFx[3] = e.o23_106B
@@ -721,6 +727,31 @@ func (e *Engine) spellTableInit() {
 	e.spellFx[73] = e.fxDispelEvil
 	e.spellFx[74] = e.fxFlameStrike
 	e.spellFx[75] = e.fxRaiseDead
+	e.spellFx[76] = e.fxSlayLiving
+	e.spellFx[77] = e.o23_10E9
+	e.spellFx[78] = e.fxEntangle
+	e.spellFx[79] = e.fxFaerieFire
+	e.spellFx[80] = e.fxInvisibleToAnimals
+	e.spellFx[81] = e.fxCharmMonsters
+	e.spellFx[82] = e.fxConfusion
+	e.spellFx[83] = e.fxDimensionDoor
+	e.spellFx[84] = e.fxFear
+	e.spellFx[85] = e.fxFireShield
+	e.spellFx[86] = e.fxFumble
+	e.spellFx[87] = e.fxIceStorm
+	e.spellFx[88] = e.fxMinorGlobe
+	e.spellFx[89] = e.spellRemoveCurse
+	e.spellFx[90] = e.o23_206F
+	e.spellFx[91] = e.fxCloudkill
+	e.spellFx[92] = e.fxConeOfCold
+	e.spellFx[93] = e.fxFeeblemind
+	e.spellFx[94] = e.o23_1658
+	e.spellFx[95] = e.fxPlain
+	e.spellFx[96] = e.fxPlain
+	e.spellFx[97] = e.fxPlain
+	e.spellFx[98] = e.fxSpell98
+	e.spellFx[99] = e.fxHeal2d4
+	e.spellFx[100] = e.fxCursed
 }
 
 // o23_37B0 = ovr23:37B0: empty (entry 0).

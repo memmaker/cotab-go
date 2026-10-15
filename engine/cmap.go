@@ -834,3 +834,9 @@ var iconSizeLetters = [3]string{"", "S", "T"}
 
 // iconWorkHead: the icon slot the head picture is loaded into while building.
 const iconWorkHead = 11
+
+// The combat map's size in squares.
+const (
+	cmapWidth  = 50
+	cmapHeight = 25
+)

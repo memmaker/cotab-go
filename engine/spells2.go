@@ -616,3 +616,592 @@ func (e *Engine) fxRaiseDead() {
 		e.combatName(t, "is raised", combatMsgRow, true)
 	}
 }
+
+// The squares beside a cone's far end, by the direction of its last step
+// (DS:0A12, DS:0A1A and DS:0A22, DS:0A2A).
+var (
+	coneSideAX = [8]int8{-1, 0, 0, 1, 1, 0, 0, -1}
+	coneSideAY = [8]int8{0, -1, -1, 0, 0, 1, 1, 0}
+	coneSideBX = [8]int8{1, 1, 0, 0, -1, -1, 0, 0}
+	coneSideBY = [8]int8{0, 0, 1, 1, 0, 0, -1, -1}
+)
+
+// The cone's open range: O0C2:17CF hands lineOfSight an unset local as the
+// range; the port leaves the cone unlimited by range (walls still stop it).
+const coneRange = 0x7FFF
+
+// clampToMap = O0C2:16B7 (var x, var y): onto the combat map.
+func clampToMap(x, y *int) {
+	*x = min(max(*x, 0), cmapWidth-1)
+	*y = min(max(*y, 0), cmapHeight-1)
+}
+
+// coneTargets = O0C2:17CF (x0, y0, x1, y1, width, length): the combatants
+// in a cone from (x0,y0) towards (x1,y1): the line is drawn on, repeating
+// its steps, to length squares (a diagonal step counts 1.5), stopped by
+// walls, and walked; widths 2 and 3 add the lines to the squares beside
+// its end. Everyone found but the caster becomes a target.
+func (e *Engine) coneTargets(x0, y0, x1, y1, width, length int) {
+	l := newLine(x0, y0, x1, y1)
+	var dirs []byte
+	for e.step(l) {
+		dirs = append(dirs, l.dir)
+	}
+	last := len(dirs) - 1 // a byte in the asm: 255 with no step
+	i := 0
+	length *= 2
+	walked := byte(l.steps)
+	for walked < byte(length) {
+		if x1 >= cmapWidth-1 || x1 <= 0 || y1 >= cmapHeight-1 || y1 <= 0 {
+			break
+		}
+		d := byte(0)
+		if i < len(dirs) {
+			d = dirs[i]
+		}
+		if d%2 == 0 {
+			walked += 2
+		} else {
+			walked += 3
+		}
+		x1 += int(stepX[d])
+		y1 += int(stepY[d])
+		if i == last {
+			i = 0
+		} else {
+			i++
+		}
+	}
+	clampToMap(&x1, &y1)
+	rng := coneRange
+	e.lineOfSight(&rng, &x1, &y1, x0, y0)
+	var found [31]byte // [1..]: the combatants met, 0 ends the list
+	n := 1
+	dup := false
+	var lastDir byte
+	l = newLine(x0, y0, x1, y1)
+	for e.step(l) {
+		who, _ := e.mapAt(l.x, l.y)
+		if who > 0 {
+			if n > 1 {
+				for k := 1; k <= n-1; k++ {
+					if found[k] == who {
+						dup = true // never cleared again: later combatants are left out
+					}
+				}
+			} else {
+				dup = false
+			}
+			if !dup && n < len(found) {
+				found[n] = who
+				n++
+			}
+		}
+		lastDir = l.dir
+	}
+	side := func(sx, sy int) {
+		s := newLine(x0, y0, sx, sy)
+		for e.step(s) {
+			who, _ := e.mapAt(s.x, s.y)
+			if who == 0 {
+				continue
+			}
+			for k := 1; k < len(found); k++ {
+				if found[k] == who {
+					break
+				}
+				if found[k] == 0 {
+					found[k] = who
+					break
+				}
+			}
+		}
+	}
+	if width > 1 {
+		ax, ay := x1+int(coneSideAX[lastDir%8]), y1+int(coneSideAY[lastDir%8])
+		clampToMap(&ax, &ay)
+		bx, by := x1+int(coneSideBX[lastDir%8]), y1+int(coneSideBY[lastDir%8])
+		clampToMap(&bx, &by)
+		side(bx, by)
+		if width > 2 {
+			side(ax, ay)
+		}
+	}
+	e.nSpellTargets = 0
+	sel := e.selected()
+	for k := 1; k < len(found) && found[k] != 0; k++ {
+		if c := e.combatant(found[k]); c != sel {
+			e.nSpellTargets++
+			e.setTgt(e.nSpellTargets, c)
+		}
+	}
+}
+
+// fxSlayLiving = O0C2:45FD cast_slay: the target's affects may stop the
+// spell (they clear the damage, DS:6FAE, set to 67); else it dies unless it
+// saves, then taking 2d8+1. The damage type stays 8 after.
+func (e *Engine) fxSlayLiving() {
+	t := e.tgt(1)
+	e.rv.dmgType = dmgType64
+	e.rv.damage = slayMark
+	e.affectGroup(t, 9)
+	if e.rv.damage != 0 {
+		if !e.SavingThrow(t, saveVsSpell, 0) {
+			e.killWithMessage(t, statusDead, "is slain")
+		} else {
+			e.rv.dmgType = dmgMagic
+			e.damagePerson(t, e.RollDice(2, 8)+1, 0, false)
+		}
+		return
+	}
+	e.combatName(t, "is unaffected", combatMsgRow, true)
+}
+
+// slayMark: Slay Living's damage value before the target's affects see it.
+const slayMark = 67
+
+// Entangle's duration: O0C2:46BB asks for the amount of "spell 136", past
+// the spell table; the bytes there (DS:4060) make 6 + 3 per caster level.
+const (
+	entangleBase     = 6
+	entanglePerLevel = 3
+	entangleAsSpell  = 136
+)
+
+// fxEntangle = O0C2:46BB: outdoors only, each target is rooted unless it
+// saves.
+func (e *Engine) fxEntangle() {
+	if wordAt(e.area, 2*areaWordInside) != 0 {
+		return
+	}
+	rounds := entangleBase + entanglePerLevel*e.casterLevel(entangleAsSpell)
+	for i := 1; i <= e.nSpellTargets; i++ {
+		t := e.tgt(i)
+		if t == nil {
+			continue
+		}
+		saved := e.SavingThrow(t, saveVsSpell, 0)
+		e.isUnaffected(t, affectRooted, rounds, 0, 0, 1, saved, "is entangled")
+	}
+}
+
+// fxFaerieFire = O0C2:4777 cast_highlisht.
+func (e *Engine) fxFaerieFire() { e.holdTargets(0, "is highlighted") }
+
+// fxInvisibleToAnimals = O0C2:47A4 cast_invisible2.
+func (e *Engine) fxInvisibleToAnimals() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is invisible") }
+
+// fxCharmMonsters = O0C2:47DC cast_charmed: held like Hold Monsters; the
+// charm handler runs at once for each one charmed.
+func (e *Engine) fxCharmMonsters() {
+	e.holdTargets(0, "is charmed")
+	for i := 1; i <= e.nSpellTargets; i++ {
+		if t := e.tgt(i); t != nil {
+			if a := e.FindAffect(t, affectCharmed); a != nil {
+				e.callAffect(affectCharmed, t, a, 0)
+			}
+		}
+	}
+}
+
+// fxConfusion = O0C2:486D cast_confuse: up to 2d8 targets are confused
+// unless they save.
+func (e *Engine) fxConfusion() {
+	if n := e.Dice(2, 8); e.nSpellTargets > n {
+		e.nSpellTargets = n
+	}
+	for i := 1; i <= e.nSpellTargets; i++ {
+		t := e.tgt(i)
+		if t == nil {
+			continue
+		}
+		saved := e.SavingThrow(t, saveVsSpell, 0)
+		e.isUnaffected(t, affectConfused, e.o23_07D6(spellConfusion), 0, 0, 1, saved, "is confused")
+	}
+}
+
+// fxDimensionDoor = O0C2:4931 cast_teleport: an engulfed caster is let go
+// by whoever holds it; it steps off the map and onto the target square.
+func (e *Engine) fxDimensionDoor() {
+	sel := e.selected()
+	if e.FindAffect(sel, affectEngulfed) != nil {
+		e.buildNear(e.combatX(sel), e.combatY(sel), 1, 0xFF, 1)
+		for _, n := range e.near.list {
+			c := e.combatant(n.index)
+			a := e.FindAffect(c, affectHugging)
+			if a == nil {
+				a = e.FindAffect(c, affectEngulfing)
+			}
+			if a != nil && e.combatant(a.Data) == sel {
+				e.RemoveAffect(c, affectHugging, nil)
+				e.RemoveAffect(c, affectEngulfing, nil)
+			}
+		}
+	}
+	e.combatClearIcon(0, 0, e.combatIndex(sel))
+	e.combatSquareFree(sel, e.tgtX, e.tgtY, false)
+	e.combatCentre(e.combatX(sel), e.combatY(sel), 0, 8)
+	e.combatName(sel, "teleports", combatMsgRow, true)
+}
+
+// The cone of Fear: 3 wide, 6 long.
+const (
+	fearConeWidth  = 3
+	fearConeLength = 6
+)
+
+// fxFear = O0C2:4AE2 cast_terror: everyone in the cone that does not save
+// runs, out of the player's hands.
+func (e *Engine) fxFear() {
+	sel := e.selected()
+	e.coneTargets(e.combatX(sel), e.combatY(sel), e.tgtX, e.tgtY, fearConeWidth, fearConeLength)
+	for i := 1; i <= e.nSpellTargets; i++ {
+		t := e.tgt(i)
+		if e.SavingThrow(t, saveVsSpell, 0) {
+			e.combatName(t, "is unaffected", combatMsgRow, true)
+			continue
+		}
+		e.isUnaffected(t, affectRunningAway, e.o23_07D6(spellFear), 0, 1, 1, false, "runs in terror")
+		t.Combat.Turned = 1
+		t.Auto = 1
+		if t.Control <= controlHired {
+			t.Control = controlCharmed
+		}
+		t.Combat.Target = nil
+	}
+}
+
+// fxFireShield = O0C2:4C42 cast_protection: the caster chooses hot (fire
+// body) or cold (ice body) flames, with the shield that burns attackers;
+// a computer caster picks at random.
+func (e *Engine) fxFireShield() {
+	sel := e.selected()
+	rounds := func() int { return e.o23_07D6(spellFireShield) }
+	for done := false; !done; {
+		var key byte
+		if sel.Auto != 0 {
+			if e.Dice(1, 10) > 5 {
+				key = 'H'
+			} else {
+				key = 'C'
+			}
+		} else {
+			key, _ = e.DisplayInput("flame type: ", "Hot Cold", colourLightMagenta, colourGreen, colourWhite, false, false)
+		}
+		switch key {
+		case 'H':
+			e.isUnaffected(sel, affectFireBody, rounds(), 0, 0, 0, false, "is protected")
+			e.isUnaffected(sel, affectZapsAttackers, rounds(), 0, 0, 0, false, "")
+			done = true
+		case 'C':
+			e.isUnaffected(sel, affectIceBody, rounds(), 0, 0, 0, false, "")
+			e.isUnaffected(sel, affectZapsAttackers, rounds(), 0, 0, 0, false, "")
+			done = true
+		default:
+			key, _ = e.DisplayInput("Abort spell? ", "Yes No", colourLightMagenta, colourGreen, colourWhite, false, false)
+			done = key == 'Y'
+		}
+	}
+}
+
+// fxFumble = O0C2:4DF6 spell_slow: an unsaved target is stunned (clumsy),
+// a saved one slowed; the handler runs at once. Then the spell's own affect.
+func (e *Engine) fxFumble() {
+	t := e.tgt(1)
+	e.rv.dmgType = dmgType64
+	if !e.SavingThrow(t, saveVsSpell, 0) {
+		e.isUnaffected(t, affectStunned, e.o23_07D6(spellFumble), 0, 0, 0, false, "is clumsy")
+		if e.FindAffect(t, affectStunned) != nil {
+			e.callAffect(affectStunned, t, nil, 0)
+		}
+	} else {
+		e.isUnaffected(t, affectSlow, e.o23_07D6(spellFumble), 0, 0, 0, false, "is slowed")
+		if e.FindAffect(t, affectSlow) != nil {
+			e.callAffect(affectSlow, t, nil, 0)
+		}
+	}
+	e.o23_08C3(int(e.curSpell), 0, 1, 0, 0, "is clumsy")
+}
+
+// fxIceStorm = O0C2:4F0B: 3d10 of cold and magic.
+func (e *Engine) fxIceStorm() {
+	e.o23_08C3(int(e.curSpell), 0, 0, e.RollDice(3, 10), dmgCold|dmgMagic, "")
+}
+
+// fxMinorGlobe = O0C2:4F4E.
+func (e *Engine) fxMinorGlobe() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is protected") }
+
+// fxCloudkill = O0C2 spell_poisonous_cloud.
+func (e *Engine) fxCloudkill() { e.createCloud(e.poisonKind()) }
+
+// The cone of Cone of Cold: 2 wide, half the caster level long.
+const coneOfColdWidth = 2
+
+// fxConeOfCold = O0C2:5550: level + level d4 of cold and magic.
+func (e *Engine) fxConeOfCold() {
+	sel := e.selected()
+	lvl := byte(e.casterLevel(int(e.curSpell)))
+	length := (int(byte(e.casterLevel(int(e.curSpell)))) + 1) >> 1
+	if length < 1 {
+		length = 1
+	}
+	e.coneTargets(e.combatX(sel), e.combatY(sel), e.tgtX, e.tgtY, coneOfColdWidth, length)
+	e.o23_08C3(int(e.curSpell), 0, 0, int(lvl)+e.RollDice(int(lvl), 4), dmgCold|dmgMagic, "")
+}
+
+// fxFeeblemind = O0C2:55F2: the target's spell save is made harder for the
+// spell (a cleric's -1, a mage's +4, others +2) and put back after; the
+// feeblemind handler runs at once.
+func (e *Engine) fxFeeblemind() {
+	t := e.tgt(1)
+	keep := t.Saves[saveVsSpell]
+	switch t.Class {
+	case clsCleric:
+		t.Saves[saveVsSpell]--
+	case clsMage:
+		t.Saves[saveVsSpell] += 4
+	default:
+		t.Saves[saveVsSpell] += 2
+	}
+	e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "")
+	if e.FindAffect(t, affectFeebleminded) != nil {
+		e.callAffect(affectFeebleminded, t, nil, 0)
+	}
+	t.Saves[saveVsSpell] = keep
+}
+
+// fxPlain = O0C2:569E, 56CC, 56FA: the spell record alone.
+func (e *Engine) fxPlain() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "") }
+
+// The cone of spell 98: 1 wide, 3 long, 6d6.
+const (
+	spell98ConeWidth  = 1
+	spell98ConeLength = 3
+	kindSpell98Saves  = 18 // the only kind that rolls a save against it
+)
+
+// fxSpell98 = O0C2:5727: 6d6 in a narrow cone, taken as saved (halved)
+// except by creatures of kind 18.
+func (e *Engine) fxSpell98() {
+	sel := e.selected()
+	e.coneTargets(e.combatX(sel), e.combatY(sel), e.tgtX, e.tgtY, spell98ConeWidth, spell98ConeLength)
+	for i := 1; i <= e.nSpellTargets; i++ {
+		t := e.tgt(i)
+		if t == nil {
+			continue
+		}
+		e.damagePerson(t, e.RollDice(6, 6), e.spellRec(98, 8), t.Kind != kindSpell98Saves)
+	}
+}
+
+// The breath and gaze handlers of O0C2 (setup_spells puts them in the
+// affect table). Each is (char, affect, flag).
+
+// Breaths a combat allows (an affect's data counts them down).
+const breathsPerCombat = 3
+
+// mirrorWord: the item name word of a mirror.
+const mirrorWord = 118
+
+// stoningGazeHandler = O0C2:585E spell_stone: the gaze goes at the chosen
+// target; a gazer open to reflection is turned back by a readied mirror.
+// Unless the one gazed at saves (petrify), it is stoned.
+func (e *Engine) stoningGazeHandler(c *Character, a *Affect, flag byte) {
+	c.Combat.Target = nil
+	e.spellTargetHook(65, 1)
+	t := c.Combat.Target
+	if t == nil {
+		return
+	}
+	e.combatName(c, "gazes...", combatMsgRow, false)
+	e.hitColours(18)
+	e.flyMissile(e.combatX(c), e.combatY(c), e.combatX(t), e.combatY(t), 4, 45)
+	if e.FindAffect(c, affectGazeReflectable) != nil {
+		for _, it := range t.Items {
+			if it.Readied != 0 && (it.Words[0] == mirrorWord || it.Words[1] == mirrorWord || it.Words[2] == mirrorWord) {
+				e.combatName(t, "reflects it!", 12, false)
+				e.flyMissile(e.combatX(t), e.combatY(t), e.combatX(c), e.combatY(c), 4, 45)
+				t = c
+				break
+			}
+		}
+	}
+	if !e.SavingThrow(t, saveVsPetrify, 0) {
+		e.killWithMessage(t, statusStoned, "is Stoned")
+	}
+}
+
+// Spitting acid: within 6 squares, 30% to hit.
+const (
+	spitAcidRange  = 7
+	spitAcidChance = 30
+)
+
+// spitAcidHandler = O0C2:5BEE spell_spit_acid: at the chosen target in
+// range, its hit points in acid (half on a breath save), or a miss.
+func (e *Engine) spitAcidHandler(c *Character, a *Affect, flag byte) {
+	e.spellTargetHook(65, 1)
+	t := c.Combat.Target
+	roll := e.Dice(1, 100)
+	if t == nil || e.rangeTo(c, t) >= spitAcidRange {
+		return
+	}
+	if roll <= spitAcidChance {
+		e.combatName(c, "Spits Acid", combatMsgRow, true)
+		e.hitColours(23)
+		e.flyMissile(e.combatX(c), e.combatY(c), e.combatX(t), e.combatY(t), 1, 30)
+		e.damagePerson(t, int(c.MaxHP), 2, e.SavingThrow(t, saveVsBreath, 0))
+		return
+	}
+	e.combatName(c, "Spits Acid and Misses", combatMsgRow, true)
+}
+
+// Cones of the breath weapons.
+const (
+	acidConeWidth  = 1
+	acidConeLength = 6
+	fireConeWidth  = 3
+	fireConeLength = 9
+)
+
+// breathAcidHandler = O0C2:5D24 spell_breathes_acid: three breaths a
+// combat in a cone, only when every one in it is a foe; its hit points
+// each, halved on a breath save.
+func (e *Engine) breathAcidHandler(c *Character, a *Affect, flag byte) {
+	ok := false
+	if e.combatRound == 0 {
+		a.Data = breathsPerCombat
+	}
+	if a.Data == 0 {
+		return
+	}
+	e.rv.dmgType = dmgAcid | dmgType32
+	cx, cy := e.combatX(c), e.combatY(c)
+	ok = e.spellTargetHook(0x3D, 1)
+	if ok {
+		e.coneTargets(cx, cy, e.tgtX, e.tgtY, acidConeWidth, acidConeLength)
+	}
+	for i := 1; i <= e.nSpellTargets; i++ {
+		if e.tgt(i).Side != otherSide(c) {
+			ok = false
+		}
+	}
+	if !ok || e.nSpellTargets == 0 {
+		return
+	}
+	e.combatName(c, "breathes acid", combatMsgRow, true)
+	e.hitColours(18)
+	e.flyMissile(cx, cy, e.combatX(e.tgt(1)), e.combatY(e.tgt(1)), 1, 30)
+	for i := 1; i <= e.nSpellTargets; i++ {
+		if t := e.tgt(i); t != nil {
+			e.damagePerson(t, int(c.MaxHP), 2, e.SavingThrow(t, saveVsBreath, 0))
+		}
+	}
+	a.Data--
+	e.endTurn(c)
+}
+
+// otherSide = O0ED:2564 (c): the side c fights.
+func otherSide(c *Character) byte {
+	if c.Side == 0 {
+		return 1
+	}
+	return 0
+}
+
+// breathFireHandler = O0C2:5F04 spell_breathes_fire: three breaths a
+// combat in a wide cone; its hit points each, halved on a breath save.
+func (e *Engine) breathFireHandler(c *Character, a *Affect, flag byte) {
+	if e.combatRound == 0 {
+		a.Data = breathsPerCombat
+	}
+	if a.Data == 0 {
+		return
+	}
+	e.rv.dmgType = dmgFire | dmgType32
+	cx, cy := e.combatX(c), e.combatY(c)
+	if !e.spellTargetHook(61, 1) {
+		return
+	}
+	e.coneTargets(cx, cy, e.tgtX, e.tgtY, fireConeWidth, fireConeLength)
+	if e.nSpellTargets <= 0 {
+		return
+	}
+	e.combatName(c, "breathes fire", combatMsgRow, true)
+	e.hitColours(18)
+	e.flyMissile(cx, cy, e.combatX(e.tgt(1)), e.combatY(e.tgt(1)), 1, 30)
+	for i := 1; i <= e.nSpellTargets; i++ {
+		if t := e.tgt(i); t != nil {
+			e.damagePerson(t, int(c.MaxHP), 2, e.SavingThrow(t, saveVsBreath, 0))
+		}
+	}
+	a.Data--
+	e.endTurn(c)
+}
+
+// Breathing fire up close: half the time, at a target next to it, 7 points.
+const (
+	closeFireChance = 50
+	closeFireRange  = 2
+	closeFireDamage = 7
+)
+
+// breathFireCloseHandler = O0C2:6091 cast_breath_fire.
+func (e *Engine) breathFireCloseHandler(c *Character, a *Affect, flag byte) {
+	e.spellTargetHook(65, 1)
+	t := c.Combat.Target
+	if e.Dice(1, 100) <= closeFireChance && e.rangeTo(c, t) < closeFireRange && t != nil {
+		e.rv.dmgType = dmgFire
+		e.endTurn(c)
+		e.combatName(c, "Breathes Fire", combatMsgRow, true)
+		e.hitColours(23)
+		e.flyMissile(e.combatX(c), e.combatY(c), e.combatX(t), e.combatY(t), 1, 30)
+		e.damagePerson(t, closeFireDamage, 2, e.SavingThrow(t, saveVsBreath, 0))
+	}
+}
+
+// Throwing lightning: only in the first rounds, 16d6 a strike.
+const (
+	throwLightningRounds = 4
+	throwLightningDice   = 16
+	throwLightningReach  = 10
+)
+
+// throwLightningHandler = O0C2:61B1 cast_throw_lightning: a bolt at the
+// target square and on down the line (each strike rolls its own 16d6).
+func (e *Engine) throwLightningHandler(c *Character, a *Affect, flag byte) {
+	if e.combatRound >= throwLightningRounds {
+		return
+	}
+	cx, cy := e.combatX(c), e.combatY(c)
+	e.combatName(c, "throws lightning", combatMsgRow, true)
+	e.spellTargetHook(51, 1)
+	e.removeInvisibility(c)
+	e.hitColours(19)
+	e.flyMissile(cx, cy, e.tgtX, e.tgtY, 4, 50)
+	var bounced bool // an unset local in 61B1
+	e.strikeSquare(e.tgtX, e.tgtY, e.RollDice(throwLightningDice, 6), saveVsSpell, 0, &bounced)
+	e.boltPath(throwLightningReach, e.RollDice(throwLightningDice, 6), saveVsSpell, 0)
+	e.endTurn(c)
+}
+
+// Paralysing gaze: 60 rounds.
+const paralysingGazeRounds = 60
+
+// gazeParalyseHandler = O0C2:62A4 cast_gaze_paralyze: the chosen target
+// is paralysed unless it saves (petrify).
+func (e *Engine) gazeParalyseHandler(c *Character, a *Affect, flag byte) {
+	c.Combat.Target = nil
+	e.spellTargetHook(36, 1)
+	t := c.Combat.Target
+	if t == nil {
+		return
+	}
+	e.combatName(c, "gazes...", combatMsgRow, false)
+	e.hitColours(18)
+	e.flyMissile(e.combatX(c), e.combatY(c), e.combatX(t), e.combatY(t), 4, 45)
+	if !e.SavingThrow(t, saveVsPetrify, 0) {
+		e.AddAffect(t, affectParalyzed, paralysingGazeRounds, 0xFF, 0)
+		e.combatName(t, "is paralyzed", combatMsgRow, false)
+	}
+}
