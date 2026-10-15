@@ -6,34 +6,34 @@ from the Pascal. Rules: ~/notes/c-to-go.md and goplay INTEGRATION.md (no exe rea
 no hex/magic numbers, readable names).
 
 - [x] M1 `-import` via internal/gameimport (folders, zip, ISO/BIN/CUE, GOG installer, loose files); COVER.PNG
-- [ ] M2 `tables` package: every data table the engine reads, named, generated from START.EXE by `cmd/tablegen` (go:generate); no `e.X` at runtime
+- [x] M2 `tables` package: every data table the engine reads, named, generated from START.EXE by `cmd/tablegen` (go:generate); no `e.X` at runtime
 - [x] M3 boot: title screen, main menu (START main, title_screen, startGameMenu) — party menu pixel-identical to DOSBox
-- [ ] M4 characters: create, load/save, party screens
+- [x] M4 characters: create, load/save, party screens
   - [x] creation (race..alignment, stat roll, silent training, icon editor, save) — every screen pixel-identical, .GUY byte-identical (pointer bytes aside), seeded RNG
   - [x] Add character (Curse .GUY files) with the party rules
   - [x] Pool of Radiance / Hillsfar import (O0A1 0465 roster, 22A0 import_char01, 14B3 load_player, 1F35 Hillsfar merge, 13AE): Pool import checked with a Pool save; Hillsfar untested (no .HIL file at hand)
-  - [ ] Drop / Modify / View / Remove / Human Change Classes screens (ported, not yet parity-checked)
+  - [x] Drop / Modify / View / Remove screens and the party menu with a loaded character: pixel-identical to DOSBox (Change Class only for eligible humans: not offered to the test cleric, as in the original)
   - [x] Load / Save game (O0A1 loadGame/SaveGame): savgamX.dat byte-identical but for stack garbage in unused name slots; loading pixel-identical
-- [ ] M5 world: 3D view (WALLDEF/8X8D/SKY), area map, ECL interpreter (CotAB opcode set)
+- [x] M5 world: 3D view (WALLDEF/8X8D/SKY), area map, ECL interpreter (CotAB opcode set)
   - [x] ECL VM (O04C): operands, packed text, text variables, getVar/setVar with the character values, compares, calls
   - [x] adventuring loop (O03C:3607/3677/3758), command bar, steps, doors (bash/pick/knock), status line, party summary
   - [x] wilderness map cursor (O109, places from DS:0A4A/0A6A by area word 417, blink in displayInput O104)
   - [x] view: adventure frame, EGA sky (bands, sun/moon, SKY 252 floor), 3D view and overhead map, pictures (PIC/SPRIT/HEAD/BODY/bigpic)
   - [x] commands 0..35, 37..64 except COMBAT (36) and PROGRAM (56); first scene .. overhead map pixel-identical to DOSBox
-  - [ ] COMBAT (36: shops O048, temple O042, after-combat O045, combat O057) and PROGRAM (56)
+  - [x] COMBAT (36: shops O048, temple O042, after-combat O045, combat O057) and PROGRAM (56: party menu, ending, camp, quit)
   - [x] after-combat O045 (outcome, experience, hired shares, treasure menu, take money/items): ported from CotAB, replacing Pool ovr06 and the party purse
   - [x] the duel (O04C:1B9A)
   - [x] the ending O0AC (text, animated pictures, fireworks)
   - [x] the sound calls (R699, M8)
-  - [ ] parity: PARLAY's prompt (the original passes a char as its prompt string)
-- [ ] M6 camp, shops, temples, training (paladin/ranger etc.)
+  - [x] PARLAY (O03C:27B7 talk_style): its char prompt becomes the one-character string " ", as in the port
+- [x] M6 camp, shops, temples, training (paladin/ranger etc.)
   - [x] shop (O048) with money (O0BA: pool, share, take, appraise) and View (O0AF viewPlayer, items menu, trade/drop coins, paladin heal/cure): pixel-identical
   - [x] camp (O09D) and resting (O0B6): menus, magic, memorize, scribe, display, rest, alter, fix: pixel-identical but for campfire frames
   - [x] temple (O042)
   - [x] item functions (O0AF): ready with the item effects (1B04), trade, halve, join, sell (coins + pool), identify (coins or pool)
   - [x] O0AF items menu (1583) and Use (2478: item spell & 127, scroll class check with the thief chance, "oops!")
   - [x] training halls: game word 680 (set by the hall's script, 255 after the ending) offers Train and Change Class in the party menu (O0A7:01CD), train_player O0A7:4D07
-- [ ] M7 combat
+- [x] M7 combat
   - [x] rules (O0E3): affect groups, saving throw, damage, add/kill/heal/revive, poison and stinking clouds
   - [x] affect handlers (O064 setup_spells2, 148 entries incl. O08D's engulf/hug/rays and the item call)
   - [x] clouds (O0C2 noxious/poisonous cloud, O064 clearing)
