@@ -223,7 +223,7 @@ func (e *Engine) paladinCure(p *Character) {
 	if !sick {
 		e.charMessage(who, "is not diseased", 0, false)
 		answer = e.YesNo(colourLightMagenta, colourGreen, colourWhite, "cure anyway: ")
-		e.clearCharMessage()
+		e.clearCombatText()
 	}
 	if answer == 'Y' {
 		e.curingDisease = true
@@ -300,15 +300,7 @@ func (e *Engine) charMessage(c *Character, text string, row int, wait bool) {
 	}
 	if wait {
 		e.gameDelay()
-		e.clearCharMessage()
+		e.clearCombatText()
 	}
 }
 
-// clearCharMessage = O0ED:186F.
-func (e *Engine) clearCharMessage() {
-	if e.gameState == stateCombat {
-		e.ClearCells(combatPanelLeft, 10, textRight, combatPanelBottom)
-		return
-	}
-	e.ClearCells(textLeft, charMessageRowResting, textRight, textBottom)
-}

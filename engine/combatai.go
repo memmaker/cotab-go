@@ -3,12 +3,12 @@ package engine
 // The computer-controlled turn, ported from ovr10: monster AI, and party
 // members under AI control or fleeing. Called from the combat loop (ovr09).
 
-// o10_000F = ovr10:000F (char): one computer turn. Picks the facing of
-// the attack, then spells, then moves and attacks until the turn is used.
+// o10_000F = O05A:004B (char): one computer turn. Picks the move pattern,
+// then spells, then moves and attacks until the turn is used.
 func (e *Engine) o10_000F(c *Character) {
 	done := e.aiKeys(c)
 	e.ClearRow24()
-	e.ClearMessageArea()
+	e.clearCombatText()
 	if c.Okay == 0 {
 		done = e.endTurn(c)
 	}
@@ -51,7 +51,7 @@ func (e *Engine) o10_000F(c *Character) {
 	e.aiPickWeapon(c)
 	done = e.aiKeys(c)
 	for !done {
-		if e.o14_37E4(c, 0xFF, 1, 0) && int8(ci.Delay) > 0 {
+		if e.o14_37E4(c, 0xFF, 1, 0) && int8(ci.Delay) > 0 && c.Okay != 0 {
 			done = e.aiAttackLoop(c)
 		} else {
 			done = e.aiGiveUp(c)
@@ -59,32 +59,46 @@ func (e *Engine) o10_000F(c *Character) {
 	}
 }
 
-// aiTryCast = ovr10:0203 (char): a spell caster with a spell picked
-// (o14_1351) casts it.
+// aiTryCast = O05A:024B (char): a cleric (or one who was a cleric before
+// changing class) with no turn used turns the undead in reach.
 func (e *Engine) aiTryCast(c *Character) bool {
-	r := false // uninitialised in the original when the test fails: 0
-	if c.Combat.TurnUsed == 0 && int8(c.Levels[clsCleric]) > 0 {
+	if c.Combat.TurnUsed == 0 && (int8(c.Levels[clsCleric]) > 0 ||
+		int8(c.OldLevels[clsCleric]) > int8(c.MulticlassLevel)) {
 		var t *Character
 		if e.o14_1351(c, &t) {
-			r = true
 			e.o14_116A(c)
+			return true
 		}
 	}
-	return r
+	return false
 }
 
-// canCast = ovr10:02EB (char, spell, level): may the computer cast the
-// spell at this level: the level fits, and an area spell (DS:3209 set)
-// must not catch anyone of the wrong side.
+// Spell table fields read by the computer's spell choice.
+const (
+	spellAIPowerField  = 5 // the highest "level" pass at which the AI uses it
+	spellAIAimField    = 6 // 0: cast without looking for targets
+	spellAIRadiusField = 7 // area radius; 0: one target only
+)
+
+// Save bonus of those caught by the AI's area spell: the party's members
+// save worse, monsters better.
+const (
+	aiAreaSaveParty    = -2
+	aiAreaSaveMonsters = 8
+)
+
+// canCast = O05A:03B1 (char, spell, level): may the computer cast the
+// spell at this pass: the pass fits and an area spell must not catch
+// one of its own side who fails the save.
 func (e *Engine) canCast(c *Character, spell, level int) bool {
-	tbl := e.X.Bytes(0x3207+spell*16, 3)
-	if int(tbl[0]) < level {
+	s := spellTable[spell]
+	if int(s[spellAIPowerField]) < level {
 		return false
 	}
-	if spell != 3 && tbl[1] == 0 {
+	if spell != spellCureLightWounds && s[spellAIAimField] == 0 {
 		return true
 	}
-	if spell == 3 {
+	if spell == spellCureLightWounds {
 		var t *Character
 		if e.o14_1BF8(c, &t) {
 			return true
@@ -94,16 +108,25 @@ func (e *Engine) canCast(c *Character, spell, level int) bool {
 	if n == 0 {
 		return false
 	}
-	if tbl[2] == 0 {
+	if s[spellAIRadiusField] == 0 {
 		return true
 	}
-	// ovr10:0255 (nested): is anyone near (x,y) not on the selected side
-	wrongSide := func(x, y int) bool {
+	// O05A:02AF (nested): does the area at x, y catch one of the caster's
+	// side who fails the save.
+	catchesOwn := func(x, y int) bool {
 		r := false
-		e.buildNear(x, y, int(e.X.Bytes(0x3209+spell*16, 1)[0]), 0xFF, 1)
-		sel := b2i(isParty(e.selected()))
+		bonus := aiAreaSaveMonsters
+		if e.selected().Side == 0 {
+			bonus = aiAreaSaveParty
+		}
+		e.buildNear(x, y, int(s[spellAIRadiusField]), 0xFF, 1)
+		foes := otherSide(e.selected())
 		for i := 1; i <= len(e.near.list); i++ {
-			if int(e.combatant(e.near.list[i-1].index).Side) != sel {
+			w := e.combatant(e.near.list[i-1].index)
+			if w.Side == foes || s[spellClassField] == spellClassDruid {
+				continue
+			}
+			if !e.SavingThrow(w, int(s[spellLevelField]), bonus) {
 				r = true
 			}
 		}
@@ -111,7 +134,7 @@ func (e *Engine) canCast(c *Character, spell, level int) bool {
 	}
 	for i := 1; i <= n; i++ {
 		p := e.cpos[e.targets[i]]
-		if wrongSide(int(p.x), int(p.y)) {
+		if catchesOwn(int(p.x), int(p.y)) {
 			return false
 		}
 	}

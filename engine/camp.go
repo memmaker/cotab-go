@@ -532,7 +532,7 @@ func (e *Engine) orderMenu() {
 			if placing {
 				e.charMessage(e.selected(), "has been selected", 10, false)
 			} else {
-				e.clearCharMessage()
+				e.clearCombatText()
 			}
 		}
 	}
@@ -603,7 +603,7 @@ func (e *Engine) campSpeedMenu() {
 			break
 		}
 	}
-	e.clearCharMessage()
+	e.clearCombatText()
 }
 
 // alterMenu = O09D:1D38.
@@ -847,7 +847,7 @@ func (e *Engine) campMenu() bool {
 	e.spellCaster = nil
 	e.gameState = saved
 	e.statusLine()
-	e.clearCharMessage()
+	e.clearCombatText()
 	e.ClearRow24()
 	return interrupted
 }
@@ -1023,7 +1023,7 @@ func (e *Engine) healTick(showing bool) {
 		e.playerSummary(e.selected())
 	}
 	e.gameDelay()
-	e.clearCharMessage()
+	e.clearCombatText()
 	e.camp.healSteps = 0
 }
 
@@ -1104,7 +1104,7 @@ func (e *Engine) spellMessage(c *Character, text string, sp byte) {
 	e.displayStringBg(int(c.PName[0])+2, 19, colourGreen, colourBlack, text)
 	e.displayStringBg(1, 20, colourGreen, colourBlack, spellNames[sp])
 	e.gameDelay()
-	e.clearCharMessage()
+	e.clearCombatText()
 }
 
 // studyTick = O0B6:0B4D: every five minutes the members not waiting for
@@ -1197,7 +1197,7 @@ func (e *Engine) restFor(showing bool) bool {
 			if e.camp.encounters >= wordAt(e.game, 2*gameWordRestInterval) {
 				e.camp.encounters = 0
 				if uint16(e.Dice(1, 100)) <= wordAt(e.game, 2*gameWordRestChance) {
-					e.clearCharMessage()
+					e.clearCombatText()
 					e.showRest(0)
 					e.displayStringBg(1, 19, colourWhite, colourBlack, "Your repose is suddenly interrupted!")
 					stop = true

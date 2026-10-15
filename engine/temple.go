@@ -7,7 +7,7 @@ package engine
 func (e *Engine) castCureAnyway(text string) byte {
 	e.charMessage(e.selected(), text, 0, false)
 	k := e.YesNo(colourLightMagenta, colourGreen, colourWhite, "cast cure anyway: ")
-	e.clearCharMessage()
+	e.clearCombatText()
 	return k
 }
 
@@ -29,7 +29,7 @@ func (e *Engine) payForCure(cure string, price uint16) byte {
 		}
 	}
 	if k == 'Y' {
-		e.clearCharMessage()
+		e.clearCombatText()
 		e.charMessage(e.selected(), "is cured.", 0, true)
 	}
 	return k
