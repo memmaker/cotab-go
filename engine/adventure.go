@@ -229,7 +229,6 @@ func (e *Engine) wildernessPicture() {
 // gameDelay = R4CE:0B19: the message pause for the game speed.
 func (e *Engine) gameDelay() { e.Delay(int(e.gameSpeed) * 100) }
 
-
 // clearTreasure = O03C:1240's part: the treasure's money and items.
 func (e *Engine) clearTreasure() {
 	e.treasureCoins = [7]int32{}
