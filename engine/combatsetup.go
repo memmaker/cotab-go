@@ -33,7 +33,7 @@ func (e *Engine) combatSetup() {
 		e.affectGroup(c, grpRound)
 		e.affectGroup(c, grpAlwaysInvisible)
 	}
-	e.o14_2879()
+	e.monsterHPPercent()
 	e.gameState = stateCombat
 }
 

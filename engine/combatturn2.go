@@ -28,11 +28,11 @@ const (
 // spellData returns field k of the spell's record.
 func (e *Engine) spellData(spell, k int) byte { return spellTable[spell&0xFF][k] }
 
-// o14_1BF8 = ovr14:1BF8 (c, var who): the friend to heal around c: the most
+// healTarget = O08D:1DFE (c, var who): the friend to heal around c: the most
 // hurt of the same side on the nine squares round c (c itself only when
 // under half its hit points), or the first body lying there when no one
 // with fewer than 8 hit points is.
-func (e *Engine) o14_1BF8(c *Character, who **Character) bool {
+func (e *Engine) healTarget(c *Character, who **Character) bool {
 	dxs, dys := stepBytes(stepX), stepBytes(stepY)
 	var best *Character
 	bestHP, body := byte(0xFF), 0
@@ -94,11 +94,11 @@ func (e *Engine) chooseSpellTarget(spell, silent, allowGround int, t *aimTarget)
 		sel.Combat.Target = t.c
 	} else if e.spellData(spell, spellAimField) == 0 {
 		t.c = sel
-		if spell != spellCureLightWounds || e.o14_1BF8(sel, &t.c) {
+		if spell != spellCureLightWounds || e.healTarget(sel, &t.c) {
 			t.x, t.y = byte(e.combatX(t.c)), byte(e.combatY(t.c))
 			found = true
 		}
-	} else if e.o14_37E4(sel, e.o23_0729(spell), 0, 1) {
+	} else if e.pickAttackTarget(sel, e.o23_0729(spell), 0, 1) {
 		// one try (the loop counter starts at 1)
 		ok := true
 		tp := sel.Combat.Target
@@ -148,9 +148,9 @@ func hitDiceWeight(spell int, c *Character) int {
 	return 8
 }
 
-// o14_20C3 = O08D:2231 (spell, silent): the targets of the spell into
+// chooseSpellTargets = O08D:2231 (spell, silent): the targets of the spell into
 // DS:744B+4i (count DS:744E). False when none was chosen.
-func (e *Engine) o14_20C3(spell, silent int) (ok bool) {
+func (e *Engine) chooseSpellTargets(spell, silent int) (ok bool) {
 	var t aimTarget
 	ok = true
 	e.nSpellTargets = 0
@@ -252,10 +252,10 @@ func (e *Engine) o14_20C3(spell, silent int) (ok bool) {
 	return
 }
 
-// o14_2414 = O08D:spell_menu3 276D (spell, a, var quit): the selected character picks
+// spellMenuTargets = O08D:spell_menu3 276D (spell, a, var quit): the selected character picks
 // (spell 0: from his memorised spells) and casts a spell. Spells with a
 // casting time of 3 or more only begin and are cast in a later round.
-func (e *Engine) o14_2414(spell, a int, quit *bool) {
+func (e *Engine) spellMenuTargets(spell, a int, quit *bool) {
 	sel := e.selected()
 	have, idx := true, -1 // bp-6 = 1, bp-5 = 0xFFFF
 	*quit = false
@@ -313,7 +313,7 @@ func (e *Engine) canBackstab(c, target *Character) bool {
 	weapon := w == nil || wt == itemTypeClub || wt == itemTypeBackstab7 || wt == itemTypeBackstab8 ||
 		wt >= itemTypeBackstabLow && wt <= itemTypeBackstabTop
 	return thief && weapon && target.Combat.Attackers > 1 && target.Size&sizeMask <= 1 &&
-		byte(e.o14_263D(c, target)) == target.Combat.Facing
+		byte(e.directionTo(c, target)) == target.Combat.Facing
 }
 
 // Slopes (times 256) of the borders between the eight directions:
@@ -324,9 +324,9 @@ const (
 	slopeScale   = 256
 )
 
-// o14_263D = O08D:29BC (from, to): the direction 0..7 from one combatant
+// directionTo = O08D:29BC (from, to): the direction 0..7 from one combatant
 // to the other (north first, clockwise).
-func (e *Engine) o14_263D(from, to *Character) int {
+func (e *Engine) directionTo(from, to *Character) int {
 	x1, y1 := e.combatX(from), e.combatY(from)
 	x2, y2 := e.combatX(to), e.combatY(to)
 	dx, dy := x2-x1, y2-y1
@@ -395,7 +395,7 @@ const (
 // flies from one combatant to the other.
 func (e *Engine) attackAnimation(from, to *Character, weapon *Item) {
 	e.PlaySound(sndAnimThrow)
-	dir := e.o14_263D(from, to)
+	dir := e.directionTo(from, to)
 	frames, delay, base := 1, 10, 13
 	switch weapon.Type {
 	case itemTypeDagger, itemTypeDart, itemTypeThrownOnceKind, itemTypeSpear, itemTypeJavelin, itemTypeHammer:
@@ -431,10 +431,10 @@ func (e *Engine) attackAnimation(from, to *Character, weapon *Item) {
 	e.flyMissile(e.combatX(from), e.combatY(from), e.combatX(to), e.combatY(to), frames, delay)
 }
 
-// o14_2879 = O08D:2E00: DS:75F3 = the monsters' remaining hit points in
+// monsterHPPercent = O08D:2E00: DS:75F3 = the monsters' remaining hit points in
 // five percent steps (20 * hp / maximum, times 5; dead ones count in the
 // maximum).
-func (e *Engine) o14_2879() {
+func (e *Engine) monsterHPPercent() {
 	var hp, max uint16
 	for _, c := range e.party {
 		if c.Side == 1 {
@@ -449,13 +449,13 @@ func (e *Engine) o14_2879() {
 	}
 }
 
-// o14_2908 = O08D:2E8F (c): the highest o14_0123 / 2 over the living
+// maxPartyMove = O08D:2E8F (c): the highest turnMoveRate / 2 over the living
 // combatants on the other side.
-func (e *Engine) o14_2908(c *Character) int {
+func (e *Engine) maxPartyMove(c *Character) int {
 	best := byte(0)
 	for _, t := range e.party {
 		if b2i(isParty(c)) == int(t.Side) && t.Okay != 0 {
-			if v := byte(e.o14_0123(t)) >> 1; v > best {
+			if v := byte(e.turnMoveRate(t)) >> 1; v > best {
 				best = v
 			}
 		}
@@ -463,9 +463,9 @@ func (e *Engine) o14_2908(c *Character) int {
 	return int(best)
 }
 
-// o14_2998 = O08D:2F1F (c, target): may c attack the target? Attacking
+// mayAttack = O08D:2F1F (c, target): may c attack the target? Attacking
 // a friend asks first; yes turns every sane character of the party hostile.
-func (e *Engine) o14_2998(c, target *Character) bool {
+func (e *Engine) mayAttack(c, target *Character) bool {
 	if b2i(isParty(target)) == int(c.Side) || c.Auto != 0 {
 		return true
 	}
@@ -529,7 +529,7 @@ func (e *Engine) combatInput(prompt, menu string, allowExtra bool) (byte, bool) 
 func (e *Engine) aimConfirm(c, cand *Character, mode int, found *bool, t *aimTarget) {
 	var res *Item
 	*found = true
-	if mode == 1 && !e.o14_2998(c, cand) {
+	if mode == 1 && !e.mayAttack(c, cand) {
 		*found = false
 	}
 	if !*found {
@@ -541,14 +541,14 @@ func (e *Engine) aimConfirm(c, cand *Character, mode int, found *bool, t *aimTar
 	e.cmap.cursor = 0
 	e.combatCentre(e.cmap.viewX+viewW/2, e.cmap.viewY+3, 3, 8)
 	if mode == 1 {
-		if e.o14_0E82(c, cand) {
+		if e.sweepAttack(c, cand) {
 			*found = e.endTurn(c)
 		} else {
-			e.o14_17F6(c, cand)
+			e.countAttack(c, cand)
 			if e.rangedWeapon(c) && e.ammoFor(c, &res) && e.throwable(c) && e.rangeTo(c, cand) == 1 {
 				res = nil
 			}
-			*found = e.o14_1884(c, cand, 0, res)
+			*found = e.fullAttack(c, cand, 0, res)
 		}
 	}
 }
@@ -605,7 +605,7 @@ func (e *Engine) aimManual(c, cand *Character, rng, showRange, allowGround, allo
 			ok = false
 		}
 		if cand != nil {
-			if !e.o14_1085(c, cand) || allowCreature == 0 {
+			if !e.mayAct(c, cand) || allowCreature == 0 {
 				ok = false
 			}
 			if showRange == 1 {
@@ -756,7 +756,7 @@ func (e *Engine) aimAt(c *Character, rangeArg, showRange, allowGround, allowCrea
 	by = 1
 	key := byte(' ')
 	for !*found && !(key == 0 || key == 'E') {
-		if !e.o14_1085(c, cand) {
+		if !e.mayAct(c, cand) {
 			cand = step(by, false)
 			continue
 		}
@@ -801,13 +801,13 @@ func aimExtendedKey(k byte) byte {
 	return 0xFF
 }
 
-// o14_37E4 = ovr14:37E4 (c, rng, a, b): a target for c's attack from the
+// pickAttackTarget = O08D:3E44 (c, rng, a, b): a target for c's attack from the
 // enemies within rng, kept in c's combat block. Up to two passes of 20
 // random picks; the second sees through walls (not with b set).
-func (e *Engine) o14_37E4(c *Character, rng, a, b int) bool {
+func (e *Engine) pickAttackTarget(c *Character, rng, a, b int) bool {
 	first, found, second := false, false, false
 	tgt := c.Combat.Target
-	if b != 0 || tgt == nil || tgt.Side == c.Side || tgt.Okay == 0 || !e.o14_1085(c, tgt) {
+	if b != 0 || tgt == nil || tgt.Side == c.Side || tgt.Okay == 0 || !e.mayAct(c, tgt) {
 		c.Combat.Target = nil
 	}
 	if c.Combat.Target != nil {
@@ -825,7 +825,7 @@ func (e *Engine) o14_37E4(c *Character, rng, a, b int) bool {
 			r := e.Dice(1, n)
 			if e.targets[r] > 0 {
 				cand := e.combatant(e.targets[r])
-				if (a != 0 && e.cmap.seeAll != 0) || e.o14_1085(c, cand) {
+				if (a != 0 && e.cmap.seeAll != 0) || e.mayAct(c, cand) {
 					found = true
 					c.Combat.Target = cand
 				} else {
@@ -875,8 +875,8 @@ func (e *Engine) godIntervene() bool {
 	return true
 }
 
-// o14_3C6D = ovr14:3C6D: the overlay's initialisation, empty.
-func (e *Engine) o14_3C6D() {}
+// o08dInit = O08D:48D9 empty66: the overlay's initialisation, empty.
+func (e *Engine) o08dInit() {}
 
 // debugWord = DS:8C94 (copied from "Wooden" at DS:24EE): as the second
 // command line parameter it skips the copy protection and lets the Gods

@@ -119,7 +119,7 @@ func (e *Engine) o23_08C3(spell, level, call, dmg, dmgType int, msg string) {
 // spellTargetHook = lcall [DS:6B84].
 func (e *Engine) spellTargetHook(spell, mode int) bool {
 	if e.combatTargets {
-		return e.o14_20C3(spell, mode)
+		return e.chooseSpellTargets(spell, mode)
 	}
 	return e.spellTargetSetup(spell, mode)
 }

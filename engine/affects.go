@@ -1713,14 +1713,14 @@ func forgetSpellOf(c *Character, sp byte) {
 // Bridges to the combat overlays, until O08D and O0C2 are ported:
 // attackOnce = O08D:19DB, pickTarget = O08D:3E44, castInnate = O0C2:12E1.
 
-func (e *Engine) attackOnce(c, t *Character, flag int, it *Item) { e.o14_1884(c, t, flag, it) }
+func (e *Engine) attackOnce(c, t *Character, flag int, it *Item) { e.fullAttack(c, t, flag, it) }
 
 func (e *Engine) pickTarget(c *Character, rng, a int, first bool) bool {
 	b := 0
 	if first {
 		b = 1
 	}
-	return e.o14_37E4(c, rng, a, b)
+	return e.pickAttackTarget(c, rng, a, b)
 }
 
-func (e *Engine) castInnate(spell, a, b int, quit *bool) { e.o14_2414(spell, a, quit) }
+func (e *Engine) castInnate(spell, a, b int, quit *bool) { e.spellMenuTargets(spell, a, quit) }

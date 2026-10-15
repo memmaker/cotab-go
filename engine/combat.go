@@ -13,7 +13,7 @@ func (e *Engine) Combat() {
 	for !done {
 		e.countSides()
 		for _, c := range e.party {
-			e.o14_0000(c)
+			e.turnSetup(c)
 		}
 		putWord(e.game, area2Surprise, 0) // the surprise lasts one round
 		for c := e.nextActor(); c != nil; c = e.nextActor() {
@@ -142,7 +142,7 @@ func (e *Engine) playerTurn(c *Character) {
 				done = e.moveAttack(c, ' ')
 			case 'V':
 				done = e.viewPlayer() // ItemsMenu sets it
-				e.o14_0D23(c)
+				e.setSpeed(c)
 				if !done {
 					e.combatUseHook()
 				}
@@ -152,14 +152,14 @@ func (e *Engine) playerTurn(c *Character) {
 			case 'U':
 				e.menuSel = 2
 				done = e.ItemsMenu()
-				e.o14_0D23(c)
+				e.setSpeed(c)
 				if !done {
 					e.combatUseHook()
 				}
 			case 'C':
-				e.o14_2414(0, 0, &done)
+				e.spellMenuTargets(0, 0, &done)
 			case 'T':
-				e.o14_116A(c)
+				e.turnUndead(c)
 				done = e.endTurn(c)
 			case 'D':
 				done = e.otherMenu(c)
@@ -267,7 +267,7 @@ const combatRoundsWithoutAttack = 15
 func (e *Engine) endRound() (done bool) {
 	e.AdvanceClock(1, 1)
 	e.combatRound++
-	e.o14_2879()
+	e.monsterHPPercent()
 	for _, c := range e.party {
 		e.affectGroup(c, grpRest)
 		e.inPoisonCloud(c, false)
@@ -387,19 +387,19 @@ func (e *Engine) moveAttack(c *Character, key byte) (done bool) {
 		case g == 0:
 			switch e.YesNo(0xD, 0xA, 0xF, "Flee:") {
 			case 'Y':
-				done = e.o14_0C6A(c)
+				done = e.fleeBattle(c)
 			case 'N':
 				done = false
 			}
 		case stepCost(e.groundInfo(g)[0], d) > int(ci.Moves):
 			e.BottomMessage("can't go there")
 		default:
-			e.o14_08B2(c, d)
+			e.leaveAttacks(c, d)
 			if c.Okay == 0 {
 				done = e.endTurn(c)
 				continue
 			}
-			e.o14_0712(c, d)
+			e.stepSquare(c, d)
 			if c.Okay == 0 {
 				done = e.endTurn(c)
 			}
@@ -538,15 +538,15 @@ func (e *Engine) attackTarget(c, t *Character, done bool) bool {
 		e.BottomMessage("Not with that weapon")
 		return done
 	}
-	if !e.o14_2998(c, t) {
+	if !e.mayAttack(c, t) {
 		return done
 	}
 	c.Combat.Target = t
-	if e.o14_0E82(c, t) {
+	if e.sweepAttack(c, t) {
 		return true
 	}
-	e.o14_17F6(c, t)
-	return e.o14_1884(c, t, 0, nil)
+	e.countAttack(c, t)
+	return e.fullAttack(c, t, 0, nil)
 }
 
 // otherMenu = O057:1003 delay_menu (char, var done): Done's submenu.
