@@ -1,14 +1,14 @@
 package engine
 
-// The combat main loop and the player's command menus (ovr09).
+// The combat main loop and the player's command menus (O057).
 
 import "strings"
 
-// Combat = ovr09:007A: set up the battle, then rounds until one side is
+// Combat = O057:0100: set up the battle, then rounds until one side is
 // down (or the party stops fighting).
 func (e *Engine) Combat() {
 	e.gameState = 5
-	e.ext.battleLog, e.ext.panel = nil, nil
+	e.ext.panel = nil
 	e.combatTargets = true // DS:6B84 = 0068:0066 (ovr14:20C3)
 	e.combatSetup()
 	done := e.rv.side[0] == 0 || e.rv.side[1] == 0
@@ -17,7 +17,7 @@ func (e *Engine) Combat() {
 		for _, c := range e.party {
 			e.o14_0000(c)
 		}
-		putWord(e.game, 0x596, 0)
+		putWord(e.game, area2Surprise, 0) // the surprise lasts one round
 		for c := e.nextActor(); c != nil; c = e.nextActor() {
 			e.takeTurn(c)
 		}
@@ -26,7 +26,7 @@ func (e *Engine) Combat() {
 	e.combatEnd()
 }
 
-// combatEnd = ovr09:0000: free the clouds, the map and the sprite.
+// combatEnd = O057:004B: free the clouds, the map and the sprite.
 func (e *Engine) combatEnd() {
 	e.combatTargets = false // DS:6B84 = 0096:0034 (ovr23:0A91)
 	e.stinkingClouds, e.poisonClouds = nil, nil
@@ -35,7 +35,7 @@ func (e *Engine) combatEnd() {
 	e.combatViewEnter()
 }
 
-// nextActor = ovr09:0131 (var char): the highest initiative left (combat
+// nextActor = O057:01BC (var char): the highest initiative left (combat
 // block +3); ties go to the higher d100. nil when nobody is left.
 func (e *Engine) nextActor() *Character {
 	var best, bestRoll byte
@@ -68,6 +68,7 @@ func (e *Engine) takeTurn(c *Character) {
 		ci.Delay = 0x13
 	}
 	e.selectChar(c)
+	e.showMoves = c.Side == sideParty || e.combatOnScreen(c, false)
 	e.combatRedrawChar(c, 2, 1)
 	e.ApplyItems(c)
 	e.panelDirty = true
@@ -102,8 +103,17 @@ func b2i(b bool) int {
 	return 0
 }
 
-// playerTurn = ovr09:031A (char): a spell being cast goes off, otherwise
-// the combat menu until the turn is used.
+// Combat menu keys: the menu letters, and the extended keys (scan codes).
+const (
+	keyAltQ       = 16 // Alt+Q: the computer fights for the whole party
+	keyAltX       = 45 // Alt+X: god_intervene
+	keyAlt2       = 50 // toggles whether the computer casts for the party
+	keyAltT       = 19
+	quickTurnWait = 200
+)
+
+// playerTurn = O057:03EC camp_menu (char): a spell being cast goes off,
+// otherwise the combat menu until the turn is used.
 func (e *Engine) playerTurn(c *Character) {
 	if c.Okay == 0 {
 		e.endTurn(c)
@@ -120,71 +130,74 @@ func (e *Engine) playerTurn(c *Character) {
 	}
 	done := false
 	for !done {
-		switch e.combatMenu(c) {
-		case 'M':
-			done = e.moveAttack(c)
-		case 'V':
-			done = e.viewPlayer() // ovr20:0AB3 (var done): ItemsMenu sets it
-			e.o14_0D23(c)
-			if !done {
-				e.combatUseHook()
-			}
-		case 'A':
-			var aim aimTarget
-			var ok bool
-			e.aimAt(c, 0xFF, 1, 0, 1, &ok, &aim)
-			done = ok
-		case 'U':
-			done = e.ItemsMenu() // ovr20:0EF8 (var done)
-			e.o14_0D23(c)
-			if !done {
-				e.combatUseHook()
-			}
-		case 'C':
-			var ok bool
-			e.o14_2414(0, 0, &ok)
-			done = ok
-		case 'L':
-			e.showBattleLog()
-		case 'T':
-			e.o14_116A(c)
-			done = e.endTurn(c)
-		case 'Q':
-			e.quickOne(c)
-			e.ClearRow24()
-			e.ClearKeyboard()
-			e.Delay(200)
-			done = true
-			e.o10_000F(c)
-		case 'D':
-			done = e.otherMenu(c)
-		case '2':
-			e.v6E30 ^= 1
-			if e.v6E30 != 0 {
-				e.BottomMessage("Magic On")
-			} else {
-				e.BottomMessage("Magic Off")
-			}
-		case ' ':
-			for _, p := range e.party {
-				if p.Control < 0x80 {
-					p.Auto = 0
+		key, ext := e.combatMenu(c)
+		if !ext {
+			switch key {
+			case 'Q':
+				e.quickOne(c)
+				e.ClearRow24()
+				e.ClearKeyboard()
+				e.Delay(quickTurnWait)
+				done = true
+				e.o10_000F(c)
+			case 'M':
+				done = e.moveAttack(c, ' ')
+			case 'V':
+				done = e.viewPlayer() // ItemsMenu sets it
+				e.o14_0D23(c)
+				if !done {
+					e.combatUseHook()
+				}
+			case 'A':
+				var aim aimTarget
+				e.aimAt(c, 0xFF, 1, 0, 1, &done, &aim)
+			case 'U':
+				e.menuSel = 2
+				done = e.ItemsMenu()
+				e.o14_0D23(c)
+				if !done {
+					e.combatUseHook()
+				}
+			case 'C':
+				e.o14_2414(0, 0, &done)
+			case 'T':
+				e.o14_116A(c)
+				done = e.endTurn(c)
+			case 'D':
+				done = e.otherMenu(c)
+			case ' ':
+				for _, p := range e.party {
+					if p.Control < controlHired+1 {
+						p.Auto = 0
+					}
 				}
 			}
-		case 0x10:
-			ci.Delay = 0x14
-			for _, p := range e.party {
-				e.quickOne(p)
-			}
-			e.ClearRow24()
-			e.Delay(200)
-			done = true
-		case '-':
-			if e.godIntervene() {
-				e.combatRedrawChar(c, 3, 0)
+		} else {
+			switch key {
+			case scanUp, scanPageUp, scanRight, scanPageDown, scanDown, scanEnd, scanLeft, scanHome:
+				done = e.moveAttack(c, key)
+			case keyAlt2:
+				e.v6E30 ^= 1
+				if e.v6E30 != 0 {
+					e.BottomMessage("Magic On")
+				} else {
+					e.BottomMessage("Magic Off")
+				}
+			case keyAltQ:
+				ci.Delay = 20
+				for _, p := range e.party {
+					e.quickOne(p)
+				}
+				e.ClearRow24()
+				e.Delay(quickTurnWait)
 				done = true
-			} else {
-				e.BottomMessage("That doesn't work")
+			case keyAltX:
+				if e.godIntervene() {
+					e.combatRedrawChar(c, 3, 0)
+					done = true
+				} else {
+					e.BottomMessage("That doesn't work")
+				}
 			}
 		}
 		if !done {
@@ -195,8 +208,8 @@ func (e *Engine) playerTurn(c *Character) {
 	}
 }
 
-// combatMenu = O057:0789 combat_menu (char, var key): the main combat menu.
-func (e *Engine) combatMenu(c *Character) byte {
+// combatMenu = O057:0788 combat_menu (char, var key): the main combat menu.
+func (e *Engine) combatMenu(c *Character) (byte, bool) {
 	ci := c.Combat
 	m := ""
 	if ci.Moves > 0 {
@@ -218,25 +231,26 @@ func (e *Engine) combatMenu(c *Character) byte {
 	if (int8(c.Levels[clsCleric]) > 0 || int8(c.OldLevels[clsCleric]) > 0 && oldClassUsable(c)) && ci.TurnUsed == 0 {
 		m += "Turn "
 	}
-	m += "Log Quick Done" // Log: extra
+	m += "Quick Done"
 	for {
-		key, extra := e.DisplayInput("", m, 0xD, 0xA, 0xF, true, false)
-		if extra && !combatExtraKeys[key] {
+		key, ext := e.DisplayInput("", m, 0xD, 0xA, 0xF, true, false)
+		if ext && !combatExtraKeys[key] {
 			key = 0
 		}
-		if combatMenuKeys[key] || key == 'L' { // L: the Log (extra)
-			return key
+		if combatMenuKeys[key] {
+			e.ClearRow24()
+			return key, ext
 		}
 	}
 }
 
-// combatExtraKeys are the extended keys combat_menu keeps: Alt+Q and
-// Alt+T, minus, 2 and the keypad.
-var combatExtraKeys = keySet(0x10, 0x13, '-', '2', 'G', 'H', 'I', 'K', 'M', 'O', 'P', 'Q')
+// combatExtraKeys are the extended keys combat_menu keeps: Alt+Q, Alt+T,
+// Alt+X, Alt+2 and the keypad.
+var combatExtraKeys = keySet(keyAltQ, keyAltT, keyAltX, keyAlt2, scanHome, scanUp, scanPageUp, scanLeft, scanRight, scanEnd, scanDown, scanPageDown)
 
 // combatMenuKeys are the keys that leave combat_menu: the extended ones,
 // space and the menu letters.
-var combatMenuKeys = keySet(0x10, 0x13, ' ', '-', '2', 'A', 'C', 'D', 'G', 'H', 'I', 'K', 'M', 'O', 'P', 'Q', 'T', 'U', 'V')
+var combatMenuKeys = keySet(keyAltQ, keyAltT, ' ', keyAltX, keyAlt2, 'A', 'C', 'D', scanHome, scanUp, scanPageUp, scanLeft, scanRight, scanEnd, scanDown, scanPageDown, 'T', 'U', 'V')
 
 // keySet is a lookup table of key codes.
 func keySet(keys ...byte) (set [256]bool) {
@@ -282,14 +296,14 @@ func (e *Engine) endRound() (done bool) {
 	return
 }
 
-// moveAttack = O057:0B26 (char, key, var done): step around with the keypad;
+// moveAttack = O057:0B26 (char, key, var done): step around with the keypad
+// (key: the first step, or space to ask);
 // stepping into someone attacks, off the map flees. Escape undoes the
 // moves of this menu.
-func (e *Engine) moveAttack(c *Character) (done bool) {
+func (e *Engine) moveAttack(c *Character, key byte) (done bool) {
 	ci := c.Combat
 	moves, face := ci.Moves, ci.Facing
 	x, y := e.combatX(c), e.combatY(c)
-	key := byte(0x20)
 	done = false
 	defer e.rawArrows("keypad, arrows, click a square=step, attack, walk to a framed one|Enter, click self=done|Esc=undo the moves")()
 	mark := e.regionMark()
@@ -332,7 +346,7 @@ func (e *Engine) moveAttack(c *Character) (done bool) {
 			}
 			key = stepLetters[d]
 			e.Delay(0x32)
-		} else {
+		} else if key == ' ' {
 			reach = e.moveReach(c)
 			e.markReach(reach, true)
 			e.ClearCells(0x18, 0x18, 0x27, 0x18)
@@ -347,21 +361,21 @@ func (e *Engine) moveAttack(c *Character) (done bool) {
 			done = !e.combatSquareFree(c, x, y, false)
 			e.combatCentre(e.combatX(c), e.combatY(c), 0, 8)
 			ci.Facing = face
-		case 'H':
+		case scanUp:
 			d = 0
-		case 'I':
+		case scanPageUp:
 			d = 1
-		case 'M':
+		case scanRight:
 			d = 2
-		case 'Q':
+		case scanPageDown:
 			d = 3
-		case 'P':
+		case scanDown:
 			d = 4
-		case 'O':
+		case scanEnd:
 			d = 5
-		case 'K':
+		case scanLeft:
 			d = 6
-		case 'G':
+		case scanHome:
 			d = 7
 		}
 		if d >= 8 {
@@ -396,6 +410,9 @@ func (e *Engine) moveAttack(c *Character) (done bool) {
 				done = e.endTurn(c)
 			}
 		}
+		if key != 0 && key != 0xD {
+			key = ' '
+		}
 	}
 	if ci.Moves < 2 {
 		ci.Moves = 0
@@ -413,7 +430,7 @@ func stepCost(ground byte, dir int) int {
 }
 
 // stepLetters are the keypad letters moveAttack reads for the 8 directions.
-var stepLetters = [8]byte{'H', 'I', 'M', 'Q', 'P', 'O', 'K', 'G'}
+var stepLetters = [8]byte{scanUp, scanPageUp, scanRight, scanPageDown, scanDown, scanEnd, scanLeft, scanHome}
 
 // moveReach (extra) finds the squares c can walk to with the moves it has
 // left, as moveAttack's steps allow them (2 a step, 3 diagonally, free
@@ -516,7 +533,7 @@ func (e *Engine) ammoFor(c *Character, it **Item) bool {
 	return *it != nil || f == 0xA
 }
 
-// attackTarget = ovr09:0D45 (char, target, var done).
+// attackTarget = O057:0F03 (char, target, var done).
 // done passes through when no attack is made.
 func (e *Engine) attackTarget(c, t *Character, done bool) bool {
 	if e.rangedWeapon(c) && !e.throwable(c) {
@@ -534,7 +551,7 @@ func (e *Engine) attackTarget(c, t *Character, done bool) bool {
 	return e.o14_1884(c, t, 0, nil)
 }
 
-// otherMenu = ovr09:0E45 (char, var done): Done's submenu.
+// otherMenu = O057:1003 delay_menu (char, var done): Done's submenu.
 func (e *Engine) otherMenu(c *Character) (done bool) {
 	done = false
 	m := ""
@@ -574,7 +591,7 @@ func (e *Engine) guard(c *Character) bool {
 	return r
 }
 
-// bandage = ovr09:0FFF (doIt): is a party member dying? With doIt the
+// bandage = O0ED:335F (doIt): is a party member dying? With doIt the
 // first one is bandaged.
 func (e *Engine) bandage(doIt bool) bool {
 	found := false
@@ -592,7 +609,7 @@ func (e *Engine) bandage(doIt bool) bool {
 	return found
 }
 
-// speedMenu = ovr09:10F6: the message delay.
+// speedMenu = O057:11FA set_gamespeed: the message delay.
 func (e *Engine) speedMenu() {
 	for key := byte(0x20); key != 0 && key != 'E'; {
 		m := " "
@@ -613,7 +630,7 @@ func (e *Engine) speedMenu() {
 	}
 }
 
-// quickOne = ovr09:122B (char): the computer fights for it; a target on
+// quickOne = O057:132F (char): the computer fights for it; a target on
 // its own side is dropped.
 func (e *Engine) quickOne(c *Character) {
 	c.Auto = 1
@@ -710,21 +727,13 @@ func damageText(c *Character) string {
 const combatMsgRow = 10
 
 // combatSay shows combat text in the side panel under the stats, as
-// O0ED:1788 does (c, if any, named first), and keeps it for the Log
-// (extra): fresh starts a new message, otherwise it goes on the current one.
+// O0ED:1788 does (c, if any, named first): fresh starts a new message,
+// otherwise it goes on the current one.
 func (e *Engine) combatSay(c *Character, msg string, fresh bool) {
 	msg = strings.TrimSpace(msg)
-	if fresh || len(e.ext.battleLog) == 0 {
-		e.ext.battleLog = append(e.ext.battleLog, "")
+	if fresh {
 		e.ClearCells(sidePanelX1, combatMsgRow, sidePanelX2, sidePanelBot)
 		e.msgCol, e.msgRow = sidePanelX1, combatMsgRow
-	}
-	l := &e.ext.battleLog[len(e.ext.battleLog)-1]
-	add := func(s string) {
-		if *l != "" {
-			*l += " "
-		}
-		*l += s
 	}
 	if c != nil {
 		if e.msgCol != sidePanelX1 {
@@ -732,54 +741,9 @@ func (e *Engine) combatSay(c *Character, msg string, fresh bool) {
 		}
 		e.displayName(c, sidePanelX1, e.msgRow, false)
 		e.msgCol, e.msgRow = sidePanelX1, e.msgRow+1
-		add(c.Name())
 	}
 	if msg != "" {
 		e.DisplayTextBlock(sidePanelX1, e.msgRow, sidePanelX2, sidePanelBot, colourGreen, false, msg)
-		add(msg)
-	}
-}
-
-// showBattleLog (extra, Log) lists this battle's messages, newest at the
-// bottom; Up/Down and the wheel scroll, any other key goes back.
-func (e *Engine) showBattleLog() {
-	e.ext.modal++
-	e.ext.paging = true
-	defer func() { e.ext.modal--; e.ext.paging = false }()
-	restore := e.saveScreen()
-	defer restore()
-	var lines []string
-	for _, m := range e.ext.battleLog {
-		lines = append(lines, wrapText(m, 0x24)...)
-	}
-	if len(lines) == 0 {
-		lines = []string{"Nothing has happened yet."}
-	}
-	const rows = 0x15
-	top := max(len(lines)-rows, 0)
-	for {
-		e.DrawBoxTitled(1, 1, 0x26, 0x17, 0, 0xF, "Battle Log")
-		e.ClearCells(2, 2, 0x25, 0x17)
-		for i := 0; i < rows && top+i < len(lines); i++ {
-			e.DisplayString(2, 2+i, 0xA, lines[top+i])
-		}
-		hint := "press a key"
-		if len(lines) > rows {
-			hint = "up/down: scroll, " + hint
-		}
-		e.DisplayString(0x25-len(hint), 0x17, 0xA, hint)
-		switch k := e.ReadKey(); k {
-		case 0x4800:
-			top = max(top-1, 0)
-		case 0x5000:
-			top = min(top+1, max(len(lines)-rows, 0))
-		case 0x4900:
-			top = max(top-rows, 0)
-		case 0x5100:
-			top = min(top+rows, max(len(lines)-rows, 0))
-		default:
-			return
-		}
 	}
 }
 

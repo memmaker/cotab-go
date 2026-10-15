@@ -32,7 +32,10 @@ no hex/magic numbers, readable names).
   - [x] rules (O0E3): affect groups, saving throw, damage, add/kill/heal/revive, poison and stinking clouds
   - [x] affect handlers (O064 setup_spells2, 148 entries incl. O08D's engulf/hug/rays and the item call)
   - [x] clouds (O0C2 noxious/poisonous cloud, O064 clearing)
-  - [ ] O08D attacks, O0C2 spells, O11C/O121/O12A map and AI, O05A/O057/O045 (still Pool stand-ins: o14_*, o23_*)
+  - [x] O05D combat setup: CotAB wilderness map (cliffs, trees, scatter), dungeon map with rubble, placement, blocks
+  - [x] O057 combat loop: turn order, camp_menu/combat_menu (extended keys step at once), move/attack, delay menu, speed, quick; battle01 with the 15-round limit (reset by every attack)
+  - [x] O08D aiming (manual aim, target picking by hit dice/area, ranged rule), casterLevel (paladin/ranger offsets), god_intervene (debug word "Wooden")
+  - [ ] O08D rest, O0C2 spells, O11C/O121/O12A map and AI, O05A/O045 (remaining Pool stand-ins: o14_*, o23_*)
 - [ ] M8 sound: the PC speaker driver as Go data
 - [ ] M9 goplay: games.js, deploy.sh, README tables, hardware cursor n/a (no pointer), wasm build, box art
 - [ ] M10 publish (GitHub + deploy)

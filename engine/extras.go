@@ -128,7 +128,6 @@ type extras struct {
 	printed   string     // the text window's text since it was cleared
 	refsShown int        // journal references in it already shown
 	paging    bool       // a journal text is shown
-	battleLog []string   // the combat messages of this battle (Log)
 	panel     *Character // whose line the combat status row shows
 }
 

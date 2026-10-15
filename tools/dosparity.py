@@ -7,6 +7,7 @@ import os, shutil, subprocess, sys, tempfile, time
 sys.path.insert(0, os.path.expanduser('~/tools/dos-mcp/src'))
 from dos_mcp.qmp import QmpClient
 from dos_mcp import tools
+from dos_mcp.errors import QmpTransportError
 
 DOSBOX = os.path.expanduser('~/tools/dosbox-x-remotedebug/src/dosbox-x')
 
@@ -91,7 +92,7 @@ def main():
                 break
             except Exception:
                 time.sleep(0.2)
-        for s in steps:
+        def run(s):
             kind, _, arg = s.partition(':')
             if kind == 'wait':
                 time.sleep(float(arg))
@@ -170,9 +171,25 @@ def main():
             elif kind == 'shot':
                 open(os.path.join(out, arg + '.png'), 'wb').write(tools.capture_screen(client))
                 print('shot', arg)
+
+        for s in steps:
+            # a stuck QMP greeting fails before the command is sent: try again
+            for attempt in range(3):
+                try:
+                    run(s)
+                    break
+                except QmpTransportError:
+                    if attempt == 2:
+                        raise
+                    print('retry', s, flush=True)
+                    time.sleep(2)
     finally:
         proc.terminate()
-        proc.wait()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
         shutil.rmtree(tmp, ignore_errors=True)
 
 
