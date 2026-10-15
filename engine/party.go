@@ -142,10 +142,10 @@ func (e *Engine) PartyMenu() {
 			if len(e.party) > 0 {
 				e.DisplayPartyList()
 				enabled[menuDrop], enabled[menuModify] = true, true
-				if e.partyExp() > 0 || e.freeTraining {
+				if e.trainingClasses() > 0 || e.freeTraining {
 					enabled[menuTrain] = true // like the original, never cleared while there is a party
 				}
-				enabled[menuChangeClass] = (e.partyExp() > 0 || e.freeTraining) && e.mayChangeClass(e.selected())
+				enabled[menuChangeClass] = (e.trainingClasses() > 0 || e.freeTraining) && e.mayChangeClass(e.selected())
 				enabled[menuView], enabled[menuRemove] = true, true
 				enabled[menuLoad] = false
 				enabled[menuSave], enabled[menuBegin] = true, true
@@ -174,7 +174,7 @@ func (e *Engine) PartyMenu() {
 				couldChange := e.mayChangeClass(e.selected())
 				e.partyKeypad(k)
 				e.DisplayPartyList()
-				redraw = e.mayChangeClass(e.selected()) != couldChange && e.partyExp() > 0
+				redraw = e.mayChangeClass(e.selected()) != couldChange && e.trainingClasses() > 0
 			}
 			continue
 		}

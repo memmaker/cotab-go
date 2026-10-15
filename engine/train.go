@@ -8,10 +8,10 @@ import (
 // ovr17 (second half): Modify, Train and Add on the party screen, the
 // portrait and icon editors, and the hit point helpers they share.
 
-// partyExp = es:[game+0x550]: the classes this training hall teaches
+// trainingClasses = es:[game+0x550] (game word 680): the classes this training hall teaches
 // (a mask that is ANDed with DS:5DE; the party menu only offers Train
 // when it is set).
-func (e *Engine) partyExp() int { return int(wordAt(e.game, 0x550)) }
+func (e *Engine) trainingClasses() int { return int(wordAt(e.game, 2*gameWordTraining)) }
 
 // Experience a character may have and still be modified: none, or what
 // a character brought over from Pool of Radiance starts with.

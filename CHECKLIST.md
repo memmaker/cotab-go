@@ -31,7 +31,7 @@ no hex/magic numbers, readable names).
   - [x] temple (O042)
   - [x] item functions (O0AF): ready with the item effects (1B04), trade, halve, join, sell (coins + pool), identify (coins or pool)
   - [x] O0AF items menu (1583) and Use (2478: item spell & 127, scroll class check with the thief chance, "oops!")
-  - [ ] training halls (O0A7 train_player is ported; the hall's script path)
+  - [x] training halls: game word 680 (set by the hall's script, 255 after the ending) offers Train and Change Class in the party menu (O0A7:01CD), train_player O0A7:4D07
 - [ ] M7 combat
   - [x] rules (O0E3): affect groups, saving throw, damage, add/kill/heal/revive, poison and stinking clouds
   - [x] affect handlers (O064 setup_spells2, 148 entries incl. O08D's engulf/hug/rays and the item call)
