@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -93,32 +92,47 @@ func importGame(src, dst string) error {
 	return writeCover(dst)
 }
 
-// writeCover renders TITLE.DAX's title picture.
+// The cover is the title screen as the game first shows it (engine/title.go):
+// the painting with the Curse logo over it.
+const (
+	coverPainting  = 2 // TITLE.DAX's full-screen painting
+	coverLogo      = 3 // the "Curse of the Azure Bonds" logo
+	coverLogoCol   = 6 // where the logo goes, in 8-pixel cells
+	coverLogoRow   = 11
+	coverCellPixel = 8
+)
+
+// writeCover renders the title painting with its logo.
 func writeCover(dst string) error {
 	l, err := dax.NewLoader(dst)
 	if err != nil {
 		return err
 	}
-	var b []byte
-	for _, id := range []int{1, 2, 3, 4} {
-		if b = l.Block("TITLE", id); b != nil {
-			break
-		}
-	}
-	if b == nil {
-		return errors.New("TITLE.DAX has no title picture")
-	}
-	im := dax.ParseImage(b, false, 0)
 	pal := make(color.Palette, 16)
 	for i, c := range ega.Palette {
 		pal[i] = color.RGBA{c[0], c[1], c[2], 255}
 	}
 	img := image.NewPaletted(image.Rect(0, 0, ega.W, ega.H), pal)
-	d, w := im.Frame(0), im.Width*8
-	for y := 0; y < im.Height && y < ega.H; y++ {
-		for x := 0; x < w && x < ega.W; x++ {
-			img.SetColorIndex(x, y, d[y*w+x]&15)
+	draw := func(id, col, row int) error {
+		b := l.Block("TITLE", id)
+		if b == nil {
+			return fmt.Errorf("TITLE.DAX has no picture %d", id)
 		}
+		im := dax.ParseImage(b, false, 0)
+		d, w := im.Frame(0), im.Width*coverCellPixel
+		x0, y0 := col*coverCellPixel, row*coverCellPixel
+		for y := 0; y < im.Height && y0+y < ega.H; y++ {
+			for x := 0; x < w && x0+x < ega.W; x++ {
+				img.SetColorIndex(x0+x, y0+y, d[y*w+x]&15)
+			}
+		}
+		return nil
+	}
+	if err := draw(coverPainting, 0, 0); err != nil {
+		return err
+	}
+	if err := draw(coverLogo, coverLogoCol, coverLogoRow); err != nil {
+		return err
 	}
 	f, err := os.Create(filepath.Join(dst, "COVER.PNG"))
 	if err != nil {
