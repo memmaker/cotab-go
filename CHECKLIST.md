@@ -52,7 +52,7 @@ no hex/magic numbers, readable names).
   - [x] O08D turn code and O0C2 spell bodies renamed and audited; O045 after-combat ported
 - [x] M8 sound: R699 (Pool's 08AE driver moved 189 bytes) as Go data from CotAB's START.EXE; PlaySound/soundInit/Ctrl-S per R699:0020, 00D4, R670; DAX loads cut the song (R5BD)
 - [x] M9 goplay: games.js, deploy.sh, README tables, hardware cursor n/a (no pointer), wasm build, box art
-- [ ] M10 publish (GitHub + deploy)
+- [x] M10 publish (GitHub + deploy)
 
 ## Parity method
 `tools/dosparity.py` drives the original in the DOSBox-X remote-debug fork (added QMP `vgadump`,
