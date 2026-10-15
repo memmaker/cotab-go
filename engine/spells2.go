@@ -285,40 +285,44 @@ func (e *Engine) o23_1ACC() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is weaken
 // o23_1B11 = Stinking Cloud (O0C2 create_noxious_cloud).
 func (e *Engine) o23_1B11() { e.createCloud(e.stinkingKind()) }
 
-// o23_1F41 = ovr23:1F41: Enlarge/Strength of the first target: 1d4/1d6/1d8
-// by its classes, added to its strength, exceptional strength above 18.
-func (e *Engine) o23_1F41() {
-	var ext, add byte // add is an unset local when no class qualifies
-	t := e.tgt(1)
-	if int8(t.Levels[clsMage]) > 0 {
-		add = byte(e.Dice(1, 4))
-	}
-	if int8(t.Levels[clsCleric]) > 0 || int8(t.Levels[clsThief]) > 0 {
-		add = byte(e.Dice(1, 6))
-	}
-	if int8(t.Levels[clsFighter]) > 0 {
-		add = byte(e.Dice(1, 8))
-	}
-	str := t.Stats[statStr].Base + add
-	if str > 0x12 {
-		if int8(t.Levels[clsFighter]) > 0 {
-			ext = byte(int(str-0x12)*10 + int(t.Str00.Value))
-			if ext > 0x64 {
-				ext = 0x64
-			}
-			str = 0x12
-		} else {
-			str = 0x12
-		}
-	}
-	out, ok := e.SetStrength(t, str, ext)
-	if ok {
-		e.combatName(t, "is stronger", 0xA, true)
-	}
-	e.AddAffect(t, 0x26, e.o23_07D6(int(e.curSpell)), out, 1)
+// hasClass: a level in the class now, or an old one above the level of
+// the class taken up after (a dual-classed character's first class).
+func hasClass(c *Character, k int) bool {
+	return int8(c.Levels[k]) > 0 || int8(c.OldLevels[k]) > int8(c.MulticlassLevel)
 }
 
-// o23_206F = ovr23:206F: Animate Dead. Corpses of the party list (status 6,
+// spellStrength = O0C2:2C5B: Strength. 1d4 for a mage, 1d6 for a cleric or
+// thief, 1d8 for a fighter (the last that applies) on the strength in use;
+// above 18 the fighters, paladins and rangers get exceptional strength.
+func (e *Engine) spellStrength() {
+	var str00, add byte // add is an unset local when no class qualifies
+	t := e.tgt(1)
+	if hasClass(t, clsMage) {
+		add = byte(e.Dice(1, 4))
+	}
+	if hasClass(t, clsCleric) || hasClass(t, clsThief) {
+		add = byte(e.Dice(1, 6))
+	}
+	if hasClass(t, clsFighter) {
+		add = byte(e.Dice(1, 8))
+	}
+	str := t.Stats[statStr].Value + add
+	if str > strengthMaximum18 {
+		if hasClass(t, clsFighter) || hasClass(t, clsPaladin) || hasClass(t, clsRanger) {
+			str00 = t.Str00.Value + (str-strengthMaximum18)*10
+			if str00 > 100 {
+				str00 = 100
+			}
+		}
+		str = strengthMaximum18
+	}
+	if _, ok := strongerThan(t, str, str00); ok {
+		e.AddAffect(t, affectStrengthSpell, e.o23_07D6(int(e.curSpell)), add+strengthEncodedBase, 1)
+		e.statAffects(t, statStr)
+	}
+}
+
+// o23_206F = O0C2:2E19 is_animated: Animate Dead. Corpses of the party list (status 6,
 // kind 0) are put back on their feet on the caster's side, one per caster level.
 func (e *Engine) o23_206F() {
 	e.rv.areaSpell = 1
@@ -338,9 +342,7 @@ func (e *Engine) o23_206F() {
 		p.Undead = 2
 		p.FightLevel = 0
 		p.BaseMove = 6
-		for i := 0; i <= 0x14; i++ {
-			p.Memorized[i] = 0
-		}
+		p.Memorized = [len(p.Memorized)]byte{}
 		if p.Control > 0x7F {
 			p.Control = 0xB2
 		} else {
@@ -396,29 +398,43 @@ func (e *Engine) o23_232F() { e.cureDiseaseAffects() }
 // o23_234C = ovr23:234C: "is diseased".
 func (e *Engine) o23_234C() { e.o23_08C3(int(e.curSpell), 0, 1, 0, 0, "is diseased") }
 
-// o23_2385 = ovr23:2385: Dispel Magic. Each pass walks the affects of the
-// first target (the loop variable only counts passes); every temporary
-// affect goes with a chance of 50% +5% per level above, -10% per level
-// below, the level of the affect being its data low nibble.
+// Dispel Magic's odds: 50%, +5% for each caster level above the affect's,
+// -2% for each below.
+const (
+	dispelOdds      = 50
+	dispelPerAbove  = 5
+	dispelPerBelow  = 2
+	affectLevelMask = 0x0F // an affect's data: the caster level it was cast at
+)
+
+// dispelChance: the odds of a caster level against an affect's level.
+func dispelChance(lvl, against byte) byte {
+	switch {
+	case lvl > against:
+		return (lvl-against)*dispelPerAbove + dispelOdds
+	case lvl < against:
+		return dispelOdds - (against-lvl)*dispelPerBelow
+	}
+	return dispelOdds
+}
+
+// o23_2385 = O0C2:31E4 is_affected3: Dispel Magic. Each pass walks the
+// affects of the first target (the loop variable only counts passes);
+// each temporary affect may go. Then the clouds on the nine squares round
+// the target square: a cloud whose caster's mage level does not stop it
+// lifts, else it stays for good.
 func (e *Engine) o23_2385() {
 	e.rv.areaSpell = 1
-	lvl := e.casterLevel(int(e.curSpell))
+	lvl := byte(e.casterLevel(int(e.curSpell)))
 	for i := 1; i <= e.nSpellTargets; i++ {
 		hit := false
 		t := e.tgt(1)
 		for _, a := range append([]*Affect(nil), t.Affects...) {
-			if a.Data >= 0xFF {
+			if a.Data == 0xFF {
 				continue
 			}
-			e.v4845 = a.Data & 0xF
-			switch {
-			case byte(lvl) > e.v4845:
-				e.v4844 = byte((lvl-int(e.v4845))*5 + 0x32)
-			case byte(lvl) < e.v4845:
-				e.v4844 = byte(0x32 - (int(e.v4845)-lvl)*2)
-			default:
-				e.v4844 = 0x32
-			}
+			e.v4845 = a.Data & affectLevelMask
+			e.v4844 = dispelChance(lvl, e.v4845)
 			if byte(e.Dice(1, 100)) <= e.v4844 {
 				e.RemoveAffect(t, a.Type, a)
 				hit = true
@@ -428,9 +444,175 @@ func (e *Engine) o23_2385() {
 			e.hitMessage(t, true, "is affected")
 		}
 	}
+	var x, y int8
+	for k := 0; k <= 8; k++ {
+		tx, ty := int8(e.tgtX), int8(e.tgtY)
+		switch k {
+		case 0:
+			x, y = tx, ty
+		case 1, 8:
+			y = ty - 1
+		case 2:
+			x = tx + 1
+		case 3, 7:
+			y = ty
+		case 4:
+			y = ty + 1
+		case 5:
+			x = tx
+		case 6:
+			x = tx - 1
+		}
+		_, g := e.mapAt(int(x), int(y))
+		var list []*cloudRecord
+		var n int
+		var affect byte
+		switch g {
+		case groundPoisonCloud:
+			list, n, affect = e.poisonClouds, 9, affectCloudkill
+		case groundStinkingCloud:
+			list, n, affect = e.stinkingClouds, 4, affectStinkingCloud
+		default:
+			continue
+		}
+		for _, r := range append([]*cloudRecord(nil), list...) {
+			for j := 0; j < n; j++ {
+				if sx, sy := r.square(dispelCloudSquares[:], j); sx != int(x) || sy != int(y) || r.stays {
+					continue
+				}
+				if !e.dispelsCloud(r.caster, lvl) {
+					r.stays = true
+					continue
+				}
+				for _, a := range r.caster.Affects {
+					if a.Type == affect && a.Data>>4 == r.number {
+						e.RemoveAffect(r.caster, affect, a)
+						break
+					}
+				}
+			}
+		}
+	}
+}
+
+// dispelsCloud = O0C2:3126 (caster): the dispel roll against the mage
+// level of a cloud's caster (old levels counted by the selected
+// character's dual class).
+func (e *Engine) dispelsCloud(caster *Character, lvl byte) bool {
+	old := byte(0)
+	if oldClassUsable(e.selected()) {
+		old = 1
+	}
+	e.v4845 = caster.OldLevels[clsMage]*old + caster.Levels[clsMage]
+	e.v4844 = dispelChance(lvl, e.v4845)
+	return byte(e.Dice(1, 100)) <= e.v4844
 }
 
 // o23_24D6 = ovr23:24D6: "is praying", cast at caster level with the side in the high nibble.
 func (e *Engine) o23_24D6() {
 	e.o23_08C3(int(e.curSpell), int(e.selected().Side)<<4+e.casterLevel(int(e.curSpell)), 0, 0, 0, "is praying")
+}
+
+// fxNeutralizePoison = O0C2:41DA cure_poison: an animated target drops
+// out; a poisoned one (affect 55) is back on its feet with at least a hit
+// point, without its poison affects.
+func (e *Engine) fxNeutralizePoison() {
+	t := e.tgt(1)
+	if t.Status == statusAnimated {
+		e.setTgt(1, nil)
+		return
+	}
+	if e.FindAffect(t, affectPoisoned) != nil {
+		if t.HP == 0 {
+			t.HP = 1
+		}
+		e.rv.cure = 1
+		e.RemoveAffect(t, affectPoisoned, nil)
+		e.RemoveAffect(t, affectSlowPoison, nil)
+		e.RemoveAffect(t, affectPoisonDamage, nil)
+		e.rv.cure = 0
+		e.combatName(t, "is unpoisoned", combatMsgRow, true)
+		t.Okay = 1
+		t.Status = statusOkay
+		return
+	}
+	e.combatName(t, "is unaffected", combatMsgRow, true)
+}
+
+// fxPoison = O0C2:42D0: the spell's affect on the targets; then the
+// caster's own target is tried against the poison sting (affect 64): when
+// nothing there blocks it, the sting handler runs for the caster.
+func (e *Engine) fxPoison() {
+	e.o23_08C3(int(e.curSpell), 0, 0, 0, dmgMagic, "")
+	sel := e.selected()
+	e.rv.affVal = affectPoisonSting
+	e.affectGroup(sel.Combat.Target, 9)
+	if e.rv.affVal == affectPoisonSting {
+		e.callAffect(affectPoisonSting, sel, nil, 0) // the affect argument is an unset local
+	}
+}
+
+// sticksToSnakesTooBig: the hit dice from which a target is too big for the snakes.
+const sticksToSnakesTooBig = 6
+
+// fxSticksToSnakes = O0C2:435A cast_flattern: a small target gets the
+// snakes (and their handler runs at once); a big one smashes them flat.
+func (e *Engine) fxSticksToSnakes() {
+	t := e.tgt(1)
+	if int8(t.MaxLevel) < sticksToSnakesTooBig {
+		e.o23_08C3(int(e.curSpell), e.casterLevel(int(e.curSpell)), 0, 0, dmgMagic, "")
+		if a := e.FindAffect(t, affectSticksToSnakes); a != nil {
+			e.callAffect(affectSticksToSnakes, t, a, 0)
+		}
+		return
+	}
+	e.combatName(t, "smashes them flat", combatMsgRow, true)
+}
+
+// fxCureCritical = O0C2:43F0: heals 3d8+3.
+func (e *Engine) fxCureCritical() {
+	if e.nSpellTargets == 0 {
+		return
+	}
+	t := e.tgt(1)
+	if e.Heal(t, e.Dice(3, 8)+3, false) {
+		e.healedMessage(t)
+	}
+}
+
+// fxCauseCritical = O0C2:4431: 3d8+3 of damage type 8.
+func (e *Engine) fxCauseCritical() {
+	e.o23_08C3(int(e.curSpell), 0, 0, e.RollDice(3, 8)+3, dmgMagic, "")
+}
+
+// fxDispelEvil = O0C2:4479 is_affected4: the caster is warded against
+// enchanted creatures (affect 4, Dispel Evil's own amount), then the spell's
+// affect on the targets.
+func (e *Engine) fxDispelEvil() {
+	e.isUnaffected(e.selected(), affectWardEnchanted, e.o23_07D6(spellDispelEvil), 0, 0, 0, false, "")
+	e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is affected")
+}
+
+// fxFlameStrike = O0C2:44DA: 6d8 of damage type 9.
+func (e *Engine) fxFlameStrike() {
+	e.o23_08C3(int(e.curSpell), 0, 0, e.RollDice(6, 8), dmgMagic|dmgFire, "")
+}
+
+// fxRaiseDead = O0C2:451A cast_raise: a dead (or animated) target with
+// constitution left and not an elf comes back with a hit point, a point of
+// constitution less.
+func (e *Engine) fxRaiseDead() {
+	t := e.tgt(1)
+	if (t.Status == statusDead || t.Status == statusAnimated) && t.Stats[statCon].Base > 0 && t.Race != raceElf {
+		e.rv.cure = 1
+		e.RemoveAffect(t, affectCollapse, nil)
+		e.RemoveAffect(t, affectPoisoned, nil)
+		e.rv.cure = 0
+		t.Status = statusOkay
+		t.Okay = 1
+		t.Stats[statCon].Base--
+		e.statAffects(t, statCon)
+		t.HP = 1
+		e.combatName(t, "is raised", combatMsgRow, true)
+	}
 }

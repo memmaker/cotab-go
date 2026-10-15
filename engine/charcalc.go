@@ -407,10 +407,10 @@ func (e *Engine) isHelpless(c *Character) bool {
 	return found
 }
 
-// atRaceLimitPOR = 00BA:2F57 (char, class) (Pool of Radiance; replaced as its callers are ported): the demihuman level limit is
+// atRaceLimitAfterRestore = O0ED:3138 (char, class): the demihuman level limit is
 // reached (fighter limits depend on strength 17/18; race 4 clerics stop at 5).
-func atRaceLimitPOR(c *Character, class int) bool {
-	lvl, str := int8(c.Levels[class]), c.Stats[statStr].Base
+func atRaceLimitAfterRestore(c *Character, class int) bool {
+	lvl, str := int8(c.Levels[class]), c.Stats[statStr].Value
 	if lvl <= 0 {
 		return false
 	}

@@ -753,15 +753,16 @@ func (e *Engine) forgetSpell(sp byte) {
 	}
 }
 
-// healedMessage = 00BA:2348 (char).
+// healedMessage = O0ED:24F7 (char): fully or partially healed; outside
+// combat the selected character's summary is shown again.
 func (e *Engine) healedMessage(c *Character) {
 	msg := "is partially healed"
 	if c.HP == c.MaxHP {
 		msg = "is fully healed"
 	}
-	e.combatName(c, msg, 0xA, true)
-	if e.gameState != 5 {
-		e.DisplayPartyList()
+	e.combatName(c, msg, combatMsgRow, true)
+	if e.gameState != stateCombat {
+		e.playerSummary(e.selected())
 	}
 }
 

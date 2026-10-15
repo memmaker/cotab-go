@@ -179,7 +179,7 @@ type Engine struct {
 	tgtX, tgtY          int              // DS:6DB9/6DBA target square
 	combatTargets       bool             // DS:6B84 points at ovr14:20C3 (set by Combat), else ovr23:0A91
 	whoVar              bool             // SelectCharacter's who is DS:5D92 itself (opWho)
-	spellFx             [0x44]func()     // DS:6B84 spell effect table (slot 0 unused)
+	spellFx             [len(spellNames)]func()     // DS:6B84 spell effect table (slot 0 unused)
 	v4844, v4845        byte             // DS:4844/4845 spell scratch
 	v681A, v681D, v681E byte             // DS:681A speed value, 681D, 681E affect scratch
 	panelDirty          bool             // DS:75FF the side panel is to be redrawn

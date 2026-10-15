@@ -11,6 +11,7 @@ type cloudRecord struct {
 	covered [9]byte    // +17
 	x, y    byte       // +26
 	number  byte       // +28 the caster's cloud number (affect data >> 4)
+	stays   bool       // +29 the cloud withstood a Dispel Magic
 }
 
 // cloudKind ties a list to its squares, its ground and its affect.

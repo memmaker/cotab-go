@@ -395,6 +395,11 @@ var downAffectData = [20]byte{255, 7, 11, 13, 21, 23, 30, 31, 32, 51, 52, 53, 58
 // The facings from a small cloud's centre to its 4 squares (stinking cloud).
 var cloudSquares4 = [4]byte{8, 2, 3, 4}
 
+// The squares Dispel Magic tries for a cloud: DS:27D9 read from entry 1,
+// the small cloud's table running on into the next, also for the large
+// cloud (O0C2:31E4).
+var dispelCloudSquares = [9]byte{8, 2, 3, 4, 8, 0, 1, 2, 3}
+
 // The facings from a large cloud's centre to its 9 squares (cloudkill); 8 is the centre.
 var cloudSquares9 = [9]byte{8, 0, 1, 2, 3, 4, 5, 6, 7}
 

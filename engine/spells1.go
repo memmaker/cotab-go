@@ -263,11 +263,12 @@ func (e *Engine) CastSpell(spell, mode, b byte, quit *bool) {
 	}
 }
 
-// spellRemoveCurse = ovr23:2540: the target (DS:6C95) loses the curse
-// affect, or else the curse of its first cursed item.
+// spellRemoveCurse = O0C2:3605 uncurse: the first target loses the curse
+// affect, or else its first cursed item is put away; an item with a
+// magic property takes it back and the scores are worked out again.
 func (e *Engine) spellRemoveCurse() {
-	t := e.spellTarget
-	if e.CureAffect(t, 0x24) {
+	t := e.tgt(1)
+	if e.CureAffect(t, affectHampered) {
 		e.hitMessage(t, true, "is un-cursed")
 		return
 	}
@@ -276,17 +277,26 @@ func (e *Engine) spellRemoveCurse() {
 		if found {
 			break
 		}
-		if it.Cursed != 0 {
-			found = true
-			it.Cursed = 0
+		if it.Cursed == 0 {
+			continue
+		}
+		found = true
+		it.Readied = 0
+		if it.Spells[2] > itemPropertyFlag {
+			e.itemCall = true
+			e.callItem = it
+			e.callAffect(it.Spells[2], t, nil, 1)
+			for k := statStr; k <= statCha; k++ {
+				e.statAffects(t, k)
+			}
 		}
 	}
 	if found {
-		e.hitMessage(t, true, "'s item is un-cursed")
+		e.hitMessage(t, true, "has an item un-cursed")
 	}
 }
 
-// fxCursed = ovr23:2604.
+// fxCursed = O0C2:371B curse.
 func (e *Engine) fxCursed() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "has been cursed!") }
 
 // fxBlinking = ovr23:263D.
@@ -313,7 +323,7 @@ func (e *Engine) fxFireball() {
 	e.o23_08C3(int(e.curSpell), 0, 0, e.RollDice(lvl, 6), 9, "")
 }
 
-// removeAffectFromSide = ovr23:2764 (type, side, msg): the first casterLevel
+// removeAffectFromSide = O0C2:387B (type, side, msg): the first casterLevel
 // targets of that side lose the affect; the others are dropped. A nil
 // target (garbage in the asm) is dropped as well.
 func (e *Engine) removeAffectFromSide(typ, side int, msg string) {
@@ -332,43 +342,43 @@ func (e *Engine) removeAffectFromSide(typ, side int, msg string) {
 		}
 	}
 	e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, msg)
-	for i := 1; i <= e.nSpellTargets; i++ {
-		if t := e.tgt(i); t != nil {
-			e.affectGroup(t, 0x12)
-		}
-	}
 }
 
-// fxHaste = ovr23:2892: slow is removed from the caster's side.
+// fxHaste = O0C2:395C cast_haste: slow is removed from the caster's side.
 func (e *Engine) fxHaste() { e.removeAffectFromSide(0x2A, int(e.selected().Side), "is Hasted") }
 
-// strikeSquare = ovr23:28BC (x, y, dmg, saveType): whoever stands on the
-// square takes dmg (half on a save, DS:6819 = 0xC); true when the ground
-// there stops a bolt.
-func (e *Engine) strikeSquare(x, y, dmg, saveType int) bool {
-	blocked := false
+// Ground kinds by groundInfo's first byte.
+const (
+	groundOpen    = 1   // a bolt flies on over it
+	groundStopper = 255 // a wall: a bolt bounces off it, in a dungeon
+)
+
+// strikeSquare = O0C2:3986 (x, y, dmg, saveType, prevWho, var bounced):
+// whoever stands on the square, unless it was the one struck last, takes
+// dmg (half on a save, DS:6FAF = 12). bounced is set when the ground stops
+// a bolt in a dungeon and it had not just bounced, else cleared.
+func (e *Engine) strikeSquare(x, y, dmg, saveType int, prevWho byte, bounced *bool) {
 	who, ground := e.mapAt(x, y)
-	if ground > 0 && groundInfo[ground%64][0] == 0xFF {
-		blocked = true
-	}
-	if who > 0 {
+	*bounced = ground > 0 && groundInfo[ground%64][0] == groundStopper &&
+		wordAt(e.area, 2*areaWordInside) == 1 && !*bounced
+	if who > 0 && who != prevWho {
 		t := e.combatant(who)
 		e.rv.dmgType = 0xC
 		e.damagePerson(t, int(byte(dmg)), 2, e.SavingThrow(t, saveType, 0))
 		e.hitColours(0x13)
 		e.rv.dmgType = 0
 	}
-	return blocked
 }
 
-// boltPath = ovr23:295B (reach, dmg, saveType, bounce): the bolt goes on
+// boltPath = O0C2:3A44 (reach, dmg, saveType, bounce): the bolt goes on
 // past the target square, away from the caster, for reach*2 steps, hitting
-// each square; where it is stopped it comes back toward the caster (once,
-// when bounce is set, those squares count extra) with the direction
-// reversed.
+// each square; where it bounces it comes back the other way (once, when
+// bounce is set and the caster is near, those squares count 8 more).
 func (e *Engine) boltPath(reach, dmg, saveType, bounce int) {
+	var bounced bool
 	e.hitColours(0x13)
 	prevWho, _ := e.mapAt(e.tgtX, e.tgtY)
+	var used byte // v61b: the steps already taken off the reach
 	dirSign := 1
 	sel := e.selected()
 	cx, cy := e.combatX(sel), e.combatY(sel)
@@ -376,8 +386,6 @@ func (e *Engine) boltPath(reach, dmg, saveType, bounce int) {
 	if cx == e.tgtX && cy == e.tgtY {
 		return
 	}
-	var who, ground byte // who is uninitialised in the asm until the first step
-	_, ground = e.mapAt(e.tgtX, e.tgtY)
 	r := byte(reach * 2)
 	e.rv.areaSpell = 1
 	for r > 0 {
@@ -385,33 +393,29 @@ func (e *Engine) boltPath(reach, dmg, saveType, bounce int) {
 		x1 := int(int16(e.tgtX + (e.tgtX-cx)*dirSign*int(r)))
 		y1 := int(int16(e.tgtY + (e.tgtY-cy)*dirSign*int(r)))
 		l := newLine(x0, y0, x1, y1)
+		var who, ground byte
 		for {
 			lastX, lastY := byte(l.x), byte(l.y)
 			if !(x0 == x1 && y0 == y1) {
 				for {
 					more := e.step(l)
 					who, ground = e.mapAt(int(byte(l.x)), int(byte(l.y)))
-					if !more {
-						break
+					if groundInfo[ground%64][0] == groundOpen {
+						bounced = false
 					}
-					if who > 0 && who != prevWho {
-						break
-					}
-					if ground == 0 || groundInfo[ground%64][0] > 1 {
-						break
-					}
-					if byte(l.steps) >= r {
+					if !more || who > 0 && who != prevWho || ground == 0 ||
+						groundInfo[ground%64][0] > groundOpen || byte(l.steps) >= r {
 						break
 					}
 				}
 			}
-			prevWho = who
 			if ground == 0 {
 				r = 0
 			}
 			e.flyMissile(int(lastX), int(lastY), int(byte(l.x)), int(byte(l.y)), 4, 0x32)
-			blocked := e.strikeSquare(int(byte(l.x)), int(byte(l.y)), dmg, saveType)
-			if blocked {
+			e.strikeSquare(int(byte(l.x)), int(byte(l.y)), dmg, saveType, prevWho, &bounced)
+			prevWho = who
+			if bounced {
 				e.tgtX, e.tgtY = int(byte(l.x)), int(byte(l.y))
 				back := newLine(e.tgtX, e.tgtY, cx, cy)
 				for e.step(back) {
@@ -423,12 +427,14 @@ func (e *Engine) boltPath(reach, dmg, saveType, bounce int) {
 				flag = 0
 				prevWho = 0
 			}
-			if byte(l.steps) < r {
-				r -= byte(l.steps)
+			used = byte(l.steps) - used
+			if used < r {
+				r -= used
 			} else {
 				r = 0
 			}
-			if blocked || r == 0 {
+			used = byte(l.steps)
+			if bounced || r == 0 {
 				break
 			}
 		}
@@ -436,22 +442,29 @@ func (e *Engine) boltPath(reach, dmg, saveType, bounce int) {
 	e.rv.areaSpell = 0
 }
 
-// fxLightning = ovr23:2BB7: level d6 down the line, bouncing.
+// fxLightning = O0C2:3CD9: level d6 down a line of 7, bouncing.
 func (e *Engine) fxLightning() {
 	d := byte(e.Dice(e.casterLevel(int(e.curSpell)), 6))
-	e.strikeSquare(e.tgtX, e.tgtY, int(d), 4)
-	e.boltPath(8, int(d), 4, 1)
+	var bounced bool // an unset local in 3CD9
+	e.strikeSquare(e.tgtX, e.tgtY, int(d), 4, 0, &bounced)
+	e.boltPath(7, int(d), 4, 1)
 }
 
-// fxSlow = ovr23:2C09.
+// fxSlow = O0C2:3D2E.
 func (e *Engine) fxSlow() {
 	e.removeAffectFromSide(0x27, b2i(isParty(e.selected())), "is Slowed")
 }
 
-// fxRestore = ovr23:2C43: gives back one drained level (the class that
+// Restore's search: classes up to level 13, below 10,000,000 points.
+const (
+	maxRestoredLevel  = 13
+	restoreExpCeiling = 10000000
+)
+
+// fxRestore = O0C2:3D68 cast_restore: gives back one drained level (the class that
 // needs the fewest experience points) and the points lost with it.
 func (e *Engine) fxRestore() {
-	t := e.spellTarget
+	t := e.tgt(1)
 	if t.Drained == 0 {
 		return
 	}
@@ -461,19 +474,19 @@ func (e *Engine) fxRestore() {
 	t.HPRoll += q
 	t.DrainedHP -= q
 	t.Drained--
-	best := int8(0xD)
-	bestXP := int32(0x989680)
+	best := int8(maxRestoredLevel)
+	bestXP := int32(restoreExpCeiling)
 	var bestClass int // uninitialised in the asm when nothing qualifies
 	for k := 0; k <= 7; k++ {
 		lvl := int8(t.Levels[k])
 		if lvl <= 0 || lvl > best {
 			continue
 		}
-		xp := int32(longAt(e.X.Bytes(0x409B+k*0x38+int(byte(lvl+1))*4, 4), 0))
+		xp := expThreshold(k, int(lvl))
 		if xp <= 0 || xp >= bestXP {
 			continue
 		}
-		if atRaceLimitPOR(t, k) {
+		if atRaceLimitAfterRestore(t, k) {
 			continue
 		}
 		best, bestClass, bestXP = lvl, k, xp
@@ -486,54 +499,50 @@ func (e *Engine) fxRestore() {
 	e.combatName(t, "is restored", 0xA, true)
 }
 
-// fxSpeedy = ovr23:2E02.
+// fxSpeedy = O0C2:3F2C cast_speed.
 func (e *Engine) fxSpeedy() {
-	if !e.CureAffect(e.spellTarget, 0x2A) {
+	if !e.CureAffect(e.tgt(1), affectSlow) {
 		e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is Speedy")
 	}
 }
 
-// fxCureParalysis = ovr23:2E4D: affect 0x37 is cured (and the affect 0x16
-// that goes with it removed); otherwise a small heal.
-func (e *Engine) fxCureParalysis() {
-	t := e.spellTarget
-	if e.CureAffect(t, 0x37) {
-		e.rv.cure = 1
-		e.RemoveAffect(t, 0x16, nil)
-		e.rv.cure = 0
+// fxCureSerious = O0C2:3F6D: heals 2d8+1.
+func (e *Engine) fxCureSerious() {
+	if e.nSpellTargets == 0 {
 		return
 	}
-	if e.cureDiseaseAffects() {
-		return
-	}
-	if e.Heal(t, e.Dice(1, 4)+8, false) {
-		e.hitMessage(t, true, "is Healed")
+	t := e.tgt(1)
+	if e.Heal(t, e.Dice(2, 8)+1, false) {
+		e.healedMessage(t)
 	}
 }
 
-// fxStronger = ovr23:2EE5: strength 0x15 for the spell's duration.
+
+// fxStronger = O0C2:3FB7 cast_strength: giant strength 21 for 1d4*10+40 rounds.
 func (e *Engine) fxStronger() {
-	t := e.spellTarget
-	out, ok := e.SetStrength(t, 0x15, 0)
+	t := e.tgt(1)
+	out, ok := strongerThan(t, giantStrength21, 0)
 	if ok {
-		e.combatName(t, "is stronger", 0xA, true)
+		e.combatName(t, "is stronger", combatMsgRow, true)
 	}
-	e.AddAffect(t, 0x26, e.o23_07D6(int(e.curSpell)), out, 1)
+	e.AddAffect(t, affectGiantStrength, e.Dice(1, 4)*10+40, out, 1)
+	e.statAffects(t, statStr)
 }
 
-// fxBolt = ovr23:2F4D: Dice(1,6)+0x14 on the target square, then a fixed
+// fxBolt = O0C2:403C: Dice(1,6)+0x14 on the target square, then a fixed
 // 0x14 along the line.
 func (e *Engine) fxBolt() {
-	e.strikeSquare(e.tgtX, e.tgtY, e.Dice(1, 6)+0x14, 4)
+	var bounced bool
+	e.strikeSquare(e.tgtX, e.tgtY, e.Dice(1, 6)+0x14, 4, 0, &bounced)
 	e.boltPath(3, 0x14, 4, 0)
 }
 
 // fxParalyzed = ovr23:2F99.
 func (e *Engine) fxParalyzed() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is paralyzed") }
 
-// fxHeal2d4 = ovr23:2FD0.
+// fxHeal2d4 = O0C2:40C2 cast_heal.
 func (e *Engine) fxHeal2d4() {
-	t := e.spellTarget
+	t := e.tgt(1)
 	if e.Heal(t, e.Dice(2, 4)+2, false) {
 		e.hitMessage(t, true, "is Healed")
 	}
@@ -542,9 +551,14 @@ func (e *Engine) fxHeal2d4() {
 // fxInvisible = ovr23:302A.
 func (e *Engine) fxInvisible() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is invisible") }
 
-// fxDamage2d4 = ovr23:3058: 2d4+2 of damage type 8.
+// fxDamage2d4 = O0C2:414A: 2d4+2 of damage type 8.
 func (e *Engine) fxDamage2d4() {
 	e.o23_08C3(int(e.curSpell), 0, 0, e.RollDice(2, 4)+2, 8, "")
+}
+
+// fxDamage2d8 = O0C2:4185: 2d8+1 of damage type 8.
+func (e *Engine) fxDamage2d8() {
+	e.o23_08C3(int(e.curSpell), 0, 0, e.RollDice(2, 8)+1, 8, "")
 }
 
 // fxNone = ovr23:3092: does nothing.
@@ -574,7 +588,8 @@ func (e *Engine) o23_30D9(c *Character, a *Affect, flag int) {
 	e.removeInvisibility(c)
 	e.hitColours(0x13)
 	e.flyMissile(cx, cy, e.tgtX, e.tgtY, 4, 0x32)
-	e.strikeSquare(e.tgtX, e.tgtY, int(c.MaxHP), 3)
+	var bounced bool
+	e.strikeSquare(e.tgtX, e.tgtY, int(c.MaxHP), 3, 0, &bounced)
 	e.boltPath(0xA, int(c.MaxHP), 3, 0)
 	if a.Data > 0xFD {
 		a.Data--
@@ -665,7 +680,7 @@ func (e *Engine) spellTableInit() {
 	e.spellFx[32] = e.o23_1A8A
 	e.spellFx[33] = e.o23_1ACC
 	e.spellFx[34] = e.o23_1B11
-	e.spellFx[35] = e.o23_1F41
+	e.spellFx[35] = e.spellStrength
 	e.spellFx[36] = e.o23_206F
 	e.spellFx[37] = e.o23_2217
 	e.spellFx[38] = e.o23_225D
@@ -688,7 +703,7 @@ func (e *Engine) spellTableInit() {
 	e.spellFx[55] = e.fxSlow
 	e.spellFx[56] = e.fxRestore
 	e.spellFx[57] = e.fxSpeedy
-	e.spellFx[58] = e.fxCureParalysis
+	e.spellFx[58] = e.fxCureSerious
 	e.spellFx[59] = e.fxStronger
 	e.spellFx[60] = e.fxBolt
 	e.spellFx[61] = e.fxParalyzed
@@ -696,8 +711,16 @@ func (e *Engine) spellTableInit() {
 	e.spellFx[63] = e.fxInvisible
 	e.spellFx[64] = e.fxFireball
 	e.spellFx[65] = e.fxDamage2d4
-	e.spellFx[66] = e.fxNone
-	e.spellFx[67] = e.fxReading
+	e.spellFx[66] = e.fxDamage2d8
+	e.spellFx[67] = e.fxNeutralizePoison
+	e.spellFx[68] = e.fxPoison
+	e.spellFx[69] = e.o23_1123
+	e.spellFx[70] = e.fxSticksToSnakes
+	e.spellFx[71] = e.fxCureCritical
+	e.spellFx[72] = e.fxCauseCritical
+	e.spellFx[73] = e.fxDispelEvil
+	e.spellFx[74] = e.fxFlameStrike
+	e.spellFx[75] = e.fxRaiseDead
 }
 
 // o23_37B0 = ovr23:37B0: empty (entry 0).

@@ -28,6 +28,7 @@ const (
 	noFixedScore        = 255
 	giantStrengthBase   = 18 // value 0 is 18/00; value n >= 1 is 18 + n
 	strengthEncodedBase = 100
+	giantStrength21     = 21 // the Strength spell of O0C2:3FB7
 )
 
 // strengthCode = O0E3:16B0 (str, str00): one byte for a strength: 18/xx as
