@@ -27,7 +27,7 @@ func gameFile(name string) bool {
 	switch {
 	case strings.HasSuffix(base, ".DAX"):
 		return true
-	case base == "ITEMS" || base == "CURSE.CFG" || base == "GAME.OVR":
+	case base == "ITEMS" || base == "CURSE.CFG":
 		return true
 	case strings.HasPrefix(base, "SAVGAM") || strings.HasPrefix(base, "CHRDAT"):
 		return true // saved games and saved characters
