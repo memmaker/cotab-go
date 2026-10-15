@@ -33,7 +33,7 @@ func (e *Engine) DevScene(name string) func() {
 		return func() {
 			e.run.treasure = nil
 			for _, t := range []byte{0x3F, 0x15, 0x49, 0x3D, 0x32, 0x05} {
-				e.run.treasure = append(e.run.treasure, e.RandomItem(t))
+				e.run.treasure = append(e.run.treasure, e.createItem(t))
 			}
 			e.shopMenu()
 			e.DrawMainScreen()
@@ -72,7 +72,7 @@ func (e *Engine) DevScene(name string) func() {
 			}
 			e.addAffectNow(e.party[1], 0x47, 0, 100)
 			for i, t := range []byte{0x3F, 0x15, 0x49} { // and items for the inventory
-				e.AddItemCopy(e.party[i%2], e.RandomItem(t))
+				e.AddItemCopy(e.party[i%2], e.createItem(t))
 			}
 			e.ApplyItems(e.party[0])
 			e.ApplyItems(e.party[1])
@@ -89,7 +89,7 @@ func (e *Engine) DevScene(name string) func() {
 		return func() {
 			e.run.treasure = nil
 			for _, t := range []byte{0x3F, 0x15, 0x49} {
-				e.run.treasure = append(e.run.treasure, e.RandomItem(t))
+				e.run.treasure = append(e.run.treasure, e.createItem(t))
 			}
 			e.loot = purse{gold: 156, gems: 7}
 			e.AfterCombat()

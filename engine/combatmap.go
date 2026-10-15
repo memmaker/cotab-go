@@ -84,7 +84,7 @@ func (e *Engine) step(l *line) bool {
 		l.y += l.sy
 		moved = true
 	}
-	l.dir = e.X.Bytes(0x25C0+(my+1)*3+mx+1, 1)[0]
+	l.dir = lineStepDirs[my+1][mx+1]
 	return moved
 }
 

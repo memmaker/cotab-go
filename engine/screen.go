@@ -47,7 +47,7 @@ func (e *Engine) Redraw() {
 			sky = wordAt(e.area, 0x1FC)
 		}
 		s := e.gs.sky
-		s[0] = e.X.Bytes(0xC26+int(sky), 1)[0]
+		s[0] = skyColours[sky]
 		if e.es.f84E5 != 0 {
 			s[1] = skyFg(e.es.v6F69)
 			s[2] = skyBand(e.es.v6F69)
@@ -59,12 +59,6 @@ func (e *Engine) Redraw() {
 		}
 		e.Draw3DView(e.partyX(), e.partyY(), e.viewFacing())
 		e.viewDrawn()
-	case mode >= 2 && mode <= 4:
-		// ovr27:0250/0272: byte locals, signed clamps
-		x := clamp(int(int8(int(e.X.Bytes(0x3C76+mode, 1)[0])+int(wordAt(e.area, 0x186))-2)), 0, 0x27)
-		y := clamp(int(int8(int(wordAt(e.area, 0x188))-2)), 0, 0x1F)
-		e.DrawAreaMap(x, y)
-		e.drawAreaMapParty()
 	}
 }
 
@@ -126,23 +120,13 @@ func pad2(n int) string {
 // party list.
 func (e *Engine) StatusLine() {
 	x, y := e.partyX(), e.partyY()
-	if e.viewMode > 1 {
-		x, y = int(e.area[0x186]), int(e.area[0x188])
-		if e.viewMode == 3 {
-			x += 0xD
-		}
-		if e.viewMode == 4 {
-			x += 0x1A
-		}
-		x &= 0xFF
-	}
 	hh := pad2(int(wordAt(e.area, 0x192)))
 	mm := pad2(10*int(wordAt(e.area, 0x190)) + int(wordAt(e.area, 0x18E)))
 	s := ""
 	if wordAt(e.area, 0x1F6) == 0 {
 		s = strconv.Itoa(x) + "," + strconv.Itoa(y) + " "
 	}
-	s += e.X.PString(0x25A8+3*e.viewFacing()) + " "
+	s += directionNames[e.viewFacing()] + " "
 	s += hh + ":" + mm
 	if e.gameState == 2 {
 		s += " camping"
@@ -154,14 +138,4 @@ func (e *Engine) StatusLine() {
 	}
 	e.ClearCells(0x11, 0xF, 0x26, 0xF)
 	e.DisplayString(0x11, 0xF, 0xA, s)
-}
-
-// AreaMapScreen = 00BA:2B5E: switch to the area map.
-func (e *Engine) AreaMapScreen() {
-	e.gameState = 3
-	e.areaMapInit()
-	e.Redraw()
-	e.drawAreaMapParty()
-	e.StatusLine()
-	e.DisplayPartyList()
 }

@@ -52,18 +52,6 @@ func (e *Engine) canLoseItem(it *Item) bool {
 	return ok
 }
 
-// SheetPortrait = ovr29:04F9: the character's head and body in a box at
-// the top right of the sheet.
-func (e *Engine) SheetPortrait() {
-	c := e.selected()
-	if c.PortHead == 0 || c.PortBody == 0 {
-		return
-	}
-	e.DrawBoxTitled(0x1C, 1, 0x26, 0xB, 0, 0, "")
-	e.LoadPortrait(int(e.X.Bytes(0x286F+int(c.PortHead), 1)[0]), int(e.X.Bytes(0x287D+int(c.PortBody), 1)[0]))
-	e.DrawPortrait(0x1C, 1, true)
-}
-
 // ItemsMenu = O0AF:1583 use_item (var done): the character's items with
 // Ready, Use, Trade, Drop, Halve, Join, Sell and Id. Returns done (an item
 // was used in combat).

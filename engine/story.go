@@ -143,47 +143,6 @@ func (e *Engine) recolourFrame(from, to []byte, frame int, random bool, im *dax.
 	}
 }
 
-// EndgameHook = ovr19:06B3 (n): the pool of radiance fades. With n set the
-// area map is drawn first and the squares change in nine steps (randomised
-// recolouring of the SQRPACI tiles); a final pass recolours them fully.
-func (e *Engine) EndgameHook(n int) {
-	from := e.X.Bytes(0x91D, 16)
-	tiles := func(to1, to2 int, random bool) {
-		for j := 0; j <= 0xA; j++ {
-			e.recolourSquare(from, e.X.Bytes(to1, 16), e.X.Bytes(0x900+j, 1)[0], random)
-		}
-		for j := 0; j <= 0x11; j++ {
-			e.recolourSquare(from, e.X.Bytes(to2, 16), e.X.Bytes(0x90B+j, 1)[0], random)
-		}
-	}
-	if n != 0 {
-		e.DrawAreaMap(0x11, 0xF)
-		e.Flip()
-		for k := 0; k <= 8; k++ {
-			tiles(0x92D, 0x93D, true)
-			e.DrawAreaMap(int(wordAt(e.X.Bytes(0x94D, 18), 2*k)), int(wordAt(e.X.Bytes(0x95F, 18), 2*k)))
-			e.Flip()
-		}
-	}
-	tiles(0x92D, 0x93D, false)
-	if n != 0 {
-		e.DrawAreaMap(0x17, 0x19)
-		e.Flip()
-		e.MsgDelay()
-		e.MsgDelay()
-	}
-}
-
-// recolourSquare recolours one SQRPACI frame: values above 0x7F select the
-// second picture (DS:5E56), the others the first (DS:5E52).
-func (e *Engine) recolourSquare(from, to []byte, v byte, random bool) {
-	if v > 0x7F {
-		e.recolourFrame(from, to, int(v&0x7F), random, e.sqrpaci[1])
-	} else {
-		e.recolourFrame(from, to, int(v), random, e.sqrpaci[0])
-	}
-}
-
 // DuelSetup = ovr08:1A6F (n): only the selected member fights (the others,
 // by name, are made inactive). With n set a clone of the selected member,
 // "ROLF" with the CPIC picture, is appended as the opponent and gets

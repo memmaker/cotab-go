@@ -40,4 +40,5 @@ const (
 	scanEnd      = 'O'
 	scanDown     = 'P'
 	scanPageDown = 'Q'
+	scanDelete   = 'S'
 )

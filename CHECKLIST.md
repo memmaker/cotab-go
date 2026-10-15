@@ -38,6 +38,9 @@ no hex/magic numbers, readable names).
   - [x] O0C2 spells 1-100 (setup_spells) and the breath/gaze/spit handlers it adds (affects 83, 86, 88, 90, 126, 128, 131, 132); cone (17CF), bolt (3986/3A44), hold (1B24), dispel with clouds (31E4)
   - [x] O05A computer turn: every procedure checked; canCast reads the spell table and saves area victims, the
     step check (073B) uses O121:0D04's cloud flags, attack loop bandages first, DS:75FE kept as aiEngaged
+  - [x] No START.EXE reads at runtime: the last Pool-address reads (status names, facing names, sky colour,
+    item words, class names, line directions) use the generated CotAB tables; Pool-only code removed (area map,
+    portrait chooser, endgame fade, Pool RandomItem); Modify Character is CotAB's O0A7:2830 (name editing, HP)
   - [ ] O08D rest, O11C/O121/O12A map, O045 (remaining Pool stand-ins: o14_*, some o23_* names)
 - [ ] M8 sound: the PC speaker driver as Go data
 - [ ] M9 goplay: games.js, deploy.sh, README tables, hardware cursor n/a (no pointer), wasm build, box art
@@ -55,6 +58,7 @@ raw EGA colour indices.
 - Pool/Hillsfar import shows a message.
 
 ## Deliberate deviations (obvious bugs fixed, per c-to-go.md)
+- maxHitPoints / setRolledHP (O0A7:4793, modifyPlayer): a character with no class level returns instead of a divide error.
 - aiPickWeapon (O05A:1673): ready_Item is not called with a nil weapon when the off hand is empty or cursed.
 - Shops with the normal price factor (16): the original's Buy (O048:0474) has no case for it and charges an
   unset local, which holds the menu colour pushed by the shop menu's displayInput (15) — every item costs

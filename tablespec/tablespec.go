@@ -113,6 +113,7 @@ var Tables = []Table{
 	{"combatFrameMiddle", 3156, 23, Bytes, "Combat screen frame symbols down column 22, between the map and the panel.", 0},
 	{"combatFrameRight", 3179, 23, Bytes, "Combat screen frame symbols down column 39.", 0},
 	{"groundInfo", 9892, 64, Bytes, "Combat ground tiles: move cost (255 blocks), two flags and the tile's kind.", 4},
+	{"lineStepDirs", 9562, 3, Bytes, "Facing of a line step by row step + 1 and column step + 1 (8: no step).", 3},
 	{"footprints", 10148, 5, Signed, "Squares a combatant of size 0..4 covers: column and row offsets of its four parts (-1 none).", 8},
 	{"teamSides", 732, 4, Bytes, "Formation: the side each of the four teams of a facing looks to.", 4},
 	{"teamDirs", 748, 4, Bytes, "Formation: each team's direction (times 2) for the facing.", 4},
@@ -128,6 +129,7 @@ var Tables = []Table{
 	{"helplessAffectData", 10187, 5, Bytes, "Entries 1..4: the affects that leave a character helpless.", 0},
 	{"downAffectData", 2609, 20, Bytes, "Entries 1..19: the affects a character loses when it goes out of action (O0E3:15AB).", 0},
 	{"cloudSquares4", 10202, 4, Bytes, "The facings from a small cloud's centre to its 4 squares (stinking cloud).", 0},
+	{"dispelCloudSquares", 10202, 9, Bytes, "The squares Dispel Magic tries for a cloud: DS:27D9 read from entry 1,\nthe small cloud's table running on into the next, also for the large\ncloud (O0C2:31E4).", 0},
 	{"cloudSquares9", 10206, 9, Bytes, "The facings from a large cloud's centre to its 9 squares (cloudkill); 8 is the centre.", 0},
 	{"fightAffectData", 2629, 5, Bytes, "Entries 1..4: the affects that end with the fight (O0E3:160D).", 0},
 
@@ -135,4 +137,6 @@ var Tables = []Table{
 	{"spellNames", 10175, 101, String(41), "Spell names by spell number.", 0},
 	{"spellLevelHeadings", 2167, 10, String(41), "Spell menu headings by spell level.", 0},
 	{"spellTableData", 14300, 101, Bytes, "The spell table: one 16-byte record per spell number (spellEntry).", 16},
+	{"turnUndeadRolls", 884, 10, Signed, "turnUndeadRolls = DS:0369 + 10*undead + column: the d20 a cleric needs to\nturn undead of each row (1..10), by cleric column (levels 1..8, 9..13,\n14 and up). 0: turned automatically, negative: destroyed (needing its\nabsolute value), 99: impossible.", 10},
+	{"wildTerrainFlags", 852, 132, Bytes, "wildTerrainFlags = DS:0354: the wilderness terrain flags (terrainSparse\n...) by area byte 0x342.", 0},
 }

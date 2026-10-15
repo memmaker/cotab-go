@@ -114,14 +114,3 @@ func (e *Engine) shopMoney() {
 }
 
 func (e *Engine) moneyLine() string { return "Party gold " + itoa(e.purse.gold) }
-
-// randomItemClass = ovr22:0FD2: d20 1-14 → 1, 15-19 → 2, 20 → 3.
-func (e *Engine) randomItemClass() int {
-	switch r := e.Dice(1, 20); {
-	case r >= 1 && r <= 14:
-		return 1
-	case r >= 15 && r <= 19:
-		return 2
-	}
-	return 3
-}

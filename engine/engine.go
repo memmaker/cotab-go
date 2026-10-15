@@ -13,7 +13,6 @@ import (
 
 	"cotab/dax"
 	"cotab/ega"
-	"cotab/exe"
 )
 
 // Config mirrors CURSE.CFG: graphics letter, sound letter, the save directory
@@ -30,7 +29,6 @@ type Config struct {
 type Engine struct {
 	L         *dax.Loader
 	S         *ega.Screen
-	X         *exe.Image // START.EXE load image: data tables are read from it
 	Cfg       Config
 	tempSel   *Character             // selectTemp: selected but not in the party
 	page      [pageStride * 168]byte // DS:4A20 drawing page contents (pageSet)
@@ -239,9 +237,6 @@ func New(dir string, scr *ega.Screen) (*Engine, error) {
 	}
 	if !l.Exists("TITLE.DAX") || !l.Exists("8X8D1.DAX") {
 		return nil, fmt.Errorf("%s: not a Curse of the Azure Bonds directory (TITLE.DAX / 8X8D1.DAX missing)", dir)
-	}
-	if x, err := exe.Load(l.Path("START.EXE")); err == nil {
-		e.X = x // transitional: tables not yet moved to the tables package
 	}
 	e.pic.block = -1
 	e.port = portrait{headID: 0xFF, bodyID: 0xFF}

@@ -13,143 +13,300 @@ import (
 // when it is set).
 func (e *Engine) partyExp() int { return int(wordAt(e.game, 0x550)) }
 
-// modifyDraw = ovr17:2033 (idx, highlight): the ability line idx of the
-// selected character, or its hit points for idx 6.
-func (e *Engine) modifyDraw(idx int, hi bool) {
-	if idx < 6 {
-		e.showStat(idx, hi) // ovr20:0901
-	} else {
-		e.displayHP(e.selected(), 4, 0x12, hi) // 00BA:0973
+// Experience a character may have and still be modified: none, or what
+// a character brought over from Pool of Radiance starts with.
+var modifiableExp = [...]uint32{0, 8333, 12500, 25000}
+
+// Modify lines: the six abilities, the hit points and the name.
+const (
+	modifyHPLine   = 6
+	modifyNameLine = 7
+	nameMaxLen     = 15
+)
+
+// modifyDraw = O0A7:26F2 (highlight) nested in modifyPlayer: the line,
+// for the name with the cursor character ('%' on a space).
+func (e *Engine) modifyDraw(line, cursor int, hi bool) {
+	c := e.selected()
+	switch {
+	case line < modifyHPLine:
+		e.showStat(line, hi)
+	case line == modifyHPLine:
+		e.displayHP(c, 4, 0x12, hi)
+	case hi:
+		n := int(c.PName[0])
+		e.displayStringBg(n+1, 1, colourBlack, colourBlack, " ")
+		e.displayStringBg(1, 1, colourLightMagenta, colourBlack, c.Name())
+		ch := string(rune(c.PName[cursor]))
+		if c.PName[cursor] == ' ' {
+			ch = "%"
+		}
+		e.displayStringBg(cursor, 1, colourWhite, colourBlack, ch)
+	default:
+		e.displayStringBg(1, 1, colourGreen, colourBlack, c.Name())
 	}
 }
 
-// ModifyCharacter = ovr17:209E: change the abilities and hit points of a
-// character that has no experience yet, within the race and class limits
-// (DS:3DA3.., DS:3F81..). Left/right change the line, up/down move,
-// Keep (K) accepts, Exit (E) puts the old values back.
+// ModifyCharacter = O0A7:2830 modifyPlayer: change the abilities, hit
+// points and name of a character without experience. Home/End or Enter
+// pick the line, left/right lower and raise, on the name they move the
+// cursor and letters type over it; Keep (K) accepts, Exit or Esc puts the
+// old values back.
 func (e *Engine) ModifyCharacter() {
 	c := e.selected()
-	if int32(c.Exp) > 0 {
-		e.DisplayMessageWait(0xE, c.Name()+" can't be modified.")
+	fresh := false
+	for _, x := range modifiableExp {
+		fresh = fresh || c.Exp == x
+	}
+	if !fresh || c.MulticlassLevel != 0 {
+		e.statusMessage(c.Name()+" can't be modified.", colourYellow, colourBlack)
 		return
 	}
-	e.CharacterSheet() // ovr20:004A
-	saved := c.Stats
-	savedStr00, savedHP := c.Str00, c.MaxHP
-	tbl := func(off int) byte { return e.X.Bytes(off, 1)[0] }
+	e.CharacterSheet()
+	var saved [6]byte
+	for i := range saved {
+		saved[i] = c.Stats[i].Value
+	}
+	savedStr00, savedMax, savedName := c.Str00.Value, c.MaxHP, c.PName
 	race, class, sex := int(c.Race), int(c.Class), int(c.Sex)
-	minOff := [6]int{0x3DA3 + sex, 0x3DA9, 0x3DAB, 0x3DAD, 0x3DAF, 0x3DB1}
-	maxOff := [6]int{0x3DA5 + sex, 0x3DAA, 0x3DAC, 0x3DAE, 0x3DB0, 0x3DB2}
-	idx := 6
-	e.modifyDraw(idx, false)
-	idx = 0
-	e.modifyDraw(idx, true)
-	// hpToDraw redraws the hit point line, leaving the cursor on idx.
-	hpToDraw := func() {
+	limits := raceStatLimits[race]
+	restore := func() {
+		for i := range saved {
+			c.Stats[i].Value = saved[i]
+		}
+		c.Str00.Value = savedStr00
+		c.MaxHP = savedMax
 		c.HP = c.MaxHP
-		save := idx
-		idx = 6
-		e.modifyDraw(idx, false)
-		idx = save
+		c.PName = savedName
+		e.ApplyItems(c)
 	}
-	// slots: when wisdom changes, a first level cleric slot is capped at 1.
-	wisdom := func() {
-		if c.SpellSlots[0] > 0 {
-			c.SpellSlots[0] = 1
-		}
-		e.wisdomSlots(c, false) // ovr24:01AF
-	}
-	lower := func(i int) {
-		c.Stats[i].Base--
-		if i == 0 && c.Str00.Value > 0 {
-			c.Str00.Value--
-			c.Stats[statStr].Base++
-		} else if lo := tbl(minOff[i] + race*16); c.Stats[i].Base < lo || c.Stats[i].Base < tbl(0x3F81+class*6+i) {
-			// Quirk: below the class minimum the race minimum is stored.
-			c.Stats[i].Base = lo
-		}
-		switch i {
-		case 2:
-			wisdom()
-		case 4:
-			if m := e.maxHitPoints(c); m < c.MaxHP {
-				c.MaxHP = m
-			}
-			hpToDraw()
-		}
-	}
-	raise := func(i int) {
-		c.Stats[i].Base++
-		if hi := tbl(maxOff[i] + race*16); c.Stats[i].Base > hi {
-			if i == 0 && c.Stats[statStr].Base > 0x12 && int8(c.Levels[clsFighter]) > 0 && tbl(0x3DA7+race*16+sex) > c.Str00.Value {
-				c.Str00.Value++ // exceptional strength for fighters
-			}
-			c.Stats[i].Base = hi
-		}
-		switch i {
-		case 2:
-			wisdom()
-		case 4:
-			if m := e.minHitPoints(c); m > c.MaxHP {
-				c.MaxHP = m
-			}
-			hpToDraw()
-		}
-	}
-	defer e.rawArrows("↑↓=score|← →=lower, raise|K, click=keep|Esc=cancel")()
+	cursor := 1
+	line := modifyNameLine
+	e.modifyDraw(line, cursor, false)
+	line = 0
+	e.modifyDraw(line, cursor, true)
+	var key byte
+	var extra bool
 	for {
-		key, extra := e.DisplayInput("Modify character: ", "Keep Exit", 0xD, 0xA, 0xF, true, false)
-		e.modifyDraw(idx, false)
-		if !extra && (key == 'E' || key == 0) {
-			c.Stats = saved
-			c.Str00, c.MaxHP = savedStr00, savedHP
-			c.HP = c.MaxHP
-			e.ApplyItems(c) // 00BA:0BB8
-			return
+		if line == modifyNameLine {
+			key = e.ReadKeyByte()
+			extra = false
+			if key == 0 {
+				key = e.ReadKeyByte()
+				extra = true
+			}
+			if key == keyEsc {
+				key = 0
+			}
+		} else {
+			key, extra = e.DisplayInput("Modify: ", "Keep Exit", colourLightMagenta, colourGreen, colourWhite, true, false)
 		}
+		e.modifyDraw(line, cursor, false)
 		if extra {
 			switch key {
-			case 0x50, 0x0D:
-				if idx++; idx > 6 {
-					idx = 0
+			case scanDelete:
+				if n := int(c.PName[0]); line == modifyNameLine && n > 1 {
+					if cursor == n {
+						c.PName[0]--
+						cursor = int(c.PName[0])
+					} else {
+						copy(c.PName[cursor:n], c.PName[cursor+1:n+1])
+						c.PName[0]--
+					}
 				}
-			case 0x48:
-				if idx--; idx < 0 {
-					idx = 6
+			case scanEnd:
+				if line++; line > modifyNameLine {
+					line = 0
 				}
-			case 0x4B:
-				if idx < 6 {
-					lower(idx)
-				} else {
+			case scanHome:
+				if line--; line < 0 {
+					line = modifyNameLine
+				}
+			case scanLeft:
+				switch {
+				case line < modifyHPLine:
+					e.modifyLower(c, line, limits, class, sex)
+				case line == modifyHPLine:
 					c.MaxHP--
 					if m := e.minHitPoints(c); m > c.MaxHP {
 						c.MaxHP = m
 					}
 					c.HP = c.MaxHP
+				case cursor == 1:
+					cursor = int(c.PName[0])
+				default:
+					cursor--
 				}
-			case 0x4D:
-				if idx < 6 {
-					raise(idx)
-				} else {
+			case scanRight:
+				switch {
+				case line < modifyHPLine:
+					e.modifyRaise(c, line, limits, sex)
+				case line == modifyHPLine:
 					c.MaxHP++
 					if m := e.maxHitPoints(c); m < c.MaxHP {
 						c.MaxHP = m
 					}
 					c.HP = c.MaxHP
+				case cursor == int(c.PName[0]):
+					cursor = 1
+				default:
+					cursor++
 				}
+			}
+		} else {
+			switch {
+			case key == keyEnter:
+				if line++; line > modifyNameLine {
+					line = 0
+				}
+			case key == keyBackspace:
+				if n := int(c.PName[0]); cursor > 1 && line > modifyHPLine {
+					for k := cursor; k <= n; k++ {
+						c.PName[k-1] = c.PName[k]
+					}
+					c.PName[0]--
+					if cursor > int(c.PName[0]) {
+						cursor = int(c.PName[0])
+					}
+				}
+			case key >= ' ' && key <= 'z':
+				if line > modifyHPLine {
+					if cursor <= nameMaxLen {
+						c.PName[cursor] = key
+						if cursor++; cursor > nameMaxLen {
+							cursor = nameMaxLen
+						}
+						if cursor > int(c.PName[0]) {
+							c.PName[0]++
+							c.PName[cursor] = ' '
+						}
+					}
+				} else if key == 'E' {
+					restore()
+					return
+				}
+			case key == 0:
+				restore()
+				return
 			}
 		}
 		e.ApplyItems(c)
-		e.showCombatStats() // ovr20:0608
-		e.modifyDraw(idx, true)
+		e.showCombatStats()
+		e.modifyDraw(line, cursor, true)
 		if !extra && key == 'K' {
-			c.Share = 1
-			return
+			break
 		}
+	}
+	e.wisdomSlots(c, true)
+	c.Share = 1
+	e.setRolledHP(c)
+	for i := range c.Stats {
+		c.Stats[i].Base = c.Stats[i].Value
+	}
+	c.Str00.Base = c.Str00.Value
+}
+
+// setRolledHP = the tail of modifyPlayer: the rolled hit points are the
+// maximum less the constitution bonus averaged over the classes.
+func (e *Engine) setRolledHP(c *Character) {
+	var bonus byte
+	n := 0
+	for k := 0; k <= clsMonk; k++ {
+		lv := int8(c.Levels[k])
+		if lv <= 0 {
+			continue
+		}
+		b := int(e.conBonusForClass(k))
+		switch {
+		case byte(lv) >= classMaxHitDice[k]:
+			bonus += byte((int(classMaxHitDice[k]) - 1) * b)
+		case k == clsRanger:
+			bonus += byte((int(lv) + 1) * b)
+		default:
+			bonus += byte(int(lv) * b)
+		}
+		n++
+	}
+	if n == 0 {
+		return // a divide error in the original
+	}
+	bonus = byte(int(bonus) / n)
+	c.HPRoll = c.MaxHP - bonus
+}
+
+// modifyLower: left on ability line i, kept within the race and class
+// minimum; strength first gives up exceptional strength.
+func (e *Engine) modifyLower(c *Character, i int, limits [16]byte, class, sex int) {
+	st := &c.Stats[i].Value
+	*st--
+	min := limits[statLimitMin+2*i]
+	if i == statStr {
+		if c.Str00.Value > 0 {
+			c.Str00.Value--
+			*st++
+		} else if *st < limits[sex] {
+			*st = limits[sex]
+		}
+		min = 0
+	}
+	if i != statStr && *st < min {
+		*st = min
+	}
+	if cm := classStatMinimum[class][i]; *st < cm {
+		*st = cm
+	}
+	switch i {
+	case statWis:
+		if c.SpellSlots[0] > 0 {
+			c.SpellSlots[0] = 1
+		}
+	case statCon:
+		if m := e.maxHitPoints(c); m < c.MaxHP {
+			c.MaxHP = m
+		}
+		c.HP = c.MaxHP
+		e.modifyDraw(modifyHPLine, 0, false)
 	}
 }
 
-// hitPointsFrom = the tail of ovr17:3FB3/408C: sum plus the constitution
+// modifyRaise: right on ability line i, kept within the race maximum;
+// strength of a fighter, paladin or ranger goes on into exceptional
+// strength.
+func (e *Engine) modifyRaise(c *Character, i int, limits [16]byte, sex int) {
+	st := &c.Stats[i].Value
+	*st++
+	if i == statStr {
+		if max := limits[2+sex]; *st > max {
+			if *st > 18 && (int8(c.Levels[clsFighter]) > 0 || int8(c.Levels[clsPaladin]) > 0 ||
+				int8(c.Levels[clsRanger]) > 0) && limits[4+sex] > c.Str00.Value {
+				c.Str00.Value++
+			}
+			*st = max
+		}
+		return
+	}
+	if max := limits[statLimitMin+2*i+1]; *st > max {
+		*st = max
+	}
+	switch i {
+	case statWis:
+		if c.SpellSlots[0] > 0 {
+			c.SpellSlots[0] = 1
+		}
+	case statCon:
+		if m := e.minHitPoints(c); m > c.MaxHP {
+			c.MaxHP = m
+		}
+		c.HP = c.MaxHP
+		e.modifyDraw(modifyHPLine, 0, false)
+	}
+}
+
+// statLimitMin: in a raceStatLimits row, the minimum of ability i (int ..
+// cha) is at statLimitMin+2*i, its maximum one after.
+const statLimitMin = 4
+
+// hitPointsFrom = the tail of O0A7:46BA: sum plus the constitution
 // bonus, averaged over the classes (count 0 would be a divide error in
 // the original; 0 here).
 func (e *Engine) hitPointsFrom(c *Character, sum byte, count int) byte {
@@ -166,7 +323,7 @@ func (e *Engine) hitPointsFrom(c *Character, sum byte, count int) byte {
 	return byte((int(sum) + adj) / count)
 }
 
-// minHitPoints = ovr17:3FB3 (char): the least hit points the levels allow.
+// minHitPoints = O0A7:46BA (char): the least hit points the levels allow.
 func (e *Engine) minHitPoints(c *Character) byte {
 	var sum byte
 	count := 0
@@ -182,68 +339,80 @@ func (e *Engine) minHitPoints(c *Character) byte {
 	return e.hitPointsFrom(c, sum, count)
 }
 
-// maxHitPoints = ovr17:408C (char): the most hit points the levels allow
-// (a full hit die per level, the die of each class).
+// conBonusForClass = O0A7:24EE (class): the hit point bonus per level for
+// the selected character's constitution; above 16 only fighters,
+// paladins and rangers get more than 2.
+func (e *Engine) conBonusForClass(k int) int8 {
+	con := e.selected().Stats[statCon].Value
+	switch {
+	case con == 3:
+		return -2
+	case con >= 4 && con <= 6:
+		return -1
+	case con >= 7 && con <= 14:
+		return 0
+	case con == 15:
+		return 1
+	case con == 16:
+		return 2
+	case con >= 17 && con <= 19:
+		if k == clsFighter || k == clsPaladin || k == clsRanger {
+			return int8(con - 14)
+		}
+		return 2
+	}
+	return 0 // the original leaves the byte unset
+}
+
+// maxHitDie: per class, the sides of its hit die.
+var maxHitDie = [...]int{8, 8, 10, 10, 8, 4, 6, 4}
+
+// hitPointsAfterDice: per class, the hit points at the last rolled level
+// plus per level beyond it; a druid's and a monk's are fixed.
+func hitPointsAfterDice(k, beyond int) byte {
+	switch k {
+	case clsCleric:
+		return byte(beyond*2 + 72)
+	case clsDruid:
+		return 112
+	case clsFighter, clsPaladin:
+		return byte(beyond*3 + 90)
+	case clsRanger:
+		return byte(beyond*2 + 88)
+	case clsMage:
+		return byte(beyond + 44)
+	case clsThief:
+		return byte(beyond*2 + 60)
+	}
+	return 72
+}
+
+// maxHitPoints = O0A7:4793 (char): the most hit points the levels allow,
+// a full die per level plus the constitution bonus, averaged over the
+// classes. Past the rolled levels the original assigns rather than adds.
 func (e *Engine) maxHitPoints(c *Character) byte {
 	var sum byte
-	count := 0
-	for i := 0; i <= 7; i++ {
-		lv := int(int8(c.Levels[i]))
+	n := 0
+	for k := 0; k <= clsMonk; k++ {
+		lv := int(int8(c.Levels[k]))
 		if lv <= 0 {
 			continue
 		}
-		count++
-		switch i {
-		case 0, 1:
-			sum += byte(lv << 3)
-		case 2, 3:
-			sum += byte(lv * 10)
-		case 4:
-			sum += byte((lv + 1) << 3)
-		case 5:
-			sum += byte(lv << 2)
-		case 6:
-			sum += byte(lv * 6)
-		case 7:
-			sum += byte((lv + 1) << 2)
-		}
-	}
-	return e.hitPointsFrom(e.selected(), sum, count) // the original reads the bonus of the selected character, not c
-}
-
-// o17_33E7 = ovr17:33E7: choose the portrait: Head (1..14) and Body
-// (1..12) step through the pictures, Keep accepts. There is no way out
-// without Keep (Esc just asks again).
-func (e *Engine) o17_33E7() {
-	c := e.selected()
-	head, body := c.PortHead, c.PortBody
-	for {
-		e.SheetPortrait() // ovr29:04F9
-		key, extra := e.DisplayInput("", "Head Body Keep", 0, 0xF, 0xA, false, false)
-		if !extra {
-			switch key {
-			case 'H':
-				if c.PortHead < 0xE {
-					c.PortHead++
-				} else {
-					c.PortHead = 1
-				}
-			case 'B':
-				if c.PortBody < 0xC {
-					c.PortBody++
-				} else {
-					c.PortBody = 1
-				}
-			case 'K':
-				head, body = c.PortHead, c.PortBody
+		n++
+		if byte(lv) < classMaxHitDice[k] {
+			per := int(e.conBonusForClass(k)) + maxHitDie[k]
+			if k == clsRanger || k == clsMonk {
+				lv++
 			}
-		}
-		if key == 'K' {
-			break
+			sum += byte(per * lv)
+		} else {
+			sum = hitPointsAfterDice(k, lv-int(classMaxHitDice[k])+1)
 		}
 	}
-	c.PortHead, c.PortBody = head, body
-	e.ClearRow24()
+	if n == 0 {
+		return 0 // a divide error in the original
+	}
+	return byte(int(sum) / n)
 }
 
 // iconPane = ovr17:34DF (x, y) nested in the icon editor: the two poses
