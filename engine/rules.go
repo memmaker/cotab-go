@@ -41,7 +41,8 @@ type ruleVars struct {
 	side      [2]int8 // DS:6814 standing members per side
 }
 
-// callAffect = ovr25:0000 (type, char, affect, flag).
+// callAffect = O0E3:00C7 (type, char, affect, flag): with DS:759C set
+// the readied item's handler runs instead.
 func (e *Engine) callAffect(typ byte, c *Character, a *Affect, flag byte) {
 	if e.itemCall {
 		e.itemHandler(c, e.callItem, flag)
@@ -308,21 +309,7 @@ func (e *Engine) inPoisonCloud(c *Character, checkStinking bool) {
 	e.killWithMessage(c, statusDead, "is killed")
 }
 
-// RollHit = ovr25:0C4F (char, bonus): d20 (a natural 20 counts 100) plus
-// bonus must beat the defender's armour value at +0x111.
-func (e *Engine) RollHit(c *Character, bonus int) bool {
-	e.rv.hitRoll = int8(e.Dice(1, 20))
-	if e.rv.hitRoll <= 1 {
-		return false
-	}
-	if e.rv.hitRoll == 20 {
-		e.rv.hitRoll = 100
-	}
-	e.affectGroup(c, grpDefender)
-	return e.rv.hitRoll >= 0 && int(e.rv.hitRoll)+int(byte(bonus)) > int(c.AC[0])
-}
-
-// AttackHits = ovr25:0CB7 (attacker, defender, need): attacking ends
+// AttackHits = O0E3:1245 (attacker, defender, need): attacking ends
 // invisibility; d20 + THAC0 + the side's modifier must reach need.
 func (e *Engine) AttackHits(att, def *Character, need int) bool {
 	e.removeInvisibility(att)
@@ -342,7 +329,7 @@ func (e *Engine) AttackHits(att, def *Character, need int) bool {
 	return e.rv.hitRoll >= 0 && int(e.rv.hitRoll)+int(att.THAC0)+adj >= int(byte(need))
 }
 
-// SavingThrow = ovr25:0D63 (char, type, bonus): 1 always fails, 20 always
+// SavingThrow = O0E3:12F1 do_saving_throw (char, type, bonus): 1 always fails, 20 always
 // saves, otherwise d20 + bonus + the character's save bonus must reach the
 // target for the type (0 paralysis ... 4 spells).
 func (e *Engine) SavingThrow(c *Character, typ, bonus int) bool {
@@ -362,7 +349,7 @@ func (e *Engine) SavingThrow(c *Character, typ, bonus int) bool {
 	return e.rv.saveMade
 }
 
-// RollDice = ovr25:0E2E (n, sides): Dice that also remembers n (DS:681C).
+// RollDice = O0E3:13CC (n, sides): Dice that also remembers n (DS:6FB2).
 func (e *Engine) RollDice(n, sides int) int {
 	e.rv.diceN = byte(n)
 	return e.Dice(n, sides)
@@ -443,7 +430,7 @@ func (e *Engine) releaseHeld(c *Character) {
 	}
 }
 
-// CureAffect = ovr25:1081 (char, type): "is Cured" and the affect goes.
+// CureAffect = O0E3:164D is_cured (char, type): "is Cured" and the affect goes.
 func (e *Engine) CureAffect(c *Character, typ byte) bool {
 	a := e.FindAffect(c, typ)
 	if a == nil {
@@ -452,52 +439,6 @@ func (e *Engine) CureAffect(c *Character, typ byte) bool {
 	e.combatName(c, "is Cured", 0xA, true)
 	e.RemoveAffect(c, typ, a)
 	return true
-}
-
-// strValue = ovr25:10E4 (str, str00): one byte for strength, 18/xx as
-// xx+1 (18/00 = 101), others +100.
-func strValue(str, str00 byte) byte {
-	if str == 18 {
-		return str00 + 1
-	}
-	return str + 0x64
-}
-
-// strDecode = ovr25:110D: the inverse, from an affect's saved strength.
-func strDecode(a *Affect) (str, str00 byte) {
-	str = a.Data & 0x7F
-	if str <= 0x65 {
-		return 18, str - 1
-	}
-	return str - 0x64, 0
-}
-
-// SetStrength = ovr25:115C (char, str, str00, out): magical strength
-// (affects 0x0C / 0x26 remember the natural value). Returns false, with
-// the request encoded, when it would lower the current strength.
-func (e *Engine) SetStrength(c *Character, str, str00 byte) (byte, bool) {
-	cur, cur00 := c.Stats[statStr].Base, c.Str00.Value
-	if str < cur || str == 18 && str00 < cur00 {
-		return strValue(str, str00) + 0x80, false
-	}
-	var keep *Affect
-	for _, a := range c.Affects {
-		if keep != nil {
-			break
-		}
-		if (a.Type == 0x0C || a.Type == 0x26) && a.Data < 0x80 {
-			keep = a
-		}
-	}
-	if keep != nil {
-		v := strValue(cur, cur00)
-		cur, cur00 = strDecode(keep)
-		keep.Data = v + 0x80
-	}
-	c.Stats[statStr].Base = str
-	c.Str00.Value = str00
-	e.ApplyItems(c)
-	return strValue(cur, cur00), true
 }
 
 // What a successful save does to damage.
@@ -626,7 +567,7 @@ func (e *Engine) Heal(c *Character, amount int, magical bool) bool {
 	return true
 }
 
-// Revive = ovr25:1869 (char, hp): back on its feet if its square is free.
+// Revive = O0E3:24C7 (char, hp): back on its feet if its square is free.
 func (e *Engine) Revive(c *Character, hp byte) bool {
 	if !e.combatSquareFree(c, e.combatX(c), e.combatY(c), true) {
 		return false

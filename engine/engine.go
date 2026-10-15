@@ -201,7 +201,7 @@ type Engine struct {
 	DevAction func() // run once at the next adventuring command prompt (cmd/snap)
 }
 
-// Dice = ovr25:0DE3 Dice(n, sides): sum of n rolls of 1..sides, kept in a
+// Dice = O0E3:1381 (n, sides): sum of n rolls of 1..sides, kept in a
 // byte like the original (wraps at 256).
 func (e *Engine) Dice(n, sides int) int {
 	t := 0
