@@ -133,6 +133,7 @@ type Engine struct {
 	purse          purse               // the party's money
 	loot           purse               // DS:67F4 money found, taken after the fight
 	animInput      bool                // animate the view picture while waiting for a key
+	panelACRow     int                 // DS:65BB, the side panel row of the AC line
 	resting        byte                // DS:6DDA (ovr21 rest): messages skip the box border
 	view           viewState           // ovr20 View screen
 	itemsRedraw    bool                // DS:6821
@@ -158,7 +159,8 @@ type Engine struct {
 	sprUnder       []byte              // DS:4A24, background saved by a sprite draw
 	place          placement           // DS:4440..4658 combat start formations
 	terrain        byte                // DS:465A wilderness square of the battle
-	clouds         []*cloud            // DS:6DBB lingering spell areas
+	stinkingClouds []*cloudRecord      // DS:7575
+	poisonClouds   []*cloudRecord      // DS:7579
 	v6E30, v6DE3   byte
 	v5D9A          *Item
 	v49F4          byte
@@ -181,6 +183,9 @@ type Engine struct {
 	spellFx             [0x44]func()     // DS:6B84 spell effect table (slot 0 unused)
 	v4844, v4845        byte             // DS:4844/4845 spell scratch
 	v681A, v681D, v681E byte             // DS:681A speed value, 681D, 681E affect scratch
+	itemCall    bool  // DS:759C the next affect call is a readied item's
+	callItem    *Item // the item it is for
+	combatRound byte  // DS:75A7 rounds since the fight (or the last wait) began
 	v6825               byte             // DS:6825 flee/surrender roll
 	hits6822, shots6E2C [3]byte          // DS:6822+i / 6E2C+i, i = 1..2 attack slots
 	v443C, v443D, v443E byte             // DS:443C..443E computer-turn movement state

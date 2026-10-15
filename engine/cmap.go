@@ -34,12 +34,11 @@ type body struct {
 
 const pageCells = 21 // the drawing page, 21x21 cells (outside combat)
 
-// The combat view (extra) fills the screen's width: viewW x viewH squares
-// in one box, the page at cell (pageCol, 1); the original showed 7x7 next
-// to a text pane.
+// The combat view: viewW x viewH squares of 3x3 cells, the page at cell
+// (pageCol, 1), the panel to its right.
 const (
-	viewW, viewH = 12, 7
-	pageCol      = 2
+	viewW, viewH = 7, 7
+	pageCol      = 1
 	pageStride   = viewW * 24 // e.page row length in pixels
 )
 

@@ -251,6 +251,15 @@ var stepX = [9]int8{0, 1, 1, 1, 0, -1, -1, -1, 0}
 // Row step by facing 0..7 (8: none).
 var stepY = [9]int8{-1, -1, 0, 1, 1, 1, 0, -1, 0}
 
+// Combat screen frame symbols down column 0 (rows 0..22).
+var combatFrameLeft = [23]byte{0, 2, 9, 5, 2, 2, 2, 2, 2, 2, 5, 7, 2, 2, 2, 2, 2, 9, 7, 2, 2, 2, 1}
+
+// Combat screen frame symbols down column 22, between the map and the panel.
+var combatFrameMiddle = [23]byte{0, 7, 5, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7, 5, 2, 2, 2, 2, 2, 2, 5, 2, 4}
+
+// Combat screen frame symbols down column 39.
+var combatFrameRight = [23]byte{2, 2, 9, 7, 2, 2, 2, 5, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7, 2, 2, 2, 2, 2}
+
 // Combat ground tiles: move cost (255 blocks), two flags and the tile's kind.
 var groundInfo = [64][4]byte{
 	{1, 0, 255, 0},
@@ -359,12 +368,13 @@ var formationStartY = [2][4]int8{
 	{0, 2, 5, 3},
 }
 
-// Formation slots: per direction, rows 0..5 of first and last column.
-var formationRows = [4][12]int8{
+// Formation slots: per direction (4: the second team), rows 0..5 of first and last column.
+var formationRows = [5][12]int8{
 	{1, 0, 1, 0, 1, 0, 2, 9, 3, 10, 4, 10},
 	{0, 2, 0, 3, 1, 4, 2, 5, 3, 6, 4, 7},
 	{0, 6, 0, 7, 1, 8, 1, 0, 1, 0, 1, 0},
 	{3, 6, 4, 7, 5, 8, 6, 9, 7, 10, 8, 10},
+	{0, 6, 0, 7, 1, 8, 2, 9, 3, 10, 4, 10},
 }
 
 // Magic item templates read by the treasure generator: from entry n, name words n..n+2, weight n+3, price n+4, spells n+5..n+7 (low bytes).
@@ -378,6 +388,18 @@ var clockLimits = [7]uint16{10, 10, 6, 24, 30, 12, 256}
 
 // Entries 1..4: the affects that leave a character helpless.
 var helplessAffectData = [5]byte{1, 51, 52, 53, 31}
+
+// Entries 1..19: the affects a character loses when it goes out of action (O0E3:15AB).
+var downAffectData = [20]byte{255, 7, 11, 13, 21, 23, 30, 31, 32, 51, 52, 53, 58, 59, 95, 98, 136, 137, 139, 144}
+
+// The facings from a small cloud's centre to its 4 squares (stinking cloud).
+var cloudSquares4 = [4]byte{8, 2, 3, 4}
+
+// The facings from a large cloud's centre to its 9 squares (cloudkill); 8 is the centre.
+var cloudSquares9 = [9]byte{8, 0, 1, 2, 3, 4, 5, 6, 7}
+
+// Entries 1..4: the affects that end with the fight (O0E3:160D).
+var fightAffectData = [5]byte{0, 13, 58, 139, 144}
 
 // Spell names by spell number.
 var spellNames = [101]string{"", "Bless", "Curse", "Cure Light Wounds", "Cause Light Wounds", "Detect Magic", "Protection From Evil", "Protection from Good", "Resist Cold", "Burning Hands", "Charm Person", "Detect Magic", "Enlarge", "Reduce", "Friends", "Magic Missile", "Protection From Evil", "Protection From Good", "Read Magic", "Shield", "Shocking Grasp", "Sleep", "Find Traps", "Hold Person", "Resist Fire", "Silence, 15' Radius", "Slow Poison", "Snake Charm", "Spiritual Hammer", "Detect Invisibility", "Invisibility", "Knock", "Mirror Image", "Ray of Enfeeblement", "Stinking Cloud", "Strength", "Animate Dead", "Cure Blindness", "Cause Blindness", "Cure Disease", "Cause Disease", "Dispel Magic", "Prayer", "Remove Curse", "Bestow Curse", "Blink", "Dispel Magic", "Fireball", "Haste", "Hold Person", "Invisibility, 10' Radius", "Lightning Bolt", "Protection From Evil, 10' Radius", "Protection From Good, 10' Radius", "Protection From Normal Missiles", "Slow", "Restoration", "", "Cure Serious Wounds", "", "", "", "", "", "", "", "Cause Serious Wounds", "Neutralize Poison", "Poison", "Protection Evil, 10' Radius", "Sticks to Snakes", "Cure Critical Wounds", "Cause Critical Wounds", "Dispel Evil", "Flame Strike", "Raise Dead", "Slay Living", "Detect Magic", "Entangle", "Faerie Fire", "Invisibility to Animals", "Charm Monsters", "Confusion", "Dimension Door", "Fear", "Fire Shield", "Fumble", "Ice Storm", "Minor Globe Of Invulnerability", "Remove Curse", "Animate Dead", "Cloud Kill", "Cone of Cold", "Feeblemind", "Hold Monsters", "", "", "", "", "", "Bestow Curse"}

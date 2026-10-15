@@ -182,9 +182,6 @@ func (e *Engine) ItemsMenu() bool {
 	return done
 }
 
-// areaWordNoMagic: items cannot be used here.
-const areaWordNoMagic = 229
-
 // itemDebug = O0AF:10A6: the item record's fields (a debugging page).
 func (e *Engine) itemDebug(it *Item) {
 	e.drawScreenFrame()

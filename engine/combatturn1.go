@@ -122,7 +122,7 @@ func (e *Engine) o14_02F9(a, b *Character, kind, damage, shown, hit int) {
 		if st := b.Status; st >= 6 && st <= 8 { // set at CS:02CF
 			e.CharMessage(b, "is killed", 0, false)
 		}
-		e.removeCombatAffects(b)
+		e.downAffects(b)
 		e.affectGroup(b, 0xD)
 		if b.Okay == 0 {
 			e.combatRemoveFromMap(b)
@@ -152,22 +152,20 @@ func (e *Engine) o14_0627(c *Character) {
 	}
 }
 
-// o14_0712 (dir, char): step one square (2 movement points, 3 diagonally).
+// o14_0712 = O08D:0748 (char, dir): step one square, paying the ground's
+// step cost (stepCost) out of the moves left.
 func (e *Engine) o14_0712(c *Character, dir int) {
 	cb := c.Combat
-	cost := byte(2)
-	if dir&1 != 0 {
-		cost = 3
-	}
-	if cost > cb.Moves {
-		cb.Moves = 0
-		return
-	}
-	cb.Moves -= cost
 	idx := e.combatIndex(c)
 	ox, oy := e.cpos[idx].x, e.cpos[idx].y
 	nx := ox + byte(stepX[dir])
 	ny := oy + byte(stepY[dir])
+	cost := stepCost(e.groundInfo(e.cmap.ground[ny][nx])[0], dir)
+	if cost > int(cb.Moves) {
+		cb.Moves = 0
+	} else {
+		cb.Moves -= byte(cost)
+	}
 	margin := 1
 	if c.Auto != 0 {
 		margin = 3

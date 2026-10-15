@@ -11,8 +11,6 @@ const (
 	sheetWeaponRow         = 20
 	sheetStatColumn        = 5
 	acBase                 = 60 // armour class is kept as 60 - AC
-	affectHaste            = 42
-	affectSlow             = 39
 	affectDetectMagicItems = 5
 	itemTypeWand           = 86
 	wordQuarrel            = 135 // name words that are already plural

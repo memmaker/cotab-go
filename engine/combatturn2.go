@@ -684,39 +684,6 @@ func (e *Engine) o14_37E4(c *Character, rng, a, b int) bool {
 	return found
 }
 
-// o14_39D2 = ovr14:39D2 (c, affect, flag): the affect handler of an
-// attacker's rake: while DS:6823 is 2 and its victim is up, c rakes it.
-func (e *Engine) o14_39D2(c *Character, a *Affect, flag byte) {
-	if e.hits6822[1] == 2 && c.Combat.Target != nil && c.Combat.Target.Okay != 0 {
-		c.Combat.AttackSlot = 2
-		c.Attacks[1], c.Dice[1], c.Sides[1], c.Attacks[0] = 2, 2, 4, 0
-		e.CharMessage(c, "Rakes...", 0xA, true)
-		e.o14_1884(c, c.Combat.Target, 0, nil)
-		e.clearCombatInfo(c)
-	}
-}
-
-// o14_3A86 = ovr14:3A86 (c, affect, flag): the affect handler tying c to
-// the combatant a.Data (DS:6826): c strikes at it until one of them is
-// down or the affect is removed.
-func (e *Engine) o14_3A86(c *Character, a *Affect, flag byte) {
-	e.v6826 = e.combatant(a.Data)
-	if flag != 0 || c.Okay == 0 || e.v6826.Okay == 0 {
-		e.RemoveAffect(e.v6826, 0x3A, nil)
-		if flag == 0 {
-			a.Call = 0
-			e.RemoveAffect(c, 0x4A, a)
-		}
-		return
-	}
-	c.Attacks[0], c.Attacks[1], c.Dice[0], c.Sides[0] = 1, 0, 3, 4
-	e.o14_1884(c, e.v6826, 1, nil)
-	e.clearCombatInfo(c)
-	if e.v6826.Okay == 0 {
-		e.RemoveAffect(c, 0x4A, a)
-	}
-}
-
 // o14_3B93 = ovr14:3B93: the command line word STING kills every monster
 // ("The Gods intervene!"). True when it was given.
 func (e *Engine) o14_3B93() bool {

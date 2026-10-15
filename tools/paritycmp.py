@@ -26,12 +26,13 @@ for n, t in enumerate(toks, 1):
         steps.append('key:' + qmp.get(t, t.lower()))
     steps += ['wait:' + wait, 'vga:s%02d' % n]
 
+steps += [x for x in os.environ.get('DOSPAR_EXTRA', '').split() if x]
 for d in ('/tmp/pc_port', '/tmp/pc_dos'):
     shutil.rmtree(d, ignore_errors=True)
     os.makedirs(d)
 env = dict(os.environ, DOSPAR_CMD='START.EXE STING Wooden', SDL_VIDEODRIVER='dummy', DOSBOX_NO_HOST_INPUT='1')
 dos = subprocess.Popen([sys.executable, os.path.join(here, 'dosparity.py'), dos_dir, '/tmp/pc_dos'] + steps,
-                       env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                       env=env, stdout=open('/tmp/pc_dos.log', 'w'), stderr=subprocess.STDOUT)
 penv = dict(os.environ, SDL_VIDEODRIVER='dummy', COTAB_SEED=os.environ.get('COTAB_SEED', '1'))
 port_copy = '/tmp/pc_portdata'
 shutil.rmtree(port_copy, ignore_errors=True)

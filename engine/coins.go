@@ -132,7 +132,6 @@ func (e *Engine) moveCoins(from, to *Character, amount uint16, kind int) {
 }
 
 // controlFree: members the player controls (party members and the charmed).
-const controlCharmed = 179
 
 // poolMoney = O0BA:0527: everyone the player controls puts their coins in
 // the pool.

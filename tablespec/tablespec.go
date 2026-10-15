@@ -109,6 +109,9 @@ var Tables = []Table{
 	{"stepY", 9887, 9, Signed, "Row step by facing 0..7 (8: none).", 0},
 
 	// Combat.
+	{"combatFrameLeft", 3133, 23, Bytes, "Combat screen frame symbols down column 0 (rows 0..22).", 0},
+	{"combatFrameMiddle", 3156, 23, Bytes, "Combat screen frame symbols down column 22, between the map and the panel.", 0},
+	{"combatFrameRight", 3179, 23, Bytes, "Combat screen frame symbols down column 39.", 0},
 	{"groundInfo", 9892, 64, Bytes, "Combat ground tiles: move cost (255 blocks), two flags and the tile's kind.", 4},
 	{"footprints", 10148, 5, Signed, "Squares a combatant of size 0..4 covers: column and row offsets of its four parts (-1 none).", 8},
 	{"teamSides", 732, 4, Bytes, "Formation: the side each of the four teams of a facing looks to.", 4},
@@ -116,13 +119,17 @@ var Tables = []Table{
 	{"combatFacings", 764, 4, Bytes, "Combat facing for the party's map facing / 2.", 0},
 	{"formationStartX", 768, 2, Signed, "Formation start column: first team / other teams, by direction.", 4},
 	{"formationStartY", 776, 2, Signed, "Formation start row: first team / other teams, by direction.", 4},
-	{"formationRows", 784, 4, Signed, "Formation slots: per direction, rows 0..5 of first and last column.", 12},
+	{"formationRows", 784, 5, Signed, "Formation slots: per direction (4: the second team), rows 0..5 of first and last column.", 12},
 	{"itemTemplates", 2094, 57, Words, "Magic item templates read by the treasure generator: from entry n, name words n..n+2, weight n+3, price n+4, spells n+5..n+7 (low bytes).", 0},
 	{"diseaseAffects", 2090, 6, Bytes, "The affects a paladin's Cure removes (diseases).", 0},
 	{"clockLimits", 15916, 7, Words, "Clock carries: minutes per ten, tens per hour, hours per day ... (area words 198..204).", 0},
 
 	// Affects.
 	{"helplessAffectData", 10187, 5, Bytes, "Entries 1..4: the affects that leave a character helpless.", 0},
+	{"downAffectData", 2609, 20, Bytes, "Entries 1..19: the affects a character loses when it goes out of action (O0E3:15AB).", 0},
+	{"cloudSquares4", 10202, 4, Bytes, "The facings from a small cloud's centre to its 4 squares (stinking cloud).", 0},
+	{"cloudSquares9", 10206, 9, Bytes, "The facings from a large cloud's centre to its 9 squares (cloudkill); 8 is the centre.", 0},
+	{"fightAffectData", 2629, 5, Bytes, "Entries 1..4: the affects that end with the fight (O0E3:160D).", 0},
 
 	// Spells.
 	{"spellNames", 10175, 101, String(41), "Spell names by spell number.", 0},

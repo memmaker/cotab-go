@@ -195,7 +195,7 @@ func (e *Engine) o23_1658() {
 		if t.Kind > 1 || t.Size > 1 {
 			saved = true
 		}
-		e.AddAffectMsg(t, e.spellTableByte(spell, 10), e.o23_07D6(spell), byte(e.casterLevel(spell)), 0,
+		e.isUnaffected(t, e.spellTableByte(spell, 10), e.o23_07D6(spell), byte(e.casterLevel(spell)), 0,
 			e.spellTableByte(spell, 8), saved, "is held")
 	}
 }
@@ -260,81 +260,8 @@ func (e *Engine) o23_1A8A() {
 // o23_1ACC = ovr23:1ACC: "is weakened".
 func (e *Engine) o23_1ACC() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is weakened") }
 
-// o23_1B11 = ovr23:1B11: Stinking Cloud. A 0x13-byte cloud record (caster,
-// the four squares' old ground and flags, target square, number of the
-// caster's clouds) is added; its squares become ground 0x1E.
-func (e *Engine) o23_1B11() {
-	e.spellFlag6820 = 1
-	sel := e.selected()
-	lvl := e.casterLevel(int(e.curSpell))
-	n := 0
-	// the last cloud of the list is not counted
-	for i := 0; i < len(e.clouds)-1; i++ {
-		if e.clouds[i].Ptr00 == sel {
-			n++
-		}
-	}
-	cl := &cloud{}
-	e.clouds = append(e.clouds, cl)
-	e.AddAffect(sel, 0x28, lvl, byte(lvl+n<<4), 1)
-	cl.Ptr00 = sel
-	cl.Num = byte(n)
-	cl.X = byte(e.tgtX)
-	cl.Y = byte(e.tgtY)
-	dx, dy := stepBytes(stepX), stepBytes(stepY)
-	var who [5]byte
-	for k := 1; k <= 4; k++ {
-		dir := int(e.X.Bytes(0x290D+k, 1)[0])
-		x := int(int8(e.tgtX)) + int(int8(dx[dir]))
-		y := int(int8(e.tgtY)) + int(int8(dy[dir]))
-		w, g := e.mapAt(x, y)
-		who[k] = w
-		if g > 0 && e.groundInfo(g)[0] < 0xFF {
-			cl.Covered[k-1] = 1
-		} else {
-			cl.Covered[k-1] = 0
-		}
-		if g == 0x1E {
-			// an older cloud already covers the square: keep its ground
-			for _, o := range e.clouds {
-				if o == cl {
-					continue
-				}
-				for j := 1; j <= 4; j++ {
-					if o.Covered[j-1] == 0 {
-						continue
-					}
-					oj := int(e.X.Bytes(0x290D+j, 1)[0])
-					if int(int8(dx[dir]))+int(int8(e.tgtX)) == int(int8(dx[oj]))+int(int8(o.X)) &&
-						int(int8(dy[dir]))+int(int8(e.tgtY)) == int(int8(dy[oj]))+int(int8(o.Y)) &&
-						o.Ground[j-1] != 0x1E {
-						g = o.Ground[j-1]
-					}
-				}
-			}
-		} else if g == 0x1F {
-			// a body lies there: keep the ground under it
-			for b := 1; b <= e.nbodies; b++ {
-				if int(int8(e.bodies[b].x)) == x && int(int8(e.bodies[b].y)) == y {
-					g = e.bodies[b].ground
-				}
-			}
-		}
-		cl.Ground[k-1] = g
-		if cl.Covered[k-1] != 0 {
-			e.cmap.ground[y][x] = 0x1E
-		}
-	}
-	e.CharMessage(sel, "Creates a noxious cloud", 0xA, false)
-	e.combatCentre(int(e.tgtX), int(e.tgtY), 0xFF, 8)
-	e.MsgDelay()
-	e.ClearMessageArea()
-	for k := 1; k <= 4; k++ {
-		if who[k] > 0 {
-			e.stinkingCloud(e.combatant(who[k]))
-		}
-	}
-}
+// o23_1B11 = Stinking Cloud (O0C2 create_noxious_cloud).
+func (e *Engine) o23_1B11() { e.createCloud(e.stinkingKind()) }
 
 // o23_1F41 = ovr23:1F41: Enlarge/Strength of the first target: 1d4/1d6/1d8
 // by its classes, added to its strength, exceptional strength above 18.
@@ -403,7 +330,7 @@ func (e *Engine) o23_206F() {
 		}
 		lvl--
 		if e.Revive(p, p.MaxHP) {
-			e.AddAffectMsg(p, 0x20, 0, data, 1, 0, false, "is animated")
+			e.isUnaffected(p, 0x20, 0, data, 1, 0, false, "is animated")
 			p.Status = 1
 		}
 	}

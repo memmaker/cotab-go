@@ -29,6 +29,10 @@ no hex/magic numbers, readable names).
   - [ ] item functions still Pool of Radiance's, being audited: ready, use, trade, halve, join, sell, identify
   - [ ] training halls (O0A7 train_player is ported; the hall's script path)
 - [ ] M7 combat
+  - [x] rules (O0E3): affect groups, saving throw, damage, add/kill/heal/revive, poison and stinking clouds
+  - [x] affect handlers (O064 setup_spells2, 148 entries incl. O08D's engulf/hug/rays and the item call)
+  - [x] clouds (O0C2 noxious/poisonous cloud, O064 clearing)
+  - [ ] O08D attacks, O0C2 spells, O11C/O121/O12A map and AI, O05A/O057/O045 (still Pool stand-ins: o14_*, o23_*)
 - [ ] M8 sound: the PC speaker driver as Go data
 - [ ] M9 goplay: games.js, deploy.sh, README tables, hardware cursor n/a (no pointer), wasm build, box art
 - [ ] M10 publish (GitHub + deploy)
@@ -48,8 +52,12 @@ raw EGA colour indices.
 - Shops with the normal price factor (16): the original's Buy (O048:0474) has no case for it and charges an
   unset local, which holds the menu colour pushed by the shop menu's displayInput (15) — every item costs
   15 gold. The port charges the price the list shows.
-- Encounter speeds (O04C:20E5): haste and slow are swapped against the character sheet; the port doubles for
-  haste (42) and halves for slow (39) like the sheet.
+- Character sheet movement (O0AF): the original doubles for affect 42 (slow) and halves for 39 (haste), the
+  reverse of combat (O064:0BA5/101B, 39 ages and doubles) and encounters (O04C:20E5); the port's sheet
+  doubles for haste (39) and halves for slow (42).
+- Ice body (O064:1243) tests DS:5D0B (unrelated) where fire body tests the saving throw; the port tests the
+  saving throw (DS:6FC2) for both.
+- Constitution save bonus (O064:1E42) below 4 adds an unset local; the port adds nothing.
 - Appraise "Keep" with no items lost the gem; the port keeps it.
 - ENCOUNTER with a digit that is no menu item read past its reaction table; the port asks again.
 - The shop's "Excuse me" text: unchanged; DIVIDE by zero in scripts gives 0 instead of a runtime error.

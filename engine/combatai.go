@@ -301,7 +301,7 @@ func (e *Engine) aiMoveStep(c *Character) {
 	if c.Okay == 0 {
 		done = e.clearCombatInfo(c)
 	}
-	e.stinkingCloud(c)
+	e.inPoisonCloud(c, true)
 }
 
 // aiAttackLoop = ovr10:0B3C (char): move, pick a target and attack until
@@ -451,7 +451,7 @@ func (e *Engine) aiFleeCheck(c *Character) bool {
 	ci := c.Combat
 	r := false
 	ci.Fleeing = 0
-	e.removeAffects4A(c)
+	e.releaseHeld(c)
 	if ci.Turned != 0 {
 		ci.Fleeing = 1
 		e.CharMessage(c, "is forced to flee", 10, true)

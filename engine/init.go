@@ -47,7 +47,7 @@ func (e *Engine) Init() {
 	e.ClearRow24()
 	e.Randomize()      // 0AF8:1247
 	e.spellTableInit() // ovr23:3413
-	e.o13_31A2()       // fills the affect handler table
+	setupAffectHandlers()
 }
 
 // readItems reads the base item table: skips the 2-byte count and takes up

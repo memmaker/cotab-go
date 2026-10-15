@@ -47,7 +47,6 @@ func (e *Engine) templeCure(needed bool, notMsg, cure string, price uint16) bool
 // Affects the temple removes.
 const (
 	affectBlind     = 33
-	affectPoisoned  = 55
 	affectPoison2   = 22
 	affectPoison3   = 15
 	affectCursed    = 36

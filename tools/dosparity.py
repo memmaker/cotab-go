@@ -47,6 +47,23 @@ def save_ega(dumpfile, base):
         pass
 
 
+_ds = [None]
+
+
+def game_ds(client):
+    """The game's data segment: found by the camp menu text at DS:042A."""
+    if _ds[0] is None:
+        mem = b''
+        for a in range(0, 0xA0000, 0x1000):
+            mem += bytes.fromhex(tools.read_memory(client, a, 0x1000, allow_running=True)['data_hex'])
+        sig = b'\x23Save View Magic Rest Alter Fix Exit'
+        i = mem.find(sig)
+        while i >= 0 and (i - 0x042A) % 16 != 0:
+            i = mem.find(sig, i + 1)
+        _ds[0] = (i - 0x042A) // 16 if i >= 0 else tools.status(client)['cpu']['ds']
+    return _ds[0]
+
+
 def main():
     game, out, steps = sys.argv[1], sys.argv[2], sys.argv[3:]
     os.makedirs(out, exist_ok=True)
@@ -106,7 +123,7 @@ def main():
             elif kind == 'dsptr':
                 # dsptr:OFF,DELTA,N: the far pointer at DS:OFF (decimal), then N bytes at pointer+DELTA
                 off, delta, n = (int(x) for x in arg.split(','))
-                ds = tools.status(client)['cpu']['ds']
+                ds = game_ds(client)
                 p = bytes.fromhex(tools.read_memory(client, ds * 16 + off, 4, allow_running=True)['data_hex'])
                 lin = (p[2] | p[3] << 8) * 16 + (p[0] | p[1] << 8) + delta
                 r = tools.read_memory(client, lin, n, allow_running=True)

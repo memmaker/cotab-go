@@ -20,7 +20,7 @@ const (
 	areaWordLastECL    = 242 // the ECL block to come back to
 	areaWordOldX       = 240
 	areaWordOldY       = 241
-	areaWordCleared    = 229
+	areaWordNoMagic    = 229 // spells and magic items cannot be used here; cleared with a fresh area
 	areaWordFlagsFirst = 256 // .. 287: cleared with a fresh area
 	areaWordFlagsLast  = 287
 	gameWordFlagsFirst = 889 // .. 898
@@ -54,7 +54,7 @@ func (e *Engine) initScript() {
 	putWord(e.game, 2*gameWordFace, 255)
 	putWord(e.game, 2*gameWordTime1, 0)
 	putWord(e.game, 2*gameWordTime2, 0)
-	putWord(e.area, 2*areaWordCleared, 0)
+	putWord(e.area, 2*areaWordNoMagic, 0)
 	for k := range s.events {
 		e.readArgs(1)
 		s.events[k] = varAddr(s.argLo[1], s.argHi[1])

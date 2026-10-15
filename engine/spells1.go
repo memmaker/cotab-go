@@ -107,10 +107,10 @@ func (e *Engine) o23_08C3(spell, level, call, dmg, dmgType int, msg string) {
 			}
 		}
 		if dmg > 0 {
-			e.Damage(t, dmg, e.spellRec(s, 8), saved)
+			e.damagePerson(t, dmg, e.spellRec(s, 8), saved)
 		}
 		if e.spellRec(s, 0xA) > 0 {
-			e.AddAffectMsg(t, e.spellRec(s, 0xA), e.o23_07D6(spell), lvl, byte(call), e.spellRec(s, 8), saved, msg)
+			e.isUnaffected(t, e.spellRec(s, 0xA), e.o23_07D6(spell), lvl, byte(call), e.spellRec(s, 8), saved, msg)
 		}
 	}
 	e.rv.dmgType = 0
@@ -349,7 +349,7 @@ func (e *Engine) strikeSquare(x, y, dmg, saveType int) bool {
 	if who > 0 {
 		t := e.combatant(who)
 		e.rv.dmgType = 0xC
-		e.Damage(t, int(byte(dmg)), 2, e.SavingThrow(t, saveType, 0))
+		e.damagePerson(t, int(byte(dmg)), 2, e.SavingThrow(t, saveType, 0))
 		e.hitColours(0x13)
 		e.rv.dmgType = 0
 	}
