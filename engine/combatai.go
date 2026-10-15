@@ -109,7 +109,7 @@ func (e *Engine) canCast(c *Character, spell, level int) bool {
 			return true
 		}
 	}
-	n := e.nearEnemies(c, e.o23_0729(spell))
+	n := e.nearEnemies(c, e.spellRange(spell))
 	if n == 0 {
 		return false
 	}

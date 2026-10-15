@@ -166,7 +166,7 @@ type Engine struct {
 
 	// combat overlays (ovr10/13/14/23)
 	spellTarget         *Character              // DS:6C95 target slot 1
-	spellList           []*ListNode             // DS:4766 spell menu lines (ovr23)
+	spellList           []*ListNode             // DS:4766 spell menu lines (O0C2)
 	spellIDs            []byte                  // DS:476A spell of each non-header line
 	spellItems          [0x31]*Item             // DS:477F scroll of each line
 	spellItemCount      int                     // DS:4843
@@ -175,7 +175,7 @@ type Engine struct {
 	spellCaster         *Character              // DS:6DB5
 	curSpell            byte                    // DS:681B spell being cast
 	tgtX, tgtY          int                     // DS:6DB9/6DBA target square
-	combatTargets       bool                    // DS:6B84 points at ovr14:20C3 (set by Combat), else ovr23:0A91
+	combatTargets       bool                    // DS:72BA points at O08D:2231 (set by Combat), else O0C2:114D
 	whoVar              bool                    // SelectCharacter's who is DS:5D92 itself (opWho)
 	spellFx             [len(spellNames)]func() // DS:6B84 spell effect table (slot 0 unused)
 	v4844, v4845        byte                    // DS:4844/4845 spell scratch

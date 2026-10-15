@@ -1,27 +1,27 @@
 package engine
 
-// Spell effect routines of ovr23 (0x100F..0x2540). CastSpell (ovr23:0C20)
-// calls them through the table DS:6B84 filled by ovr23:3413, indexed by the
-// spell number DS:681B; each is called without arguments and works on the
-// spell globals: spellID (DS:681B), spellN/spellList (DS:6C94/6C91, list
-// entry 1 is DS:6C95, the first target).
+// Spell effect routines of O0C2 (1D60..35DE). CastSpell (O0C2:12E1) calls
+// them through the table DS:72BA filled by O0C2:6592 setup_spells, indexed
+// by the spell number (DS:6FB1); each is called without arguments and works
+// on the spell globals: the target count DS:744E and list DS:744B (entry 1
+// at DS:744F is the first target).
 
-// o23_100F = ovr23:100F: Bless, "is Blessed" on the selected character's side.
-func (e *Engine) o23_100F() {
-	e.o23_0F4F(int(e.selected().Side), "is Blessed")
+// fxBless = O0C2:1D60 is_Blessed: Bless, "is Blessed" on the selected character's side.
+func (e *Engine) fxBless() {
+	e.applySpellToSide(int(e.selected().Side), "is Blessed")
 }
 
-// o23_1040 = ovr23:1040: Bane, "is Cursed".
-func (e *Engine) o23_1040() {
+// fxBane = O0C2:1D91 is_Cursed: Bane, "is Cursed".
+func (e *Engine) fxBane() {
 	side := 0
 	if isParty(e.selected()) {
 		side = 1
 	}
-	e.o23_0F4F(side, "is Cursed")
+	e.applySpellToSide(side, "is Cursed")
 }
 
-// o23_106B = ovr23:106B: Cure Light Wounds on the first target, 1d8.
-func (e *Engine) o23_106B() {
+// fxCureLight = O0C2:1DBC: Cure Light Wounds on the first target, 1d8.
+func (e *Engine) fxCureLight() {
 	if e.nSpellTargets != 0 {
 		if e.Heal(e.tgt(1), e.Dice(1, 8), false) {
 			e.healedMessage(e.tgt(1))
@@ -29,34 +29,34 @@ func (e *Engine) o23_106B() {
 	}
 }
 
-// o23_10A7 = ovr23:10A7: 1d8 magic damage.
-func (e *Engine) o23_10A7() {
-	e.o23_08C3(int(e.curSpell), 0, 0, e.RollDice(1, 8), 8, "")
+// fxCauseLight = O0C2:1DF8: 1d8 magic damage.
+func (e *Engine) fxCauseLight() {
+	e.applySpell(int(e.curSpell), 0, 0, e.RollDice(1, 8), 8, "")
 }
 
-// o23_10E9 = ovr23:10E9: "is affected" (shared by several spells).
-func (e *Engine) o23_10E9() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is affected") }
+// fxAffected = O0C2:1E3A is_affected: "is affected" (shared by several spells).
+func (e *Engine) fxAffected() { e.applySpell(int(e.curSpell), 0, 0, 0, 0, "is affected") }
 
-// o23_1123 = ovr23:1123: "is protected".
-func (e *Engine) o23_1123() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is protected") }
+// fxProtected = O0C2:1E74 is_protected: "is protected".
+func (e *Engine) fxProtected() { e.applySpell(int(e.curSpell), 0, 0, 0, 0, "is protected") }
 
-// o23_1162 = ovr23:1162: "is cold-resistant".
-func (e *Engine) o23_1162() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is cold-resistant") }
+// fxColdResistant = O0C2:1EB3 is_cold_resistant: "is cold-resistant".
+func (e *Engine) fxColdResistant() { e.applySpell(int(e.curSpell), 0, 0, 0, 0, "is cold-resistant") }
 
-// o23_1190 = ovr23:1190: damage equal to the caster level, type 9.
-func (e *Engine) o23_1190() {
-	e.o23_08C3(int(e.curSpell), 0, 0, e.casterLevel(int(e.curSpell)), 9, "")
+// fxBurningHands = O0C2:1EE1: damage equal to the caster level, type 9.
+func (e *Engine) fxBurningHands() {
+	e.applySpell(int(e.curSpell), 0, 0, e.casterLevel(int(e.curSpell)), 9, "")
 }
 
-// o23_11DD = ovr23:11DD: Charm Person; large or strong targets are unaffected.
-func (e *Engine) o23_11DD() {
+// fxCharmPerson = O0C2:1F2E is_charmed: Charm Person; large or strong targets are unaffected.
+func (e *Engine) fxCharmPerson() {
 	t := e.tgt(1)
 	if t.Kind > 1 || t.Size > 1 {
 		e.combatName(t, "is unaffected", 0xA, true)
 		return
 	}
 	lvl := e.casterLevel(int(e.curSpell))
-	e.o23_08C3(int(e.curSpell), (int(e.selected().Side)<<7+lvl)&0xFF, 1, 0, 0, "is charmed")
+	e.applySpell(int(e.curSpell), (int(e.selected().Side)<<7+lvl)&0xFF, 1, 0, 0, "is charmed")
 	if a := e.FindAffect(t, 0xB); a != nil {
 		e.callAffect(0xB, e.tgt(1), a, 0)
 	}
@@ -89,7 +89,7 @@ func (e *Engine) spellStronger() {
 	}
 	if code, ok := strongerThan(t, str, str00); ok {
 		e.combatName(t, "is stronger", combatMsgRow, true)
-		e.AddAffect(t, affectEnlarge, e.o23_07D6(int(e.curSpell)), code, 1)
+		e.AddAffect(t, affectEnlarge, e.spellAmount(int(e.curSpell)), code, 1)
 		e.statAffects(t, statStr)
 		return
 	}
@@ -109,28 +109,28 @@ func (e *Engine) spellReduce() {
 
 // spellFriends = O0C2:21DA is_friendly: the charisma affect at 2d4.
 func (e *Engine) spellFriends() {
-	e.o23_08C3(int(e.curSpell), e.Dice(2, 4), 1, 0, 0, "is friendly")
+	e.applySpell(int(e.curSpell), e.Dice(2, 4), 1, 0, 0, "is friendly")
 	e.statAffects(e.selected(), statCha)
 }
 
-// o23_1439 = O0C2:2221: magic damage of ((level+1)/2)d4 + (level+1)/2.
-func (e *Engine) o23_1439() {
+// fxMagicMissile = O0C2:2221: magic damage of ((level+1)/2)d4 + (level+1)/2.
+func (e *Engine) fxMagicMissile() {
 	n := (e.casterLevel(int(e.curSpell)) + 1) & 0xFF >> 1
-	e.o23_08C3(int(e.curSpell), 0, 0, (n+e.RollDice(n, 4))&0xFF, 8, "")
+	e.applySpell(int(e.curSpell), 0, 0, (n+e.RollDice(n, 4))&0xFF, 8, "")
 }
 
-// o23_1499 = ovr23:1499: "is shielded".
-func (e *Engine) o23_1499() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is shielded") }
+// fxShielded = O0C2:2284 is_shielded: "is shielded".
+func (e *Engine) fxShielded() { e.applySpell(int(e.curSpell), 0, 0, 0, 0, "is shielded") }
 
-// o23_14C7 = ovr23:14C7: caster level + 1d8 damage, type 0xC.
-func (e *Engine) o23_14C7() {
+// fxShockingGrasp = O0C2:22B2: caster level + 1d8 damage, type 0xC.
+func (e *Engine) fxShockingGrasp() {
 	lvl := e.casterLevel(int(e.curSpell))
-	e.o23_08C3(int(e.curSpell), 0, 0, (lvl+e.RollDice(1, 8))&0xFF, 0xC, "")
+	e.applySpell(int(e.curSpell), 0, 0, (lvl+e.RollDice(1, 8))&0xFF, 0xC, "")
 }
 
-// o23_151B = ovr23:151B: Sleep. 4d4 hit dice of targets fall asleep, weakest
+// fxSleep = O0C2:2306 falls_asleep: Sleep. 4d4 hit dice of targets fall asleep, weakest
 // first in list order; the others (and the already asleep) leave the list.
-func (e *Engine) o23_151B() {
+func (e *Engine) fxSleep() {
 	e.rv.areaSpell = 1
 	e.v4844 = byte(e.Dice(4, 4))
 	for i := 1; i <= e.nSpellTargets; i++ {
@@ -159,7 +159,7 @@ func (e *Engine) o23_151B() {
 			e.setTgt(i, nil)
 		}
 	}
-	e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "falls asleep")
+	e.applySpell(int(e.curSpell), 0, 0, 0, 0, "falls asleep")
 }
 
 // Spells with their own rules in holdTargets.
@@ -170,9 +170,9 @@ const (
 	spellHoldAnySize = 94 // large and strong targets get no free save
 )
 
-// o23_1658 = O0C2:2444 is_held: Hold Person/Monster. The save bonus
+// fxHold = O0C2:2444 is_held: Hold Person/Monster. The save bonus
 // depends on the number of targets.
-func (e *Engine) o23_1658() {
+func (e *Engine) fxHold() {
 	var bonus int8 // other counts leave the local unset (0)
 	switch e.nSpellTargets {
 	case 1:
@@ -214,20 +214,20 @@ func (e *Engine) holdTargets(bonus int8, msg string) {
 		if (t.Kind > 1 || t.Size > 1) && spell != spellHoldAnySize {
 			saved = true
 		}
-		e.isUnaffected(t, e.spellRec(byte(spell), 10), e.o23_07D6(spell), byte(e.casterLevel(spell)), 0,
+		e.isUnaffected(t, e.spellRec(byte(spell), 10), e.spellAmount(spell), byte(e.casterLevel(spell)), 0,
 			saveMode, saved, msg)
 	}
 }
 
-// o23_17E9 = ovr23:17E9: "is fire resistant".
-func (e *Engine) o23_17E9() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is fire resistant") }
+// fxFireResistant = O0C2:24A7 is_fire_resistant: "is fire resistant".
+func (e *Engine) fxFireResistant() { e.applySpell(int(e.curSpell), 0, 0, 0, 0, "is fire resistant") }
 
-// o23_1822 = ovr23:1822: "is silenced".
-func (e *Engine) o23_1822() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is silenced") }
+// fxSilenced = O0C2:24E0 is_silenced: "is silenced".
+func (e *Engine) fxSilenced() { e.applySpell(int(e.curSpell), 0, 0, 0, 0, "is silenced") }
 
-// o23_185B = ovr23:185B: Raise Dead style: a dead target is dropped from
+// fxSlowPoison = O0C2:2519 is_affected2: Raise Dead style: a dead target is dropped from
 // the list; one with affect 0x37 is brought to 1 hit point and stunned (0x0F).
-func (e *Engine) o23_185B() {
+func (e *Engine) fxSlowPoison() {
 	t := e.tgt(1)
 	if t.Status == 1 {
 		e.setTgt(1, nil)
@@ -239,14 +239,14 @@ func (e *Engine) o23_185B() {
 	if t.HP == 0 {
 		t.HP = 1
 	}
-	e.o23_08C3(int(e.curSpell), 0xFF, 1, 0, 0, "is affected")
+	e.applySpell(int(e.curSpell), 0xFF, 1, 0, 0, "is affected")
 	e.callAffect(0x4E, t, nil, 1)
 	e.AddAffect(t, 0xF, 10, 0xFF, 1)
 }
 
-// o23_190F = ovr23:190F: the party members of kind 0xE whose hit points
+// fxCharmSnakes = O0C2:25CD is_charmed2: the party members of kind 0xE whose hit points
 // fit in the caster's hit points become the targets.
-func (e *Engine) o23_190F() {
+func (e *Engine) fxCharmSnakes() {
 	e.v4844 = e.selected().HP
 	e.nSpellTargets = 0
 	for _, p := range e.party {
@@ -256,33 +256,33 @@ func (e *Engine) o23_190F() {
 			e.setTgt(e.nSpellTargets, p)
 		}
 	}
-	e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is charmed")
+	e.applySpell(int(e.curSpell), 0, 0, 0, 0, "is charmed")
 }
 
-// o23_19C3 = ovr23:19C3: applies the spell, then runs the affect 0x17 handler on the first target.
-func (e *Engine) o23_19C3() {
-	e.o23_08C3(int(e.curSpell), 0, 1, 0, 0, "")
+// fxSpiritualHammer = O0C2:2681: applies the spell, then runs the affect 0x17 handler on the first target.
+func (e *Engine) fxSpiritualHammer() {
+	e.applySpell(int(e.curSpell), 0, 1, 0, 0, "")
 	e.callAffect(0x17, e.tgt(1), nil, 0)
 }
 
-// o23_1A16 = ovr23:1A16: "is invisible".
-func (e *Engine) o23_1A16() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is invisible") }
+// fxInvisibility = O0C2:26D4 is_invisible: "is invisible".
+func (e *Engine) fxInvisibility() { e.applySpell(int(e.curSpell), 0, 0, 0, 0, "is invisible") }
 
-// o23_1A4F = ovr23:1A4F: Knock.
-func (e *Engine) o23_1A4F() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "Knock-Knock") }
+// fxKnock = O0C2:270D knock_Knock: Knock.
+func (e *Engine) fxKnock() { e.applySpell(int(e.curSpell), 0, 0, 0, 0, "Knock-Knock") }
 
-// o23_1A8A = O0C2:2748 is_duplicated: Mirror Image, 1d4 images in the high
+// fxMirrorImage = O0C2:2748 is_duplicated: Mirror Image, 1d4 images in the high
 // nibble of the level.
-func (e *Engine) o23_1A8A() {
+func (e *Engine) fxMirrorImage() {
 	lvl := byte(e.Dice(1, 4))<<4 | byte(e.casterLevel(int(e.curSpell)))
-	e.o23_08C3(int(e.curSpell), int(lvl), 0, 0, 0, "is duplicated")
+	e.applySpell(int(e.curSpell), int(lvl), 0, 0, 0, "is duplicated")
 }
 
-// o23_1ACC = ovr23:1ACC: "is weakened".
-func (e *Engine) o23_1ACC() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is weakened") }
+// fxRayOfEnfeeblement = O0C2:27A6 is_weakened: "is weakened".
+func (e *Engine) fxRayOfEnfeeblement() { e.applySpell(int(e.curSpell), 0, 0, 0, 0, "is weakened") }
 
-// o23_1B11 = Stinking Cloud (O0C2 create_noxious_cloud).
-func (e *Engine) o23_1B11() { e.createCloud(e.stinkingKind()) }
+// fxStinkingCloud = Stinking Cloud (O0C2 create_noxious_cloud).
+func (e *Engine) fxStinkingCloud() { e.createCloud(e.stinkingKind()) }
 
 // hasClass: a level in the class now, or an old one above the level of
 // the class taken up after (a dual-classed character's first class).
@@ -316,14 +316,14 @@ func (e *Engine) spellStrength() {
 		str = strengthMaximum18
 	}
 	if _, ok := strongerThan(t, str, str00); ok {
-		e.AddAffect(t, affectStrengthSpell, e.o23_07D6(int(e.curSpell)), add+strengthEncodedBase, 1)
+		e.AddAffect(t, affectStrengthSpell, e.spellAmount(int(e.curSpell)), add+strengthEncodedBase, 1)
 		e.statAffects(t, statStr)
 	}
 }
 
-// o23_206F = O0C2:2E19 is_animated: Animate Dead. Corpses of the party list (status 6,
+// fxAnimateDead = O0C2:2E19 is_animated: Animate Dead. Corpses of the party list (status 6,
 // kind 0) are put back on their feet on the caster's side, one per caster level.
-func (e *Engine) o23_206F() {
+func (e *Engine) fxAnimateDead() {
 	e.rv.areaSpell = 1
 	lvl := e.casterLevel(int(e.curSpell))
 	e.nSpellTargets = 0
@@ -359,17 +359,17 @@ func (e *Engine) o23_206F() {
 	}
 }
 
-// o23_2217 = ovr23:2217: cures blindness (affect 0x21): "can see".
-func (e *Engine) o23_2217() {
+// fxCureBlindness = O0C2:2FC4 can_see: cures blindness (affect 0x21): "can see".
+func (e *Engine) fxCureBlindness() {
 	if e.CureAffect(e.tgt(1), 0x21) {
 		e.hitMessage(e.tgt(1), true, "can see")
 	}
 }
 
-// o23_225D = ovr23:225D: "is blind".
-func (e *Engine) o23_225D() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is blind") }
+// fxBlindness = O0C2:300A is_blind: "is blind".
+func (e *Engine) fxBlindness() { e.applySpell(int(e.curSpell), 0, 0, 0, 0, "is blind") }
 
-// cureDiseaseAffects = ovr23:228A: with the cure flag (DS:681F) set, cures
+// cureDiseaseAffects = O0C2:3037: with the cure flag (DS:681F) set, cures
 // affects 0x22, 0x2B (and 0x2C, 0x1F) and 0x32 (and 0x39) of the first target.
 func (e *Engine) cureDiseaseAffects() bool {
 	cured := false
@@ -391,11 +391,11 @@ func (e *Engine) cureDiseaseAffects() bool {
 	return cured
 }
 
-// o23_232F = ovr23:232F: Cure Blindness spell body (the result is unused).
-func (e *Engine) o23_232F() { e.cureDiseaseAffects() }
+// fxCureDisease = O0C2:30DC: Cure Blindness spell body (the result is unused).
+func (e *Engine) fxCureDisease() { e.cureDiseaseAffects() }
 
-// o23_234C = ovr23:234C: "is diseased".
-func (e *Engine) o23_234C() { e.o23_08C3(int(e.curSpell), 0, 1, 0, 0, "is diseased") }
+// fxDisease = O0C2:30F9 is_diseased: "is diseased".
+func (e *Engine) fxDisease() { e.applySpell(int(e.curSpell), 0, 1, 0, 0, "is diseased") }
 
 // Dispel Magic's odds: 50%, +5% for each caster level above the affect's,
 // -2% for each below.
@@ -417,12 +417,12 @@ func dispelChance(lvl, against byte) byte {
 	return dispelOdds
 }
 
-// o23_2385 = O0C2:31E4 is_affected3: Dispel Magic. Each pass walks the
+// fxDispelMagic = O0C2:31E4 is_affected3: Dispel Magic. Each pass walks the
 // affects of the first target (the loop variable only counts passes);
 // each temporary affect may go. Then the clouds on the nine squares round
 // the target square: a cloud whose caster's mage level does not stop it
 // lifts, else it stays for good.
-func (e *Engine) o23_2385() {
+func (e *Engine) fxDispelMagic() {
 	e.rv.areaSpell = 1
 	lvl := byte(e.casterLevel(int(e.curSpell)))
 	for i := 1; i <= e.nSpellTargets; i++ {
@@ -507,9 +507,9 @@ func (e *Engine) dispelsCloud(caster *Character, lvl byte) bool {
 	return byte(e.Dice(1, 100)) <= e.v4844
 }
 
-// o23_24D6 = ovr23:24D6: "is praying", cast at caster level with the side in the high nibble.
-func (e *Engine) o23_24D6() {
-	e.o23_08C3(int(e.curSpell), int(e.selected().Side)<<4+e.casterLevel(int(e.curSpell)), 0, 0, 0, "is praying")
+// fxPrayer = O0C2:359A is_praying: "is praying", cast at caster level with the side in the high nibble.
+func (e *Engine) fxPrayer() {
+	e.applySpell(int(e.curSpell), int(e.selected().Side)<<4+e.casterLevel(int(e.curSpell)), 0, 0, 0, "is praying")
 }
 
 // fxNeutralizePoison = O0C2:41DA cure_poison: an animated target drops
@@ -542,7 +542,7 @@ func (e *Engine) fxNeutralizePoison() {
 // caster's own target is tried against the poison sting (affect 64): when
 // nothing there blocks it, the sting handler runs for the caster.
 func (e *Engine) fxPoison() {
-	e.o23_08C3(int(e.curSpell), 0, 0, 0, dmgMagic, "")
+	e.applySpell(int(e.curSpell), 0, 0, 0, dmgMagic, "")
 	sel := e.selected()
 	e.rv.affVal = affectPoisonSting
 	e.affectGroup(sel.Combat.Target, 9)
@@ -559,7 +559,7 @@ const sticksToSnakesTooBig = 6
 func (e *Engine) fxSticksToSnakes() {
 	t := e.tgt(1)
 	if int8(t.MaxLevel) < sticksToSnakesTooBig {
-		e.o23_08C3(int(e.curSpell), e.casterLevel(int(e.curSpell)), 0, 0, dmgMagic, "")
+		e.applySpell(int(e.curSpell), e.casterLevel(int(e.curSpell)), 0, 0, dmgMagic, "")
 		if a := e.FindAffect(t, affectSticksToSnakes); a != nil {
 			e.callAffect(affectSticksToSnakes, t, a, 0)
 		}
@@ -581,20 +581,20 @@ func (e *Engine) fxCureCritical() {
 
 // fxCauseCritical = O0C2:4431: 3d8+3 of damage type 8.
 func (e *Engine) fxCauseCritical() {
-	e.o23_08C3(int(e.curSpell), 0, 0, e.RollDice(3, 8)+3, dmgMagic, "")
+	e.applySpell(int(e.curSpell), 0, 0, e.RollDice(3, 8)+3, dmgMagic, "")
 }
 
 // fxDispelEvil = O0C2:4479 is_affected4: the caster is warded against
 // enchanted creatures (affect 4, Dispel Evil's own amount), then the spell's
 // affect on the targets.
 func (e *Engine) fxDispelEvil() {
-	e.isUnaffected(e.selected(), affectWardEnchanted, e.o23_07D6(spellDispelEvil), 0, 0, 0, false, "")
-	e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is affected")
+	e.isUnaffected(e.selected(), affectWardEnchanted, e.spellAmount(spellDispelEvil), 0, 0, 0, false, "")
+	e.applySpell(int(e.curSpell), 0, 0, 0, 0, "is affected")
 }
 
 // fxFlameStrike = O0C2:44DA: 6d8 of damage type 9.
 func (e *Engine) fxFlameStrike() {
-	e.o23_08C3(int(e.curSpell), 0, 0, e.RollDice(6, 8), dmgMagic|dmgFire, "")
+	e.applySpell(int(e.curSpell), 0, 0, e.RollDice(6, 8), dmgMagic|dmgFire, "")
 }
 
 // fxRaiseDead = O0C2:451A cast_raise: a dead (or animated) target with
@@ -788,7 +788,7 @@ func (e *Engine) fxEntangle() {
 func (e *Engine) fxFaerieFire() { e.holdTargets(0, "is highlighted") }
 
 // fxInvisibleToAnimals = O0C2:47A4 cast_invisible2.
-func (e *Engine) fxInvisibleToAnimals() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is invisible") }
+func (e *Engine) fxInvisibleToAnimals() { e.applySpell(int(e.curSpell), 0, 0, 0, 0, "is invisible") }
 
 // fxCharmMonsters = O0C2:47DC cast_charmed: held like Hold Monsters; the
 // charm handler runs at once for each one charmed.
@@ -815,7 +815,7 @@ func (e *Engine) fxConfusion() {
 			continue
 		}
 		saved := e.SavingThrow(t, saveVsSpell, 0)
-		e.isUnaffected(t, affectConfused, e.o23_07D6(spellConfusion), 0, 0, 1, saved, "is confused")
+		e.isUnaffected(t, affectConfused, e.spellAmount(spellConfusion), 0, 0, 1, saved, "is confused")
 	}
 }
 
@@ -860,7 +860,7 @@ func (e *Engine) fxFear() {
 			e.combatName(t, "is unaffected", combatMsgRow, true)
 			continue
 		}
-		e.isUnaffected(t, affectRunningAway, e.o23_07D6(spellFear), 0, 1, 1, false, "runs in terror")
+		e.isUnaffected(t, affectRunningAway, e.spellAmount(spellFear), 0, 1, 1, false, "runs in terror")
 		t.Combat.Turned = 1
 		t.Auto = 1
 		if t.Control <= controlHired {
@@ -875,7 +875,7 @@ func (e *Engine) fxFear() {
 // a computer caster picks at random.
 func (e *Engine) fxFireShield() {
 	sel := e.selected()
-	rounds := func() int { return e.o23_07D6(spellFireShield) }
+	rounds := func() int { return e.spellAmount(spellFireShield) }
 	for done := false; !done; {
 		var key byte
 		if sel.Auto != 0 {
@@ -909,26 +909,26 @@ func (e *Engine) fxFumble() {
 	t := e.tgt(1)
 	e.rv.dmgType = dmgType64
 	if !e.SavingThrow(t, saveVsSpell, 0) {
-		e.isUnaffected(t, affectStunned, e.o23_07D6(spellFumble), 0, 0, 0, false, "is clumsy")
+		e.isUnaffected(t, affectStunned, e.spellAmount(spellFumble), 0, 0, 0, false, "is clumsy")
 		if e.FindAffect(t, affectStunned) != nil {
 			e.callAffect(affectStunned, t, nil, 0)
 		}
 	} else {
-		e.isUnaffected(t, affectSlow, e.o23_07D6(spellFumble), 0, 0, 0, false, "is slowed")
+		e.isUnaffected(t, affectSlow, e.spellAmount(spellFumble), 0, 0, 0, false, "is slowed")
 		if e.FindAffect(t, affectSlow) != nil {
 			e.callAffect(affectSlow, t, nil, 0)
 		}
 	}
-	e.o23_08C3(int(e.curSpell), 0, 1, 0, 0, "is clumsy")
+	e.applySpell(int(e.curSpell), 0, 1, 0, 0, "is clumsy")
 }
 
 // fxIceStorm = O0C2:4F0B: 3d10 of cold and magic.
 func (e *Engine) fxIceStorm() {
-	e.o23_08C3(int(e.curSpell), 0, 0, e.RollDice(3, 10), dmgCold|dmgMagic, "")
+	e.applySpell(int(e.curSpell), 0, 0, e.RollDice(3, 10), dmgCold|dmgMagic, "")
 }
 
 // fxMinorGlobe = O0C2:4F4E.
-func (e *Engine) fxMinorGlobe() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is protected") }
+func (e *Engine) fxMinorGlobe() { e.applySpell(int(e.curSpell), 0, 0, 0, 0, "is protected") }
 
 // fxCloudkill = O0C2 spell_poisonous_cloud.
 func (e *Engine) fxCloudkill() { e.createCloud(e.poisonKind()) }
@@ -945,7 +945,7 @@ func (e *Engine) fxConeOfCold() {
 		length = 1
 	}
 	e.coneTargets(e.combatX(sel), e.combatY(sel), e.tgtX, e.tgtY, coneOfColdWidth, length)
-	e.o23_08C3(int(e.curSpell), 0, 0, int(lvl)+e.RollDice(int(lvl), 4), dmgCold|dmgMagic, "")
+	e.applySpell(int(e.curSpell), 0, 0, int(lvl)+e.RollDice(int(lvl), 4), dmgCold|dmgMagic, "")
 }
 
 // fxFeeblemind = O0C2:55F2: the target's spell save is made harder for the
@@ -962,7 +962,7 @@ func (e *Engine) fxFeeblemind() {
 	default:
 		t.Saves[saveVsSpell] += 2
 	}
-	e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "")
+	e.applySpell(int(e.curSpell), 0, 0, 0, 0, "")
 	if e.FindAffect(t, affectFeebleminded) != nil {
 		e.callAffect(affectFeebleminded, t, nil, 0)
 	}
@@ -970,7 +970,7 @@ func (e *Engine) fxFeeblemind() {
 }
 
 // fxPlain = O0C2:569E, 56CC, 56FA: the spell record alone.
-func (e *Engine) fxPlain() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "") }
+func (e *Engine) fxPlain() { e.applySpell(int(e.curSpell), 0, 0, 0, 0, "") }
 
 // The cone of spell 98: 1 wide, 3 long, 6d6.
 const (

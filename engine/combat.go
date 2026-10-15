@@ -26,7 +26,7 @@ func (e *Engine) Combat() {
 
 // combatEnd = O057:004B: free the clouds, the map and the sprite.
 func (e *Engine) combatEnd() {
-	e.combatTargets = false // DS:6B84 = 0096:0034 (ovr23:0A91)
+	e.combatTargets = false // DS:72BA = O0C2:114D cast_spell_on
 	e.stinkingClouds, e.poisonClouds = nil, nil
 	e.cmap = nil
 	e.spr = nil

@@ -90,7 +90,7 @@ func (e *Engine) chooseSpellTarget(spell, silent, allowGround int, t *aimTarget)
 	found := false
 	if silent == 0 {
 		allowCreature := b2i(spell != spellDimensionDoor)
-		e.aimAt(sel, e.o23_0729(spell), 0, allowGround, allowCreature, &found, t)
+		e.aimAt(sel, e.spellRange(spell), 0, allowGround, allowCreature, &found, t)
 		sel.Combat.Target = t.c
 	} else if e.spellData(spell, spellAimField) == 0 {
 		t.c = sel
@@ -98,7 +98,7 @@ func (e *Engine) chooseSpellTarget(spell, silent, allowGround int, t *aimTarget)
 			t.x, t.y = byte(e.combatX(t.c)), byte(e.combatY(t.c))
 			found = true
 		}
-	} else if e.pickAttackTarget(sel, e.o23_0729(spell), 0, 1) {
+	} else if e.pickAttackTarget(sel, e.spellRange(spell), 0, 1) {
 		// one try (the loop counter starts at 1)
 		ok := true
 		tp := sel.Combat.Target
