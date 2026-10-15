@@ -121,7 +121,7 @@ const (
 	affectParalysingGaze     = 122
 	affectFireTouch          = 123
 	affectNoCharmHoldSleep   = 125
-	affectGazeParalyse    = 126
+	affectGazeParalyse       = 126
 	affectGazeReflectable    = 127 // a mirror readied by the target turns the stoning gaze
 	affectBreathFire         = 128
 	affectMagicImmune        = 129

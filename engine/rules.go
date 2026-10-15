@@ -231,6 +231,7 @@ const (
 	groundStinkingCloud = 30
 	groundPoisonCloud   = 28
 	groundBody          = 31
+	groundPlain         = 23 // what groundAt starts from
 )
 
 // cloudsUnder: is any square the combatant covers a stinking or a poison

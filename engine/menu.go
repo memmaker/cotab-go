@@ -130,7 +130,7 @@ func (e *Engine) DisplayInput(prompt, menu string, promptColour, normal, highlig
 			case 27:
 				key, done = 0, true
 			case 13:
-				if hasHighlight {
+				if hasHighlight && e.menuSel > 0 && e.menuSel <= len(items) && items[e.menuSel-1].first > 0 {
 					key = menu[items[e.menuSel-1].first-1]
 					if key == 0 {
 						key = 13

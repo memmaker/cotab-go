@@ -524,21 +524,20 @@ func (e *Engine) combatIndex(c *Character) int {
 	return 0
 }
 
-// groundAt = ovr32:0CB9 (char, dir, var who, var ground): who stands on
-// and the dearest ground of the squares the combatant would cover one step
-// in direction dir (8: where it stands). 0 = off the map, 0x1E = cloud.
-func (e *Engine) groundAt(c *Character, dir int) (byte, byte) {
-	var who byte
-	gr := byte(0x17)
+// groundAt = O121:0D04 (char, dir, var who, var ground, var stinking,
+// var poison): who stands on and the dearest ground of the squares the
+// combatant would cover one step in direction dir (8: where it stands);
+// 0 = off the map. A cloud on any of them sets its flag instead.
+func (e *Engine) groundAt(c *Character, dir int) (who, gr byte, stinking, poison bool) {
+	gr = groundPlain
 	best := byte(1)
 	idx := e.combatIndex(c)
-	dd := stepTable()
 	for part := 0; part <= 3; part++ {
 		dx, dy, ok := e.footprint(int(e.cpos[idx].size), part)
 		if !ok {
 			continue
 		}
-		o, g := e.mapAt(int(e.cpos[idx].x)+dx+int(int8(dd[dir])), int(e.cpos[idx].y)+dy+int(int8(dd[9+dir])))
+		o, g := e.mapAt(int(int8(e.cpos[idx].x))+dx+int(stepX[dir]), int(int8(e.cpos[idx].y))+dy+int(stepY[dir]))
 		if int(o) == idx {
 			o = 0
 		}
@@ -548,14 +547,16 @@ func (e *Engine) groundAt(c *Character, dir int) (byte, byte) {
 		switch {
 		case g == 0 || gr == 0:
 			gr = 0
-		case g == 0x1E || gr == 0x1E:
-			gr = 0x1E
+		case g == groundStinkingCloud:
+			stinking = true
+		case g == groundPoisonCloud:
+			poison = true
 		case e.groundInfo(g)[0] >= best:
 			best = e.groundInfo(g)[0]
 			gr = g
 		}
 	}
-	return who, gr
+	return
 }
 
 // combatRemoveFromMap = ovr32:0E11 (char): a fallen combatant leaves the
@@ -614,7 +615,7 @@ func (e *Engine) combatSquareFree(c *Character, x, y int, uncover bool) bool {
 	p := &e.cpos[idx]
 	p.size = c.Size & 0x7F
 	p.x, p.y = byte(x), byte(y)
-	who, g := e.groundAt(c, 8)
+	who, g, _, _ := e.groundAt(c, 8)
 	if who != 0 || g == 0 || e.groundInfo(g)[0] == 0xFF {
 		p.size = 0
 		return false

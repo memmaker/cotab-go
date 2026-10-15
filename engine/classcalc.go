@@ -368,6 +368,7 @@ func (e *Engine) thiefSkills(c *Character) {
 // (type 0x49), 12 quarrels (type 0x1C).
 const (
 	slotWeapon = 0
+	slotArmour = 2 // +345
 	slotRing1  = 9
 	slotRing2  = 10
 	slotArrows = 11

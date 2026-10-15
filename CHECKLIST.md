@@ -36,7 +36,9 @@ no hex/magic numbers, readable names).
   - [x] O057 combat loop: turn order, camp_menu/combat_menu (extended keys step at once), move/attack, delay menu, speed, quick; battle01 with the 15-round limit (reset by every attack)
   - [x] O08D aiming (manual aim, target picking by hit dice/area, ranged rule), casterLevel (paladin/ranger offsets), god_intervene (debug word "Wooden")
   - [x] O0C2 spells 1-100 (setup_spells) and the breath/gaze/spit handlers it adds (affects 83, 86, 88, 90, 126, 128, 131, 132); cone (17CF), bolt (3986/3A44), hold (1B24), dispel with clouds (31E4)
-  - [ ] O08D rest, O11C/O121/O12A map and AI, O05A/O045 (remaining Pool stand-ins: o14_*, some o23_* names)
+  - [x] O05A computer turn: every procedure checked; canCast reads the spell table and saves area victims, the
+    step check (073B) uses O121:0D04's cloud flags, attack loop bandages first, DS:75FE kept as aiEngaged
+  - [ ] O08D rest, O11C/O121/O12A map, O045 (remaining Pool stand-ins: o14_*, some o23_* names)
 - [ ] M8 sound: the PC speaker driver as Go data
 - [ ] M9 goplay: games.js, deploy.sh, README tables, hardware cursor n/a (no pointer), wasm build, box art
 - [ ] M10 publish (GitHub + deploy)
@@ -53,6 +55,7 @@ raw EGA colour indices.
 - Pool/Hillsfar import shows a message.
 
 ## Deliberate deviations (obvious bugs fixed, per c-to-go.md)
+- aiPickWeapon (O05A:1673): ready_Item is not called with a nil weapon when the off hand is empty or cursed.
 - Shops with the normal price factor (16): the original's Buy (O048:0474) has no case for it and charges an
   unset local, which holds the menu colour pushed by the shop menu's displayInput (15) — every item costs
   15 gold. The port charges the price the list shows.

@@ -167,33 +167,34 @@ type Engine struct {
 	v49F7          byte // DS:49F7 debug display (never set)
 
 	// combat overlays (ovr10/13/14/23)
-	spellTarget         *Character       // DS:6C95 target slot 1
-	spellList           []*ListNode      // DS:4766 spell menu lines (ovr23)
-	spellIDs            []byte           // DS:476A spell of each non-header line
-	spellItems          [0x31]*Item      // DS:477F scroll of each line
-	spellItemCount      int              // DS:4843
-	spellTargets        [0x49]*Character // DS:6C91+4i targets 2..; slot 1 is spellTarget
-	nSpellTargets       int              // DS:6C94
-	spellCaster         *Character       // DS:6DB5
-	curSpell            byte             // DS:681B spell being cast
-	tgtX, tgtY          int              // DS:6DB9/6DBA target square
-	combatTargets       bool             // DS:6B84 points at ovr14:20C3 (set by Combat), else ovr23:0A91
-	whoVar              bool             // SelectCharacter's who is DS:5D92 itself (opWho)
-	spellFx             [len(spellNames)]func()     // DS:6B84 spell effect table (slot 0 unused)
-	v4844, v4845        byte             // DS:4844/4845 spell scratch
-	v681A, v681D, v681E byte             // DS:681A speed value, 681D, 681E affect scratch
-	panelDirty          bool             // DS:75FF the side panel is to be redrawn
-	showMoves           bool             // DS:7600 the acting combatant's moves are drawn
-	itemCall            bool             // DS:759C the next affect call is a readied item's
-	callItem            *Item            // the item it is for
-	combatRound         byte             // DS:75A7 rounds since the fight (or the last wait) began
-	roundLimit          byte             // DS:75A8 the fight ends at this round (15 after the last attack)
-	v6825               byte             // DS:6825 flee/surrender roll
-	hits6822, shots6E2C [3]byte          // DS:6822+i / 6E2C+i, i = 1..2 attack slots
-	v443C, v443D, v443E byte             // DS:443C..443E computer-turn movement state
-	v6DE2               byte             // DS:6DE2
-	v6826               *Character       // DS:6826 scratch target
-	v6E2F               byte             // DS:6E2F
+	spellTarget         *Character              // DS:6C95 target slot 1
+	spellList           []*ListNode             // DS:4766 spell menu lines (ovr23)
+	spellIDs            []byte                  // DS:476A spell of each non-header line
+	spellItems          [0x31]*Item             // DS:477F scroll of each line
+	spellItemCount      int                     // DS:4843
+	spellTargets        [0x49]*Character        // DS:6C91+4i targets 2..; slot 1 is spellTarget
+	nSpellTargets       int                     // DS:6C94
+	spellCaster         *Character              // DS:6DB5
+	curSpell            byte                    // DS:681B spell being cast
+	tgtX, tgtY          int                     // DS:6DB9/6DBA target square
+	combatTargets       bool                    // DS:6B84 points at ovr14:20C3 (set by Combat), else ovr23:0A91
+	whoVar              bool                    // SelectCharacter's who is DS:5D92 itself (opWho)
+	spellFx             [len(spellNames)]func() // DS:6B84 spell effect table (slot 0 unused)
+	v4844, v4845        byte                    // DS:4844/4845 spell scratch
+	v681A, v681D, v681E byte                    // DS:681A speed value, 681D, 681E affect scratch
+	panelDirty          bool                    // DS:75FF the side panel is to be redrawn
+	showMoves           bool                    // DS:7600 the acting combatant's moves are drawn
+	itemCall            bool                    // DS:759C the next affect call is a readied item's
+	callItem            *Item                   // the item it is for
+	combatRound         byte                    // DS:75A7 rounds since the fight (or the last wait) began
+	roundLimit          byte                    // DS:75A8 the fight ends at this round (15 after the last attack)
+	v6825               byte                    // DS:6825 flee/surrender roll
+	hits6822, shots6E2C [3]byte                 // DS:6822+i / 6E2C+i, i = 1..2 attack slots
+	v443C, v443D, v443E byte                    // DS:443C..443E computer-turn movement state
+	v6DE2               byte                    // DS:6DE2
+	v6826               *Character              // DS:6826 scratch target
+	v6E2F               byte                    // DS:6E2F
+	aiEngaged           bool                    // DS:75FE the computer's combatant has a target in reach
 
 	// H
 	areaIconTick byte  // DS:6DDC area map party icon pose counter

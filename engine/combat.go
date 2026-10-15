@@ -339,7 +339,7 @@ func (e *Engine) moveAttack(c *Character, key byte) (done bool) {
 		if len(path) > 0 { // walking to a clicked square: the next step, while it is still free
 			d := path[0]
 			path = path[1:]
-			if who, g := e.groundAt(c, d); who > 0 || g == 0 || stepCost(e.groundInfo(g)[0], d) > int(ci.Moves) {
+			if who, g, _, _ := e.groundAt(c, d); who > 0 || g == 0 || stepCost(e.groundInfo(g)[0], d) > int(ci.Moves) {
 				path = nil
 				continue
 			}
@@ -381,7 +381,7 @@ func (e *Engine) moveAttack(c *Character, key byte) (done bool) {
 			continue
 		}
 		e.combatTurn(c, byte(d), 0, false)
-		who, g := e.groundAt(c, d)
+		who, g, _, _ := e.groundAt(c, d)
 		switch {
 		case who > 0:
 			done = e.attackTarget(c, e.combatant(who), done)
@@ -456,7 +456,7 @@ func (e *Engine) moveReach(c *Character) map[[2]int][]int {
 		e.cpos[idx].x, e.cpos[idx].y = byte(at[0]), byte(at[1])
 		for d := 0; d < 8; d++ {
 			cost := 2 + d&1
-			who, g := e.groundAt(c, d)
+			who, g, _, _ := e.groundAt(c, d)
 			if who > 0 || g == 0 || stepCost(e.groundInfo(g)[0], d) > n.left {
 				continue
 			}
