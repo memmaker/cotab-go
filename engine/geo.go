@@ -1,6 +1,6 @@
 package engine
 
-// Area map (GEO), wall sets (WALLDEF) and the 3D view, ported from ovr30.
+// Area map (GEO), wall sets (WALLDEF) and the 3D view, ported from O116.
 //
 // A GEO block is 2 header bytes and four 16x16 planes indexed y*16+x:
 //
@@ -17,25 +17,26 @@ const (
 	walldefSize  = 0x9C     // one wall's symbol ids
 	walldefSet   = 5 * 0x9C // 0x30C: one WALLDEF block chunk
 	geoSize      = 0x402    // GEO block: 2-byte header + 4 planes
-	symWallBase  = 0x2D     // DS:272C: ids >= this are relocated per slot
+	symWallBase  = 0x2D     // DS:268C: ids >= this are relocated per slot
+	areaGeoBlock = 0x18A    // area block word: the GEO block loaded
 	viewX, viewY = 3, 3     // 3D view origin in screen cells: page cell 2 (the page starts one cell in)
 )
 
 type geoState struct {
-	geo      [0x400]byte          // DS:6A5C
-	walldef  [3 * walldefSet]byte // DS:6A58
-	sky      [4]byte              // DS:6A60..6A63: sky, horizon, band, ground
-	overhead bool                 // DS:6AAC: draw the top-down map instead
-	areaKind byte                 // DS:84DC: 0 or 0xA = map edges are solid
+	geo      [0x400]byte          // DS:7220
+	walldef  [3 * walldefSet]byte // DS:721C
+	sky      [4]byte              // DS:7224..7227: sky, horizon, band, ground
+	overhead bool                 // DS:7228: draw the top-down map instead
+	areaKind byte                 // DS:8B78: 0 or 0xA = map edges are solid
 }
 
-// dirDX/dirDY = DS:2736 / DS:273F, indexed by direction 0..8 (0 N, 2 E, 4 S, 6 W).
+// dirDX/dirDY = DS:2696 / DS:269F, indexed by direction 0..8 (0 N, 2 E, 4 S, 6 W).
 var (
 	dirDX = [9]int{0, 1, 1, 1, 0, -1, -1, -1, 0}
 	dirDY = [9]int{-1, -1, 0, 1, 1, 1, 0, -1, 0}
 )
 
-// View part tables DS:0C8C..0CD1, indexed by part 0..9 (see Draw3DView):
+// View part tables DS:0ADA..0B1F, indexed by part 0..9 (see Draw3DView):
 // first symbol in the wall definition, width and height in cells, and the
 // view cell of the part's top-left corner.
 var (
@@ -46,10 +47,10 @@ var (
 	partY    = [10]int{4, 3, 3, 3, 1, 1, 1, 0, 0, 4}
 )
 
-// onMap = ovr30:031F.
+// onMap = O116:0542.
 func onMap(x, y int) bool { return x >= 0 && x <= 15 && y >= 0 && y <= 15 }
 
-// wrap brings an off-map coordinate back in like ovr30 does (>15 → 0, <0 → 15).
+// wrap brings an off-map coordinate back in like O116 does (>15 → 0, <0 → 15).
 func wrap(v int) int {
 	if v > 15 {
 		return 0
@@ -60,13 +61,13 @@ func wrap(v int) int {
 	return v
 }
 
-// offMapSolid is the guard shared by the ovr30 accessors: off the map the
-// answer is 0 when DS:84DC is 0 or 0xA, otherwise the coordinates wrap.
+// offMapSolid is the guard shared by the O116 accessors: off the map the
+// answer is 0 when DS:8B78 is 0 or 0xA, otherwise the coordinates wrap.
 func (e *Engine) offMapSolid(x, y int) bool {
 	return !onMap(x, y) && (e.gs.areaKind == 0 || e.gs.areaKind == 0xA)
 }
 
-// WallAt = ovr30:047B (x, y, dir): wall value 0..15 on that side of the cell.
+// WallAt = O116:06A2 (x, y, dir): wall value 0..15 on that side of the cell.
 func (e *Engine) WallAt(x, y, dir int) byte {
 	if e.offMapSolid(x, y) {
 		return 0
@@ -85,7 +86,7 @@ func (e *Engine) WallAt(x, y, dir int) byte {
 	return 0
 }
 
-// DoorAt = ovr30:0350 (x, y, dir): the 2-bit door state on that side.
+// DoorAt = O116:0573 (x, y, dir): the 2-bit door state on that side.
 // Off the map with solid edges it is 0; on the map it defaults to 1 for an
 // open side (no wall).
 func (e *Engine) DoorAt(x, y, dir int) byte {
@@ -110,7 +111,7 @@ func (e *Engine) DoorAt(x, y, dir int) byte {
 	return 1
 }
 
-// MapCell = ovr30:057A (x, y): the cell byte (plane 2).
+// MapCell = O116:07A5 (x, y): the cell byte (plane 2).
 func (e *Engine) MapCell(x, y int) byte {
 	if e.offMapSolid(x, y) {
 		return 0
@@ -118,10 +119,10 @@ func (e *Engine) MapCell(x, y int) byte {
 	return e.gs.geo[0x200+wrap(y)<<4+wrap(x)]
 }
 
-// SetSkyColours = ovr30:0155 (sky, horizon, band, ground).
+// SetSkyColours = O116:0165 (sky, horizon, band, ground).
 func (e *Engine) SetSkyColours(a, b, c, d byte) { e.gs.sky = [4]byte{a, b, c, d} }
 
-// drawSky = ovr30:0174: the four colour bands behind the walls (0464:2632
+// drawSky = O116:0184: the four colour bands behind the walls (0464:2632
 // fills x=2 cells, 11 cells wide, between the given pixel rows).
 func (e *Engine) drawSky() {
 	if e.videoMode != 0 {
@@ -150,7 +151,7 @@ func (e *Engine) FillRect(x, y, w, h int, colour byte) {
 	}
 }
 
-// drawWallPart = ovr30:0211 (x, y, wall, part): blit one part of a wall
+// drawWallPart = O116:0434 (x, y, wall, part): blit one part of a wall
 // definition at view cell (x,y), clipped to the 11x11 view, masked.
 func (e *Engine) drawWallPart(x, y int, wall byte, part int) {
 	s := partBase[part]
@@ -166,7 +167,7 @@ func (e *Engine) drawWallPart(x, y int, wall byte, part int) {
 	}
 }
 
-// Draw3DView = ovr30:05FD (x, y, dir): the first-person view from cell
+// Draw3DView = O116:0820 (x, y, dir): the first-person view from cell
 // (x,y). Walls are drawn far to near: the row two cells ahead, the row one
 // ahead, then the party's own cell, each scanned outwards from the centre
 // to the left and to the right.
@@ -271,7 +272,7 @@ func (e *Engine) Draw3DView(x, y, dir int) {
 	}
 }
 
-// DrawOverheadMap = ovr30:0000 (x, y, dir): the 11x11 top-down map around
+// DrawOverheadMap = O116:000F (x, y, dir): the 11x11 top-down map around
 // the party. Each cell is symbol 0x104 + walls (N 1, E 2, S 4, W 8); the
 // party is symbol 0x100 + dir/2.
 func (e *Engine) DrawOverheadMap(x, y, dir int) {
@@ -307,10 +308,10 @@ func clamp(v, lo, hi int) int {
 	return v
 }
 
-// wallSlots = ovr30:0DE8 set {1,2,3}.
+// validWallSlot: LoadWalldef's set [1..3].
 func validWallSlot(s int) bool { return s >= 1 && s <= 3 }
 
-// LoadWalldef = ovr30:0E08 (block, slot): WALLDEF<n>.DAX block into wall
+// LoadWalldef = O116:1025 (block, slot): WALLDEF<n>.DAX block into wall
 // slot 1..3. A block may hold several 5-wall chunks; they fill consecutive
 // slots, and each slot gets its own symbol set (8X8D block block*10+k for
 // multi-chunk blocks, else block itself). Symbol ids >= 0x2D are moved up
@@ -321,7 +322,8 @@ func (e *Engine) LoadWalldef(block, slot int) {
 	}
 	b := e.L.Block("WALLDEF"+e.symDAX[4:], block)
 	if len(b) == 0 || slot+len(b)/walldefSet > 4 {
-		e.MessageRow24b(0xF, "Unable to load wallset in LoadWallSet.")
+		// the original stops the game here
+		e.MessageRow24b(0xF, "Unable to load "+itoa(block)+" from WALLDEF"+e.symDAX[4:]+".")
 		return
 	}
 	reloc := byte(symFix[slot] - symFix[1])
@@ -343,11 +345,7 @@ func (e *Engine) LoadWalldef(block, slot int) {
 			}
 		}
 		if n > 1 {
-			bl := block
-			if bl == 0 {
-				bl = 0xA
-			}
-			e.LoadSymbolSet(s, bl*10+k)
+			e.LoadSymbolSet(s, int(byte(block*10+k)))
 		} else {
 			e.LoadSymbolSet(s, block)
 		}
@@ -355,14 +353,14 @@ func (e *Engine) LoadWalldef(block, slot int) {
 	e.mapPairA[slot-1], e.mapPairB[slot-1] = block, slot
 }
 
-// LoadGeo = ovr30:10C7 (n): GEO<n>.DAX block n into the map planes.
+// LoadGeo = O116:130D Load3DMap (n): GEO<n>.DAX block n into the map planes.
 func (e *Engine) LoadGeo(n int) {
 	b := e.L.Block("GEO"+e.symDAX[4:], n)
-	if len(b) != 0 && len(b) != geoSize {
+	if len(b) != geoSize { // the original stops the game here
 		e.MessageRow24b(0xF, "Unable to load geo in Load3DMap.")
 	}
 	if len(b) >= geoSize {
 		copy(e.gs.geo[:], b[2:geoSize])
 	}
-	putWord(e.area, 0x18A, uint16(n))
+	putWord(e.area, areaGeoBlock, uint16(n)) // +394
 }

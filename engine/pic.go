@@ -2,7 +2,7 @@ package engine
 
 import "cotab/dax"
 
-// symFix = DS 9858 symbol_set_fix: the first symbol number of each of the
+// symFix = DS:2682 symbol_set_fix: the first symbol number of each of the
 // five 8x8 symbol sets; symLast (DS 9868) the last.
 var (
 	symFix  = [5]int{1, 46, 116, 186, 256}

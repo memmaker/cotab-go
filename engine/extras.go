@@ -138,7 +138,7 @@ const (
 
 // areaKey identifies the current map: script area plus GEO block.
 func (e *Engine) areaKey() int {
-	return int(e.gs.areaKind)<<16 | int(wordAt(e.area, 0x18A))
+	return int(e.gs.areaKind)<<16 | int(wordAt(e.area, areaGeoBlock))
 }
 
 // markSeen records the party's cell as visited and the cells in view
