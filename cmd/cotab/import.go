@@ -20,6 +20,17 @@ import (
 // Pool of Radiance has neither the big pictures nor the sky archive.
 var markerFiles = []string{"BIGPIC1.DAX", "SKY.DAX", "GAME.OVR"}
 
+// isMarker tells whether name is one of markerFiles.
+func isMarker(name string) bool {
+	base := strings.ToUpper(path.Base(name))
+	for _, m := range markerFiles {
+		if base == m {
+			return true
+		}
+	}
+	return false
+}
+
 // gameFile tells which files the engine reads: the .DAX archives, the base item
 // table, the configuration and saved games.
 func gameFile(name string) bool {
@@ -39,7 +50,7 @@ func gameFile(name string) bool {
 // whatever src is (folders, zips, CD images, the GOG installer), copies the files
 // the engine reads into dst and writes dst/COVER.PNG from the title picture.
 func importGame(src, dst string) error {
-	files, err := gameimport.Find(src, gameFile)
+	files, err := gameimport.Find(src, func(name string) bool { return gameFile(name) || isMarker(name) })
 	if err != nil {
 		return err
 	}
@@ -72,6 +83,9 @@ func importGame(src, dst string) error {
 		return err
 	}
 	for name, b := range game {
+		if !gameFile(name) {
+			continue // a marker only
+		}
 		if err := os.WriteFile(filepath.Join(dst, name), b, 0o644); err != nil {
 			return err
 		}
