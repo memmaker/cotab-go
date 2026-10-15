@@ -56,6 +56,10 @@ var Tables = []Table{
 	{"recolourCombat", 2864, 16, Bytes, "Combat pictures (COMSPR and the area's own icons) recoloured to.", 0},
 	{"recolourIcon", 2880, 16, Bytes, "The ICON pictures recoloured to (colour 13 becomes 0).", 0},
 
+	// The wilderness map (O109): where each place's cursor goes, by area word 417.
+	{"wildMapCursorX", 2634, 32, Bytes, "Wilderness map cursor columns (8-pixel cells), by place.", 0},
+	{"wildMapCursorY", 2666, 32, Bytes, "Wilderness map cursor rows (8-pixel cells), by place.", 0},
+
 	// Names.
 	{"raceNames", 3742, 8, String(10), "Race names: monster, dwarf, elf, gnome, half-elf, halfling, half-orc, human.", 0},
 	{"genderNames", 3975, 2, String(7), "Gender names.", 0},
