@@ -2,7 +2,6 @@ package engine
 
 import (
 	"os"
-	"sort"
 	"strings"
 )
 
@@ -28,44 +27,6 @@ const (
 // the file it comes from.
 type rosterEntry struct {
 	text, file string
-}
-
-// rosterFiles = O0A1:0465 (nested 008B) for the Curse source: every NAME.GUY
-// of the right size whose character is not a hired NPC and not already in
-// the party, sorted as the directory lists them.
-func (e *Engine) rosterFiles() []rosterEntry {
-	if !e.saveDirReady() {
-		return nil
-	}
-	ents, _ := os.ReadDir(e.Cfg.SaveDir)
-	var names []string
-	for _, en := range ents {
-		if !en.IsDir() && strings.EqualFold(filepathExt(en.Name()), extCharacter) {
-			names = append(names, en.Name())
-		}
-	}
-	sort.Strings(names)
-	var out []rosterEntry
-	for _, f := range names {
-		b, err := os.ReadFile(e.savePath(f))
-		if err != nil || len(b) != charRecSize {
-			continue
-		}
-		var c Character
-		c.setRecord(b)
-		name := c.Name()
-		inParty := false
-		for _, p := range e.party {
-			if p.Name() == name {
-				inParty = true
-			}
-		}
-		if c.NPC() || inParty {
-			continue
-		}
-		out = append(out, rosterEntry{text: name + strings.Repeat(" ", max(0, 15-len(name))), file: f})
-	}
-	return out
 }
 
 func filepathExt(name string) string {
@@ -143,10 +104,6 @@ func (e *Engine) AddCharacter() {
 	case 'E', 0:
 		return
 	}
-	if e.addSource != fromCurse {
-		e.statusMessage("Importing is not supported yet", colourYellow, colourBlack) // ponytail: Pool/Hillsfar import (O0A1 load_player) not ported yet
-		return
-	}
 	roster := e.rosterFiles()
 	if len(roster) == 0 {
 		return
@@ -163,7 +120,11 @@ func (e *Engine) AddCharacter() {
 		if (key == 13 || key == 'A') && sel != nil && sel.Text[0] != '*' {
 			e.ClearRow24()
 			c := &Character{}
-			e.loadSavedCharacter(roster[index].file, c)
+			if e.addSource == fromCurse {
+				e.loadSavedCharacter(roster[index].file, c)
+			} else {
+				e.importCharacter(roster[index].file, c)
+			}
 			sel.Text = "* " + sel.Text
 			players = 0
 			if len(e.party) == 0 {

@@ -11,7 +11,7 @@ no hex/magic numbers, readable names).
 - [ ] M4 characters: create, load/save, party screens
   - [x] creation (race..alignment, stat roll, silent training, icon editor, save) — every screen pixel-identical, .GUY byte-identical (pointer bytes aside), seeded RNG
   - [x] Add character (Curse .GUY files) with the party rules
-  - [ ] Pool of Radiance / Hillsfar import (O0A1 load_player)
+  - [x] Pool of Radiance / Hillsfar import (O0A1 0465 roster, 22A0 import_char01, 14B3 load_player, 1F35 Hillsfar merge, 13AE): Pool import checked with a Pool save; Hillsfar untested (no .HIL file at hand)
   - [ ] Drop / Modify / View / Remove / Human Change Classes screens (ported, not yet parity-checked)
   - [x] Load / Save game (O0A1 loadGame/SaveGame): savgamX.dat byte-identical but for stack garbage in unused name slots; loading pixel-identical
 - [ ] M5 world: 3D view (WALLDEF/8X8D/SKY), area map, ECL interpreter (CotAB opcode set)
@@ -61,9 +61,10 @@ no hex/magic numbers, readable names).
 raw EGA colour indices.
 
 ## Known placeholders
-- Pool/Hillsfar import shows a message.
 
 ## Deliberate deviations (obvious bugs fixed, per c-to-go.md)
+- load_player (O0A1:14B3) raises a Pool character's strength to the race's exceptional strength maximum (it compares that
+  maximum with the strength); the port caps the exceptional strength at it instead.
 - The overlay loader's driver stop/restart around overlay calls (O03C:17E4, START) is not modelled: the port has no overlays.
 - Fireworks sparks (O0AC:04F7) wait 15 ms per step: the original was paced only by its slow BIOS pixel calls.
 - maxHitPoints / setRolledHP (O0A7:4793, modifyPlayer): a character with no class level returns instead of a divide error.
