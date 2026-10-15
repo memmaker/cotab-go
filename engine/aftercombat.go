@@ -18,7 +18,7 @@ const (
 	areaWordFightResult     = 711 // 128 lost, 129 fled
 	areaWordMonstersBeaten  = 712 // monsters that went down
 	areaWordNoMonsterItems  = 739 // 1: the monsters' items are not taken
-	areaWordNoDeath         = 742 // the fallen get up again (a fight that cannot be lost to death)
+	areaWordNoDeath         = 742 // a duel (O04C:1B9A): the fallen get up again
 	areaWordFightFlagsFirst = 880 // .. 882: cleared after every fight
 	areaWordFightFlagsLast  = 882
 )

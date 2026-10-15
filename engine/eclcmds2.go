@@ -256,8 +256,48 @@ func (e *Engine) cmdDestroyItems() {
 	}
 }
 
-// scriptDuel = O04C:1B9A duel (win): Tyranthraxus' duel (M7).
-func (e *Engine) scriptDuel(win bool) {}
+// The duel's opponent (O04C:1B9A).
+const (
+	duelistName = "ROLF"
+	duelistIcon = 11 // CPIC block
+)
+
+// scriptDuel = O04C:1B9A duel (win): only the selected member fights (the
+// others, by name, are made inactive); the area word records the call.
+// With win set a copy of the member, "ROLF", joins as the opponent and
+// gets copies of the member's items, in reverse order.
+func (e *Engine) scriptDuel(win bool) {
+	e.duelling = true
+	var w uint16
+	if win {
+		w = 1
+	}
+	putWord(e.game, 2*areaWordNoDeath, w)
+	sel := e.selected()
+	for _, c := range e.party {
+		if c.Name() != sel.Name() {
+			c.Okay = 0
+		}
+	}
+	if !win {
+		return
+	}
+	e.LoadIconPic("CPIC", duelistIcon, int(e.sc.iconSlot))
+	d := &Character{charRecord: sel.charRecord}
+	d.Combat = sel.Combat
+	d.Slots = sel.Slots
+	d.Okay = 1
+	d.SetName(duelistName)
+	d.Auto = 1
+	d.Side = 1
+	d.Control = controlBerserk
+	d.Order = e.sc.iconSlot
+	for _, it := range sel.Items {
+		cp := *it
+		d.Items = append([]*Item{&cp}, d.Items...)
+	}
+	e.party = append(e.party, d)
+}
 
 // cmdVerticalMenu = O03C:0EE9 (dst, text, count, items...): the text in the
 // text window and the items as a list under it; the chosen item's index
@@ -640,9 +680,6 @@ func (e *Engine) cmdProgram() {
 		e.cmdExit()
 	}
 }
-
-// endGameText = O0AC:1000 end_game_text: the ending (still to port).
-func (e *Engine) endGameText() {}
 
 // Area2 words COMBAT reads: a shop or a temple instead of a fight.
 const (

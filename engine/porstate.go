@@ -48,7 +48,6 @@ type eclState struct {
 	v6F6A                                                         uint16     // read-only specials 0xFB/0xFC/0xB1
 	v6F6C                                                         uint16
 	v6F6E                                                         uint16
-	v6F83                                                         byte   // CPIC id for ROLF clone (8)
 	stop                                                          bool   // DS:442E
 	events                                                        [5]int // DS:49E3,49E5,49E7,49E9,49EB
 	wallAhead                                                     byte   // DS:6AB0

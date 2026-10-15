@@ -38,6 +38,11 @@ func (e *Engine) DevScene(name string) func() {
 			e.shopMenu()
 			e.DrawMainScreen()
 		}
+	case "ending":
+		return func() {
+			e.endGameText()
+			e.DrawMainScreen()
+		}
 	case "temple":
 		return func() {
 			c := e.selected()

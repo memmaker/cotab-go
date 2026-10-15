@@ -21,7 +21,9 @@ no hex/magic numbers, readable names).
   - [x] commands 0..35, 37..64 except COMBAT (36) and PROGRAM (56); first scene .. overhead map pixel-identical to DOSBox
   - [ ] COMBAT (36: shops O048, temple O042, after-combat O045, combat O057) and PROGRAM (56)
   - [x] after-combat O045 (outcome, experience, hired shares, treasure menu, take money/items): ported from CotAB, replacing Pool ovr06 and the party purse
-  - [ ] the duel (O04C:1B9A), the sound calls (R699, M8)
+  - [x] the duel (O04C:1B9A)
+  - [x] the ending O0AC (text, animated pictures, fireworks)
+  - [ ] the sound calls (R699, M8)
   - [ ] parity: PARLAY's prompt (the original passes a char as its prompt string)
 - [ ] M6 camp, shops, temples, training (paladin/ranger etc.)
   - [x] shop (O048) with money (O0BA: pool, share, take, appraise) and View (O0AF viewPlayer, items menu, trade/drop coins, paladin heal/cure): pixel-identical
@@ -46,7 +48,7 @@ no hex/magic numbers, readable names).
   - [x] O121 combat map: audited and relabelled; death flicker (9 frames, icon slot 0x18 = DS:66B0), redrawChar only while b7600
   - [x] O11C line walker (CotAB DDA, not Bresenham), nearSort tie-break fixed, LOS/arc/buildNear verified
   - [x] O12A icons/tiles: Load24x24Set counts (DungCom 25, RandCom 6) and n honoured
-  - [ ] O08D rest, O045 (remaining Pool stand-ins: o14_*, some o23_* names)
+  - [x] O08D turn code and O0C2 spell bodies renamed and audited; O045 after-combat ported
 - [ ] M8 sound: the PC speaker driver as Go data
 - [ ] M9 goplay: games.js, deploy.sh, README tables, hardware cursor n/a (no pointer), wasm build, box art
 - [ ] M10 publish (GitHub + deploy)
@@ -63,6 +65,7 @@ raw EGA colour indices.
 - Pool/Hillsfar import shows a message.
 
 ## Deliberate deviations (obvious bugs fixed, per c-to-go.md)
+- Fireworks sparks (O0AC:04F7) wait 15 ms per step: the original was paced only by its slow BIOS pixel calls.
 - maxHitPoints / setRolledHP (O0A7:4793, modifyPlayer): a character with no class level returns instead of a divide error.
 - aiPickWeapon (O05A:1673): ready_Item is not called with a nil weapon when the off hand is empty or cursed.
 - Shops with the normal price factor (16): the original's Buy (O048:0474) has no case for it and charges an
