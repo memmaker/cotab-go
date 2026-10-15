@@ -1,10 +1,10 @@
 package engine
 
-// Combat map services (ovr31/ovr32 and the START sprite blitter) that the
+// Combat map services (O11C/O121 and the START sprite blitter) that the
 // rules call. They are placeholders until the combat overlays are ported;
 // outside combat none of them is reached.
 
-// nearEntry is one 3-byte record of the DS:6718 list built by ovr31:0909.
+// nearEntry is one 3-byte record of the DS:6718 list built by O11C:08D8.
 type nearEntry struct{ index, dist, dir byte }
 
 type nearState struct{ list []nearEntry } // DS:6716..671A
@@ -24,7 +24,7 @@ func (e *Engine) combatant(i byte) *Character {
 	return e.combatants[i-1]
 }
 
-// sign = ovr31:0000.
+// sign = O11C:0005.
 func sign(n int) int {
 	switch {
 	case n < 0:
@@ -35,53 +35,49 @@ func sign(n int) int {
 	return 0
 }
 
-// line is the ovr31 line walker record (0x1A bytes): ovr31:01A0 starts it,
-// ovr31:02CC takes one step.
+// line is the O11C line walker record (0x18 bytes): O11C:01A5 starts it,
+// O11C:024C takes one step. err (+8) counts in half units of the major
+// axis; steps (+22) counts half squares, three for a diagonal.
 type line struct {
-	x1, y1, err, dx, dy, incA, incB, sx, sy, x, y, steps int
-	dir                                                  byte
+	x1, y1, err, dx, dy, x, y, sx, sy, steps int
+	dir                                      byte // +23
 }
 
+// newLine = O11C:01A5.
 func newLine(x0, y0, x1, y1 int) *line {
-	l := &line{x1: x1, y1: y1, dx: abs(x1 - x0), dy: abs(y1 - y0), sx: sign(x1 - x0), sy: sign(y1 - y0), x: x0, y: y0}
-	if l.dx > l.dy {
-		l.err, l.incA, l.incB = 2*l.dy-l.dx, 2*(l.dy-l.dx), 2*l.dy
-	} else {
-		l.err, l.incA, l.incB = 2*l.dx-l.dy, 2*(l.dx-l.dy), 2*l.dx
-	}
-	return l
+	return &line{x1: x1, y1: y1, dx: abs(x1 - x0), dy: abs(y1 - y0), sx: sign(x1 - x0), sy: sign(y1 - y0), x: x0, y: y0}
 }
 
-// step moves one square; dir is the direction taken (8 = none, DS:25C0).
+// step = O11C:024C: one square along the major axis, and along the minor
+// one when the error reaches the major distance; dir is the direction
+// taken (8 = none).
 func (e *Engine) step(l *line) bool {
 	mx, my, moved := 0, 0, false
-	if l.dx > l.dy {
+	if l.dx >= l.dy {
 		if l.x != l.x1 {
-			mx = l.sx
-			if l.err >= 0 {
-				my = l.sy
-				l.y += l.sy
-				l.err += l.incA
-				l.steps += 3
-			} else {
-				l.err += l.incB
-				l.steps += 2
-			}
 			l.x += l.sx
+			mx = l.sx
+			l.err += 2 * l.dy
+			l.steps += 2
+			if l.err >= l.dx {
+				l.err -= 2 * l.dx
+				l.y += l.sy
+				my = l.sy
+				l.steps++
+			}
 			moved = true
 		}
 	} else if l.y != l.y1 {
-		my = l.sy
-		if l.err >= 0 {
-			mx = l.sx
-			l.x += l.sx
-			l.err += l.incA
-			l.steps += 3
-		} else {
-			l.err += l.incB
-			l.steps += 2
-		}
 		l.y += l.sy
+		my = l.sy
+		l.err += 2 * l.dx
+		l.steps += 2
+		if l.err >= l.dy {
+			l.err -= 2 * l.dy
+			l.x += l.sx
+			mx = l.sx
+			l.steps++
+		}
 		moved = true
 	}
 	l.dir = lineStepDirs[my+1][mx+1]

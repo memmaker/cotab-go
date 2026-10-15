@@ -42,7 +42,9 @@ no hex/magic numbers, readable names).
     item words, class names, line directions) use the generated CotAB tables; Pool-only code removed (area map,
     portrait chooser, endgame fade, Pool RandomItem); Modify Character is CotAB's O0A7:2830 (name editing, HP)
   - [x] O121 combat map: audited and relabelled; death flicker (9 frames, icon slot 0x18 = DS:66B0), redrawChar only while b7600
-  - [ ] O08D rest, O11C/O12A map, O045 (remaining Pool stand-ins: o14_*, some o23_* names)
+  - [x] O11C line walker (CotAB DDA, not Bresenham), nearSort tie-break fixed, LOS/arc/buildNear verified
+  - [x] O12A icons/tiles: Load24x24Set counts (DungCom 25, RandCom 6) and n honoured
+  - [ ] O08D rest, O045 (remaining Pool stand-ins: o14_*, some o23_* names)
 - [ ] M8 sound: the PC speaker driver as Go data
 - [ ] M9 goplay: games.js, deploy.sh, README tables, hardware cursor n/a (no pointer), wasm build, box art
 - [ ] M10 publish (GitHub + deploy)

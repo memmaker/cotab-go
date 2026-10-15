@@ -9,7 +9,7 @@ import (
 	"cotab/dax"
 )
 
-// The combat map (ovr31, ovr32, ovr33). Squares are 3x3 cells; the view
+// The combat map (O11C, O121, O12A). Squares are 3x3 cells; the view
 // shows 7x7 squares of the 50x25 map on the drawing page, which appears at
 // screen cell (1,1) (0464:1B52 copies it 8 pixels down and right).
 
@@ -161,7 +161,7 @@ func (e *Engine) restoreUnder(x, y int, im *dax.Image) {
 	}
 }
 
-// drawTile = ovr33:00F1 (x, y, tile, page): a ground tile from the tile
+// drawTile = O12A:00F7 (x, y, tile, page): a ground tile from the tile
 // sets (DS:5E52, tiles from 0x80 in DS:5E56).
 func (e *Engine) drawTile(x, y int, t byte) {
 	im, f := e.sqrpaci[0], int(t)
@@ -176,7 +176,7 @@ func (e *Engine) drawTile(x, y int, t byte) {
 	e.blitPage(x, y, im, f, false, false)
 }
 
-// drawIcon = ovr33:04FC (x, y, dir, pose, slot): a combat icon on screen
+// drawIcon = O12A:0504 (x, y, dir, pose, slot): a combat icon on screen
 // square (x,y), mirrored when facing directions 4..7.
 func (e *Engine) drawIcon(x, y int, dir, pose, slot byte) {
 	im := e.icons[slot][pose&1]
@@ -190,19 +190,22 @@ func (e *Engine) drawIcon(x, y int, dir, pose, slot byte) {
 	e.drawPage(x*3, y*3, im, 0, true, false)
 }
 
-// LoadBackpacIcons = ovr33:0022 (name, first, n): block 1 of the DAX file
-// copied into the tile set from tile first on.
-func (e *Engine) LoadBackpacIcons(name string, first, n int) {
-	if first > 0x7F {
-		return // the original stops with a fatal error
+// tileSetLoadLast: Load24x24Set's highest first tile.
+const tileSetLoadLast = 48
+
+// LoadBackpacIcons = O12A:002C Load24x24Set (name, block, first, n): a
+// DAX block copied into the tile set from tile first on.
+func (e *Engine) LoadBackpacIcons(name string, block, first, n int) {
+	if first > tileSetLoadLast {
+		return // the original stops: "Start range error in Load24x24Set"
 	}
-	im := e.LoadPic(name, 1)
+	im := e.LoadPic(name, block)
 	t := e.sqrpaci[0]
 	defer e.ClearKeyboard()
 	if im == nil || t == nil {
 		return
 	}
-	for f := 0; f < im.Count && first+f < t.Count && im.BPP == t.BPP; f++ {
+	for f := 0; f < n && f < im.Count && first+f < t.Count && im.BPP == t.BPP; f++ {
 		copy(t.Frame(first+f), im.Frame(f))
 	}
 }
@@ -225,7 +228,7 @@ func (e *Engine) recolour(im *dax.Image, tt [16]byte) {
 	}
 }
 
-// LoadIconPic = ovr33:01C8 (name, block, slot): the two poses of a combat
+// LoadIconPic = O12A:01D0 (name, block, slot): the two poses of a combat
 // icon, block and block+0x80, loaded masked on colour 0.
 func (e *Engine) LoadIconPic(name string, block, slot int) {
 	up := strings.ToUpper(name)
@@ -246,14 +249,14 @@ func (e *Engine) LoadIconPic(name string, block, slot int) {
 			e.recolour(ic[1], recolourIcon)
 		}
 	default:
-		n := name + e.symDAX[4:] // DS:5376 digit
+		n := name + e.symDAX[4:] // DS:5C08 game area digit
 		ic[0], ic[1] = load(n, block), load(n, block+0x80)
 		e.recolour(ic[0], recolourCombat)
 		e.recolour(ic[1], recolourCombat)
 	}
 }
 
-// freeIcon = ovr33:014E (slot).
+// freeIcon = O12A:0156 (slot).
 func (e *Engine) freeIcon(n byte) { e.icons[n] = [2]*dax.Image{} }
 
 // iconToSprite = 00BA:1892 (slot, pose, frame, flip): copy an icon into a
@@ -664,20 +667,20 @@ func (e *Engine) combatRedrawChar(c *Character, r int, cursor byte) {
 	e.cmap.cursor, e.cmap.cursorSize = 0, 1
 }
 
-// nearSort = ovr31:002E: order the near list by distance.
+// nearSort = O11C:0033: order the near list by distance.
 func (e *Engine) nearSort() {
 	l := e.near.list
 	for i := 0; i < len(l)-1; i++ {
 		for j := i + 1; j < len(l); j++ {
 			a, b := l[i], l[j]
-			if b.dist < a.dist || (b.dist == a.dist && b.dir < a.dir && b.dir%2 <= a.dir%2) {
+			if b.dist < a.dist || (b.dist == a.dist && a.dir < b.dir && a.dir%2 <= b.dir%2) {
 				l[i], l[j] = b, a
 			}
 		}
 	}
 }
 
-// lineOfSight = ovr31:0422 (map, var range, var tx, var ty, x, y): walk from
+// lineOfSight = O11C:03F1 (map, var range, var tx, var ty, x, y): walk from
 // (x,y) towards (tx,ty) until the target, a wall higher than the line or
 // the range (in half squares) stops it.
 func (e *Engine) lineOfSight(rng *int, tx, ty *int, x, y int) bool {
@@ -699,7 +702,7 @@ func (e *Engine) lineOfSight(rng *int, tx, ty *int, x, y int) bool {
 	}
 }
 
-// inArc = ovr31:057B (x1, y1, x2, y2, dir): (x2,y2) lies in the quarter
+// inArc = O11C:054A (x1, y1, x2, y2, dir): (x2,y2) lies in the quarter
 // facing dir from (x1,y1) (dir 8: anywhere).
 func (e *Engine) inArc(x1, y1, x2, y2, dir int) bool {
 	if x1 < 0 || x1 > 0x31 || y1 < 0 || y1 > 0x18 || x2 < 0 || x2 > 0x31 || y2 < 0 || y2 > 0x18 {
@@ -734,7 +737,7 @@ func (e *Engine) inArc(x1, y1, x2, y2, dir int) bool {
 	return true
 }
 
-// buildNear = ovr31:0909 (x, y, range, dir, size, map): every combatant on
+// buildNear = O11C:08D8 (x, y, range, dir, size, map): every combatant on
 // the map seen from the squares of a combatant of that size at (x,y),
 // within range and the quarter dir (0xFF: all round), nearest first.
 func (e *Engine) buildNear(x, y, rng, dir, size int) {
@@ -790,7 +793,7 @@ func (e *Engine) buildNear(x, y, rng, dir, size int) {
 	e.nearSort()
 }
 
-// nearCombatants = O121:0C82 + ovr31:0909: everyone the combatant at (x,y)
+// nearCombatants = O121:0C82 + O11C:08D8: everyone the combatant at (x,y)
 // sees within range r, all round.
 func (e *Engine) nearCombatants(c *Character, x, y, r int) {
 	e.buildNear(x, y, r, 0xFF, e.combatSize(c))

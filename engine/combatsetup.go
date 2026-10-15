@@ -47,11 +47,11 @@ func (e *Engine) flushKey() {
 // combatMapSetup = O05D:1030: the tile sets and the map.
 func (e *Engine) combatMapSetup() {
 	if wordAt(e.area, 2*areaWordFreeSteps) != 0 {
-		e.LoadBackpacIcons("DungCom", 0, 0x18)
+		e.LoadBackpacIcons("DungCom", 1, 0, 25)
 	} else {
-		e.LoadBackpacIcons("WildCom", 0, 0x21)
+		e.LoadBackpacIcons("WildCom", 1, 0, 33)
 	}
-	e.LoadBackpacIcons("RandCom", 0x22, 5)
+	e.LoadBackpacIcons("RandCom", 1, 34, 6)
 	e.cmap = &combatMap{cursorSize: 1}
 	if wordAt(e.area, 2*areaWordFreeSteps) != 0 {
 		e.dungeonMap()
