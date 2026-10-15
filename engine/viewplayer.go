@@ -303,4 +303,3 @@ func (e *Engine) charMessage(c *Character, text string, row int, wait bool) {
 		e.clearCombatText()
 	}
 }
-

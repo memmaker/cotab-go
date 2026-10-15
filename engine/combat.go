@@ -2,7 +2,6 @@ package engine
 
 // The combat main loop and the player's command menus (O057).
 
-
 // Combat = O057:0100: set up the battle, then rounds until one side is
 // down (or the party stops fighting).
 func (e *Engine) Combat() {

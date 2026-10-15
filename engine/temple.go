@@ -315,4 +315,3 @@ func (e *Engine) templeMenu() {
 		e.playerSummary(e.selected())
 	}
 }
-

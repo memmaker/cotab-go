@@ -517,7 +517,6 @@ func (e *Engine) fxCureSerious() {
 	}
 }
 
-
 // fxStronger = O0C2:3FB7 cast_strength: giant strength 21 for 1d4*10+40 rounds.
 func (e *Engine) fxStronger() {
 	t := e.tgt(1)
@@ -560,8 +559,6 @@ func (e *Engine) fxDamage2d4() {
 func (e *Engine) fxDamage2d8() {
 	e.o23_08C3(int(e.curSpell), 0, 0, e.RollDice(2, 8)+1, 8, "")
 }
-
-
 
 // o23_30D9 = O0C2:5A5D cast_breath (char, affect, flag): the lightning
 // breath (affect 88). After the first round, half the time nothing

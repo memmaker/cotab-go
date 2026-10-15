@@ -6,7 +6,6 @@ package engine
 // spell globals: spellID (DS:681B), spellN/spellList (DS:6C94/6C91, list
 // entry 1 is DS:6C95, the first target).
 
-
 // o23_100F = ovr23:100F: Bless, "is Blessed" on the selected character's side.
 func (e *Engine) o23_100F() {
 	e.o23_0F4F(int(e.selected().Side), "is Blessed")
