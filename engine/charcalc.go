@@ -255,7 +255,7 @@ func (e *Engine) encumbrance(c *Character) {
 
 // dexAC = O0ED:117B stat_bonus: armour class from dexterity (full value).
 func dexAC(c *Character) int8 {
-	d := c.Stats[statDex].Full
+	d := c.Stats[statDex].Value
 	switch {
 	case d >= 1 && d <= 3:
 		return -4
@@ -275,7 +275,7 @@ func dexAC(c *Character) int8 {
 
 // dexMissile = O0ED:11FD stat_bonus02: to-hit with missiles from dexterity.
 func dexMissile(c *Character) int8 {
-	d := c.Stats[statDex].Full
+	d := c.Stats[statDex].Value
 	switch {
 	case d <= 2:
 		return -4
@@ -295,12 +295,12 @@ func dexMissile(c *Character) int8 {
 
 // strIndex = O0ED:127F: strength as one scale (18/xx = 18..23, 19+ = 24+).
 func strIndex(c *Character) byte {
-	s := c.Stats[statStr].Full
+	s := c.Stats[statStr].Value
 	switch {
 	case s <= 17:
 		return s
 	case s == 18:
-		switch x := c.Str00.Cur; {
+		switch x := c.Str00.Value; {
 		case x == 0:
 			return 18
 		case x <= 50:
@@ -410,7 +410,7 @@ func (e *Engine) isHelpless(c *Character) bool {
 // atRaceLimitPOR = 00BA:2F57 (char, class) (Pool of Radiance; replaced as its callers are ported): the demihuman level limit is
 // reached (fighter limits depend on strength 17/18; race 4 clerics stop at 5).
 func atRaceLimitPOR(c *Character, class int) bool {
-	lvl, str := int8(c.Levels[class]), c.Stats[statStr].Cur
+	lvl, str := int8(c.Levels[class]), c.Stats[statStr].Base
 	if lvl <= 0 {
 		return false
 	}

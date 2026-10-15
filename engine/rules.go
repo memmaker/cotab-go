@@ -448,7 +448,7 @@ func (e *Engine) CureAffect(c *Character, typ byte) bool {
 	if a == nil {
 		return false
 	}
-	e.CharMessage(c, "is Cured", 0xA, true)
+	e.combatName(c, "is Cured", 0xA, true)
 	e.RemoveAffect(c, typ, a)
 	return true
 }
@@ -475,7 +475,7 @@ func strDecode(a *Affect) (str, str00 byte) {
 // (affects 0x0C / 0x26 remember the natural value). Returns false, with
 // the request encoded, when it would lower the current strength.
 func (e *Engine) SetStrength(c *Character, str, str00 byte) (byte, bool) {
-	cur, cur00 := c.Stats[statStr].Cur, c.Str00.Cur
+	cur, cur00 := c.Stats[statStr].Base, c.Str00.Value
 	if str < cur || str == 18 && str00 < cur00 {
 		return strValue(str, str00) + 0x80, false
 	}
@@ -493,8 +493,8 @@ func (e *Engine) SetStrength(c *Character, str, str00 byte) (byte, bool) {
 		cur, cur00 = strDecode(keep)
 		keep.Data = v + 0x80
 	}
-	c.Stats[statStr].Cur = str
-	c.Str00.Cur = str00
+	c.Stats[statStr].Base = str
+	c.Str00.Value = str00
 	e.ApplyItems(c)
 	return strValue(cur, cur00), true
 }
@@ -640,31 +640,9 @@ func (e *Engine) Revive(c *Character, hp byte) bool {
 	if c.Side == 1 {
 		msg = "stands up and grins"
 	}
-	e.CharMessage(c, msg, 0xA, true)
+	e.combatName(c, msg, 0xA, true)
 	e.countSides()
 	return true
-}
-
-// CharMessage = 00BA:16EC (char, message, row, wait): the name and a
-// message in the combat side panel, or in the box under the view.
-func (e *Engine) CharMessage(c *Character, msg string, row int, wait bool) {
-	if e.gameState == 5 {
-		e.combatSay(c, msg, true) // extra: under the view, not in the side pane
-	} else {
-		r := 0x11
-		if e.resting != 0 {
-			r = 0x12
-		} else {
-			e.DrawBorder(1, r, 0x26, 0x16, 0)
-		}
-		e.ClearCells(1, r, 0x26, 0x16)
-		e.displayName(c, 1, r+1, false)
-		e.DisplayTextBlock(1, r+2, 0x26, 0x16, 0xA, true, msg)
-	}
-	if wait {
-		e.MsgDelay()
-		e.ClearMessageArea()
-	}
 }
 
 // ClearMessageArea = 00BA:17E3.
@@ -685,7 +663,7 @@ func (e *Engine) ClearMessageArea() {
 func (e *Engine) hitMessage(c *Character, magical bool, msg string) {
 	msg = cut(msg, 0x28)
 	if e.gameState != 5 {
-		e.CharMessage(c, msg, 0xA, true)
+		e.combatName(c, msg, 0xA, true)
 		return
 	}
 	e.soundWait(0)
@@ -702,7 +680,7 @@ func (e *Engine) hitMessage(c *Character, magical bool, msg string) {
 	} else {
 		e.PlaySound(sndHit)
 	}
-	e.CharMessage(c, msg, 0xA, false)
+	e.combatName(c, msg, 0xA, false)
 	n := 0
 	if magical {
 		n = int(e.msgDelay)
@@ -781,7 +759,7 @@ func (e *Engine) healedMessage(c *Character) {
 	if c.HP == c.MaxHP {
 		msg = "is fully healed"
 	}
-	e.CharMessage(c, msg, 0xA, true)
+	e.combatName(c, msg, 0xA, true)
 	if e.gameState != 5 {
 		e.DisplayPartyList()
 	}

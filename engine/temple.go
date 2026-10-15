@@ -132,7 +132,7 @@ func (e *Engine) templeRaiseDead() {
 	c.HP = 1
 	c.Status = statusOkay
 	c.Okay = 1
-	con := &c.Stats[statCon].Full
+	con := &c.Stats[statCon].Value
 	if *con > 0 {
 		*con--
 	}
@@ -316,6 +316,3 @@ func (e *Engine) templeMenu() {
 	}
 }
 
-// statAffects = O0E3:18D9 (c, stat): the stat's current value from its
-// full value and the affects on it (ported with the affects, M7).
-func (e *Engine) statAffects(c *Character, stat int) {}

@@ -27,7 +27,7 @@ func (e *Engine) o10_000F(c *Character) {
 		done = e.aiFleeCheck(c)
 	}
 	if ci.Fleeing != 0 && ci.Turned == 0 {
-		e.CharMessage(c, "flees in panic", 10, true)
+		e.combatName(c, "flees in panic", 10, true)
 	}
 	if done {
 		return
@@ -454,7 +454,7 @@ func (e *Engine) aiFleeCheck(c *Character) bool {
 	e.releaseHeld(c)
 	if ci.Turned != 0 {
 		ci.Fleeing = 1
-		e.CharMessage(c, "is forced to flee", 10, true)
+		e.combatName(c, "is forced to flee", 10, true)
 		return r
 	}
 	if c.Control <= 0x7F {
@@ -482,7 +482,7 @@ func (e *Engine) aiFleeCheck(c *Character) bool {
 		e.RemoveAffect(c, 0x4B, nil)
 		return r
 	}
-	if c.Stats[statInt].Cur > 5 {
+	if c.Stats[statInt].Base > 5 {
 		e.KillCharacter(c, 4, "Surrenders")
 		r = e.endTurn(c)
 	}

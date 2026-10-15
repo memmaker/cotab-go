@@ -111,9 +111,9 @@ func (e *Engine) charValue(a uint16) (uint16, bool) {
 	v := a - charValueBase
 	switch {
 	case v == cvIntelligence:
-		return uint16(c.Stats[statInt].Full), true
+		return uint16(c.Stats[statInt].Value), true
 	case v == cvConstitution:
-		return uint16(c.Stats[statCon].Full), true
+		return uint16(c.Stats[statCon].Value), true
 	case v == cvRace:
 		return signed(c.Race), true
 	case v == cvClass:
@@ -169,7 +169,7 @@ func (e *Engine) charValue(a uint16) (uint16, bool) {
 	case v == cvPartyPlace || v == cvPartyPlace2:
 		return uint16(e.partyIndex(c)), true
 	case v == cvCharisma:
-		return charismaPercent(c.Stats[statCha].Full), true
+		return charismaPercent(c.Stats[statCha].Value), true
 	case v == cvGameArea:
 		return uint16(e.gameArea), true
 	case v == cvPartyCount:

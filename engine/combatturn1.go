@@ -385,7 +385,7 @@ func (e *Engine) o14_0E82(a, b *Character) bool {
 			if byte(cnt) > acb.Sweeps {
 				cnt = int(acb.Sweeps)
 			}
-			e.CharMessage(a, "sweeps", 0xA, true)
+			e.combatName(a, "sweeps", 0xA, true)
 			if e.combatant(e.targets[1]) != b {
 				e.targets[bi] = e.targets[1] // (bi 0 when b was not found: DS:6DE4)
 				e.targets[1] = byte(e.combatIndex(b))

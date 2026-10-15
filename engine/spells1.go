@@ -176,32 +176,37 @@ func (e *Engine) o23_0F4F(side int, msg string) {
 	e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, msg)
 }
 
-// CastSpell = ovr23:0C20 (spell, mode, b, var quit): casts the spell of
-// the selected character. b non-zero announces it ("casts"); quit is set
-// when a combat-only item was used up. A combat-only spell or item outside
-// a fight asks to lose it / use it.
+// CastSpell = O0C2:12E1 (spell, mode, announce, var quit): casts the spell
+// of the selected character. announce prints "casts"; quit is set when a
+// combat-only item was used up. A combat-only spell or item outside a fight
+// asks to lose it / use it.
 func (e *Engine) CastSpell(spell, mode, b byte, quit *bool) {
 	caster := e.selected()
 	ok := true
-	if e.gameState != 5 && e.spellRec(spell, 7) == 0 {
+	if e.gameState != stateCombat && e.spellRec(spell, 7) == 0 {
 		if !e.usingItem {
-			e.DisplayString(1, 0x13, 0xA, spellNames[int(spell)])
-			e.DisplayString(1, 0x14, 0xA, "is a combat-only spell...")
-			if e.YesNo(0xD, 0xF, 0xA, "Lose it? ") == 'Y' {
+			e.DisplayString(1, 0x13, colourGreen, spellNames[int(spell)])
+			e.DisplayString(1, 0x14, colourGreen, "can't be cast here...")
+			if e.YesNo(0xD, 0xA, 0xF, "Lose it? ") == 'Y' {
 				e.forgetSpell(spell)
 			}
 		} else {
-			e.DisplayString(1, 0x13, 0xA, "That Item")
-			e.DisplayString(1, 0x14, 0xA, "is a combat-only item...")
-			if e.YesNo(0xD, 0xF, 0xA, "Use it? ") == 'Y' {
+			e.DisplayString(1, 0x13, colourGreen, "That Item")
+			e.DisplayString(1, 0x14, colourGreen, "is a combat-only item...")
+			if e.YesNo(0xD, 0xA, 0xF, "Use it? ") == 'Y' {
 				*quit = true
 			}
 		}
 		b = 0
 		ok = false
 	}
+	if e.FindAffect(caster, affectMiscasting) != nil && e.Dice(1, 2) == 1 {
+		e.castMessage(caster, "miscasts", int(spell))
+		b = 0
+		ok = false
+	}
 	if b != 0 && !e.usingItem {
-		e.o23_331A(caster, "casts", int(spell))
+		e.castMessage(caster, "casts", int(spell))
 	}
 	for ok {
 		*quit = e.spellTargetHook(int(spell), int(mode)) // the asm passes the caller's var
@@ -252,8 +257,8 @@ func (e *Engine) CastSpell(spell, mode, b byte, quit *bool) {
 			ok = false
 		}
 	}
-	e.ClearMessageArea()
-	if e.gameState == 5 {
+	e.clearCombatText()
+	if e.gameState == stateCombat {
 		e.ClearCells(0, 0x17, 0x27, 0x17)
 	}
 }
@@ -478,7 +483,7 @@ func (e *Engine) fxRestore() {
 		t.Exp = uint32(bestXP)
 	}
 	e.recalcClassBonuses(t)
-	e.CharMessage(t, "is restored", 0xA, true)
+	e.combatName(t, "is restored", 0xA, true)
 }
 
 // fxSpeedy = ovr23:2E02.
@@ -511,7 +516,7 @@ func (e *Engine) fxStronger() {
 	t := e.spellTarget
 	out, ok := e.SetStrength(t, 0x15, 0)
 	if ok {
-		e.CharMessage(t, "is stronger", 0xA, true)
+		e.combatName(t, "is stronger", 0xA, true)
 	}
 	e.AddAffect(t, 0x26, e.o23_07D6(int(e.curSpell)), out, 1)
 }
@@ -556,7 +561,7 @@ func (e *Engine) o23_30D9(c *Character, a *Affect, flag int) {
 		return
 	}
 	cx, cy := e.combatX(c), e.combatY(c)
-	e.CharMessage(c, "Breathes!", 0xA, true)
+	e.combatName(c, "Breathes!", 0xA, true)
 	e.spellTargetHook(0x33, 1) // the result (DS:70C6) is not used
 	e.tgtX = cx + sign(e.tgtX-cx)
 	e.tgtY = cy + sign(e.tgtY-cy)
@@ -599,22 +604,22 @@ func (e *Engine) scrollUsed(c *Character, it *Item, spell byte) {
 	}
 }
 
-// o23_331A = ovr23:331A (char, msg, spell): announces the cast, in the
-// side panel in combat, else in the message box.
-func (e *Engine) o23_331A(c *Character, msg string, spell int) {
+// castMessage = O0C2:648D cast_a_spell (char, msg, spell): announces the
+// cast, in the side panel in combat, else in the message box.
+func (e *Engine) castMessage(c *Character, msg string, spell int) {
 	msg = cut(msg, 0x28)
-	if e.gameState == 5 {
-		e.CharMessage(c, "Casts a Spell", 0xA, true)
+	if e.gameState == stateCombat {
+		e.combatName(c, "Casts a Spell", combatMsgRow, true)
 		e.ClearCells(0, 0x17, 0x27, 0x17)
-		e.DisplayString(0, 0x17, 0xA, "Spell:"+spellNames[spell])
+		e.DisplayString(0, 0x17, colourGreen, "Spell:"+spellNames[spell])
 		return
 	}
 	e.ClearCells(1, 0x12, 0x26, 0x16)
 	e.displayName(c, 1, 0x13, false)
-	e.DisplayString(len(c.Name())+2, 0x13, 0xA, msg)
-	e.DisplayString(1, 0x14, 0xA, spellNames[spell])
+	e.DisplayString(len(c.Name())+2, 0x13, colourGreen, msg)
+	e.DisplayString(1, 0x14, colourGreen, spellNames[spell])
 	e.MsgDelay()
-	e.ClearMessageArea()
+	e.clearCombatText()
 }
 
 // spellTableInit = ovr23:3413: the DS:6B84 table of spell effects (indexed
@@ -637,9 +642,9 @@ func (e *Engine) spellTableInit() {
 	e.spellFx[9] = e.o23_1190
 	e.spellFx[10] = e.o23_11DD
 	e.spellFx[11] = e.o23_10E9
-	e.spellFx[12] = e.o23_12A5
-	e.spellFx[13] = e.o23_136E
-	e.spellFx[14] = e.o23_13D8
+	e.spellFx[12] = e.spellStronger
+	e.spellFx[13] = e.spellReduce
+	e.spellFx[14] = e.spellFriends
 	e.spellFx[15] = e.o23_1439
 	e.spellFx[16] = e.o23_1123
 	e.spellFx[17] = e.o23_1123

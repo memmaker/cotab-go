@@ -73,6 +73,7 @@ const (
 	affectBlur               = 71
 	affectFlicker95          = 72
 	affectUnaffectedByType32 = 73
+	affectMiscasting         = 74 // half its spells fail; no free attacks as foes step away
 	affectVsKind3            = 75
 	affectVsKind8            = 76
 	affectBerserk            = 77

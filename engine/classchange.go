@@ -52,7 +52,7 @@ const (
 func mayTakeClass(c *Character, class int) bool {
 	cur := currentClass(c)
 	for k := 0; k < len(c.Stats); k++ {
-		if classStatMinimum[cur][k] >= primeRequisite && c.Stats[k].Cur < oldClassPrime {
+		if classStatMinimum[cur][k] >= primeRequisite && c.Stats[k].Base < oldClassPrime {
 			return false
 		}
 	}
@@ -60,7 +60,7 @@ func mayTakeClass(c *Character, class int) bool {
 		return false
 	}
 	for k := 0; k < len(c.Stats); k++ {
-		if classStatMinimum[class][k] >= primeRequisite && c.Stats[k].Cur < newClassPrime {
+		if classStatMinimum[class][k] >= primeRequisite && c.Stats[k].Base < newClassPrime {
 			return false
 		}
 	}

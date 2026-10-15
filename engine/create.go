@@ -300,9 +300,9 @@ func (e *Engine) CreateCharacter() {
 		e.iconBuilder()
 	}
 	for i := range c.Stats {
-		c.Stats[i].Cur = c.Stats[i].Full
+		c.Stats[i].Base = c.Stats[i].Value
 	}
-	c.Str00.Full = c.Str00.Cur
+	c.Str00.Base = c.Str00.Value
 	if e.YesNo(colourLightMagenta, colourGreen, colourWhite, "Save "+c.Name()+"? ") == 'Y' {
 		e.SaveCharacter(c, "")
 	}
@@ -320,11 +320,11 @@ func (e *Engine) rollAbilities(c *Character, class int) {
 			c.Levels[k] = 1
 		}
 	}
-	c.Str00.Cur = 0
+	c.Str00.Value = 0
 	limits := raceStatLimits[race]
 	older := func(step int) bool { return ageSteps[race][step] < c.Age }
 	for i := range c.Stats {
-		st := &c.Stats[i].Full
+		st := &c.Stats[i].Value
 		*st = 0
 		for range 6 {
 			if roll := byte(e.Dice(3, 6) + 1); *st < roll {
@@ -392,8 +392,8 @@ func (e *Engine) rollAbilities(c *Character, class int) {
 		*st = max(*st, classStatMinimum[class][i])
 		if i == statStr && *st == strengthMaximum &&
 			(int8(c.Levels[clsFighter]) > 0 || int8(c.Levels[clsRanger]) > 0 || int8(c.Levels[clsPaladin]) > 0) {
-			c.Str00.Cur = byte(e.Random(exceptionalStrDice) + 1)
-			c.Str00.Cur = min(c.Str00.Cur, limits[4+gender])
+			c.Str00.Value = byte(e.Random(exceptionalStrDice) + 1)
+			c.Str00.Value = min(c.Str00.Value, limits[4+gender])
 		}
 		if i == statWis && *st < multiClericWisdom && class >= classClericFighter && class <= classClericThief {
 			*st = multiClericWisdom

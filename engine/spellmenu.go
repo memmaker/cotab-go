@@ -260,14 +260,14 @@ func (e *Engine) canUseSpell(c *Character, spell byte) bool {
 	old := oldClassUsable(c)
 	switch spellTable[spell&127].class() {
 	case spellClassCleric:
-		return c.Stats[statWis].Full > 8 && (int8(c.Levels[clsCleric]) > 0 ||
+		return c.Stats[statWis].Value > 8 && (int8(c.Levels[clsCleric]) > 0 ||
 			old && int8(c.OldLevels[clsCleric]) > 0 || int8(c.Levels[clsPaladin]) > 8 ||
 			int8(c.OldLevels[clsPaladin]) > 8 && old)
 	case spellClassDruid:
-		return c.Stats[statWis].Full > 8 && (int8(c.Levels[clsRanger]) > 6 ||
+		return c.Stats[statWis].Value > 8 && (int8(c.Levels[clsRanger]) > 6 ||
 			old && int8(c.OldLevels[clsRanger]) > 6)
 	case spellClassMage:
-		return c.Stats[statInt].Full > 8 && (c.Race != raceHuman || c.Slots[slotBodyArmour] == nil ||
+		return c.Stats[statInt].Value > 8 && (c.Race != raceHuman || c.Slots[slotBodyArmour] == nil ||
 			e.gameState != stateCombat || int8(c.Levels[clsRanger]) > 8 ||
 			old && int8(c.OldLevels[clsRanger]) > 8 && (int8(c.Levels[clsMage]) > 0 || old && int8(c.OldLevels[clsMage]) > 0))
 	}

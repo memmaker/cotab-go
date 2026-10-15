@@ -60,13 +60,13 @@ func (e *Engine) ModifyCharacter() {
 		e.wisdomSlots(c, false) // ovr24:01AF
 	}
 	lower := func(i int) {
-		c.Stats[i].Cur--
-		if i == 0 && c.Str00.Cur > 0 {
-			c.Str00.Cur--
-			c.Stats[statStr].Cur++
-		} else if lo := tbl(minOff[i] + race*16); c.Stats[i].Cur < lo || c.Stats[i].Cur < tbl(0x3F81+class*6+i) {
+		c.Stats[i].Base--
+		if i == 0 && c.Str00.Value > 0 {
+			c.Str00.Value--
+			c.Stats[statStr].Base++
+		} else if lo := tbl(minOff[i] + race*16); c.Stats[i].Base < lo || c.Stats[i].Base < tbl(0x3F81+class*6+i) {
 			// Quirk: below the class minimum the race minimum is stored.
-			c.Stats[i].Cur = lo
+			c.Stats[i].Base = lo
 		}
 		switch i {
 		case 2:
@@ -79,12 +79,12 @@ func (e *Engine) ModifyCharacter() {
 		}
 	}
 	raise := func(i int) {
-		c.Stats[i].Cur++
-		if hi := tbl(maxOff[i] + race*16); c.Stats[i].Cur > hi {
-			if i == 0 && c.Stats[statStr].Cur > 0x12 && int8(c.Levels[clsFighter]) > 0 && tbl(0x3DA7+race*16+sex) > c.Str00.Cur {
-				c.Str00.Cur++ // exceptional strength for fighters
+		c.Stats[i].Base++
+		if hi := tbl(maxOff[i] + race*16); c.Stats[i].Base > hi {
+			if i == 0 && c.Stats[statStr].Base > 0x12 && int8(c.Levels[clsFighter]) > 0 && tbl(0x3DA7+race*16+sex) > c.Str00.Value {
+				c.Str00.Value++ // exceptional strength for fighters
 			}
-			c.Stats[i].Cur = hi
+			c.Stats[i].Base = hi
 		}
 		switch i {
 		case 2:
@@ -389,7 +389,7 @@ func (e *Engine) rollHitPoints2(c *Character, mask int) int {
 // get more for high constitution, a first-level ranger doubles it.
 func (e *Engine) conHitPointBonusOf(c *Character) int {
 	bonus := int8(0)
-	con := c.Stats[statCon].Full
+	con := c.Stats[statCon].Value
 	for k := 0; k <= clsMonk; k++ {
 		lvl := int8(c.Levels[k])
 		if lvl <= 0 || byte(lvl) >= classMaxHitDice[k] {
@@ -640,7 +640,7 @@ const rangerSpellLevel = 8
 // atRaceLimit = the race checks in O0A7:4D07: demi-humans stop at a
 // maximum level per class, some only with a high strength or intelligence.
 func (e *Engine) atRaceLimit(c *Character, class, level int) bool {
-	str, intl := c.Stats[statStr].Full, c.Stats[statInt].Full
+	str, intl := c.Stats[statStr].Value, c.Stats[statInt].Value
 	limit := func(max, ifStr17 int, ability byte, highOnly bool) bool {
 		// at max always; at max-1 with ability 17; at max-2 with ability under 17
 		return level == max || level == max-1 && ability == 17 || level == max-2 && ability < 17 && highOnly

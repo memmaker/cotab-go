@@ -6,10 +6,6 @@ package engine
 // spell globals: spellID (DS:681B), spellN/spellList (DS:6C94/6C91, list
 // entry 1 is DS:6C95, the first target).
 
-// spellTableByte reads a byte of the spell record (16 bytes at DS:31FA+16*spell).
-func (e *Engine) spellTableByte(spell, ofs int) byte {
-	return e.X.Bytes(0x31FA+spell*16+ofs, 1)[0]
-}
 
 // o23_100F = ovr23:100F: Bless, "is Blessed" on the selected character's side.
 func (e *Engine) o23_100F() {
@@ -57,7 +53,7 @@ func (e *Engine) o23_1190() {
 func (e *Engine) o23_11DD() {
 	t := e.tgt(1)
 	if t.Kind > 1 || t.Size > 1 {
-		e.CharMessage(t, "is unaffected", 0xA, true)
+		e.combatName(t, "is unaffected", 0xA, true)
 		return
 	}
 	lvl := e.casterLevel(int(e.curSpell))
@@ -67,57 +63,61 @@ func (e *Engine) o23_11DD() {
 	}
 }
 
-// o23_12A5 = ovr23:12A5: Strength; the percentile comes from the caster
-// level (levels above 6 leave DS:4845 as it was).
-func (e *Engine) o23_12A5() {
-	e.v4844 = 0x12
+// spellStronger = O0C2:2005 is_stronger: Strength. The strength comes from
+// the caster level: 18 with 18/00..18/100 for levels 1..6, then 19..22.
+func (e *Engine) spellStronger() {
+	t := e.spellTarget
+	str, str00 := byte(strengthMaximum18), byte(0)
 	switch e.casterLevel(int(e.curSpell)) {
-	case 1:
-		e.v4845 = 0
 	case 2:
-		e.v4845 = 1
+		str00 = 1
 	case 3:
-		e.v4845 = 0x33
+		str00 = 51
 	case 4:
-		e.v4845 = 0x4C
+		str00 = 76
 	case 5:
-		e.v4845 = 0x5B
+		str00 = 91
 	case 6:
-		e.v4845 = 0x64
+		str00 = 100
+	case 7:
+		str = 19
+	case 8:
+		str = 20
+	case 9:
+		str = 21
+	case 10, 11:
+		str = 22
 	}
-	t := e.tgt(1)
-	out, ok := e.SetStrength(t, e.v4844, e.v4845)
-	if ok {
-		e.CharMessage(t, "is stronger", 0xA, true)
+	if code, ok := strongerThan(t, str, str00); ok {
+		e.combatName(t, "is stronger", combatMsgRow, true)
+		e.AddAffect(t, affectEnlarge, e.o23_07D6(int(e.curSpell)), code, 1)
+		e.statAffects(t, statStr)
+		return
 	}
-	e.AddAffect(t, 0xC, e.o23_07D6(int(e.curSpell)), out, 1)
+	e.combatName(t, "is unaffected", combatMsgRow, true)
 }
 
-// o23_136E = ovr23:136E: Reduce (undoes the strength affect 0x0C) unless the target saves.
-func (e *Engine) o23_136E() {
-	if e.nSpellTargets > 0 {
-		t := e.tgt(1)
-		if !e.SavingThrow(t, 4, 0) && e.CureAffect(t, 0xC) {
-			e.CharMessage(t, "has been reduced", 0xA, true)
-		}
+// spellReduce = O0C2:213A has_been_reduced: the magical strength (affect
+// 12) goes unless the target saves.
+func (e *Engine) spellReduce() {
+	t := e.spellTarget
+	if t != nil && e.nSpellTargets > 0 && !e.SavingThrow(t, saveVsSpell, 0) && e.FindAffect(t, affectEnlarge) != nil {
+		e.RemoveAffect(t, affectEnlarge, nil)
+		e.statAffects(t, statStr)
+		e.combatName(t, "has been reduced", combatMsgRow, true)
 	}
 }
 
-// o23_13D8 = ovr23:13D8: Friends, charisma +2d4 (at most 25).
-func (e *Engine) o23_13D8() {
-	t := e.tgt(1)
-	old := t.Stats[statCha].Cur
-	t.Stats[statCha].Cur += byte(e.Dice(2, 4))
-	if t.Stats[statCha].Cur > 0x19 {
-		t.Stats[statCha].Cur = 0x19
-	}
-	e.o23_08C3(int(e.curSpell), int(old), 1, 0, 0, "is friendly")
+// spellFriends = O0C2:21DA is_friendly: the charisma affect at 2d4.
+func (e *Engine) spellFriends() {
+	e.o23_08C3(int(e.curSpell), e.Dice(2, 4), 1, 0, 0, "is friendly")
+	e.statAffects(e.selected(), statCha)
 }
 
-// o23_1439 = ovr23:1439: magic damage of (level/2)d4 + level/2.
+// o23_1439 = O0C2:2221: magic damage of ((level+1)/2)d4 + (level+1)/2.
 func (e *Engine) o23_1439() {
-	lvl := e.casterLevel(int(e.curSpell))
-	e.o23_08C3(int(e.curSpell), 0, 0, (e.RollDice(lvl>>1, 4)+lvl>>1)&0xFF, 8, "")
+	n := (e.casterLevel(int(e.curSpell)) + 1) & 0xFF >> 1
+	e.o23_08C3(int(e.curSpell), 0, 0, (n+e.RollDice(n, 4))&0xFF, 8, "")
 }
 
 // o23_1499 = ovr23:1499: "is shielded".
@@ -163,13 +163,21 @@ func (e *Engine) o23_151B() {
 	e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "falls asleep")
 }
 
-// o23_1658 = ovr23:1658: Hold Person/Monster. The save bonus depends on the
-// number of targets; each target gets a missile and the affect from the spell record.
+// Spells with their own rules in holdTargets.
+const (
+	spellHoldPerson  = 23
+	spellHoldAutoA   = 79 // the last target never saves
+	spellHoldAutoB   = 81
+	spellHoldAnySize = 94 // large and strong targets get no free save
+)
+
+// o23_1658 = O0C2:2444 is_held: Hold Person/Monster. The save bonus
+// depends on the number of targets.
 func (e *Engine) o23_1658() {
 	var bonus int8 // other counts leave the local unset (0)
 	switch e.nSpellTargets {
 	case 1:
-		if e.curSpell == 0x17 {
+		if e.curSpell == spellHoldPerson {
 			bonus = -2
 		} else {
 			bonus = -3
@@ -177,6 +185,13 @@ func (e *Engine) o23_1658() {
 	case 2:
 		bonus = -1
 	}
+	e.holdTargets(bonus, "is held")
+}
+
+// holdTargets = O0C2:1B24 (bonus, msg): each target, last first, gets a
+// missile (but the first one shot) and the spell record's affect unless it
+// saves.
+func (e *Engine) holdTargets(bonus int8, msg string) {
 	spell := int(e.curSpell)
 	for i := e.nSpellTargets; i >= 1; i-- {
 		t := e.tgt(i)
@@ -184,19 +199,24 @@ func (e *Engine) o23_1658() {
 			continue
 		}
 		if i < e.nSpellTargets {
-			e.soundWait(0)
 			e.PlaySound(sndSpell)
 			e.hitColours(0x12)
 			sel := e.selected()
 			e.flyMissile(e.combatX(sel), e.combatY(sel), e.combatX(t), e.combatY(t), 4, 0x1E)
-			e.soundWait(0xA)
 		}
-		saved := e.SavingThrow(t, int(e.spellTableByte(spell, 9)), int(bonus))
-		if t.Kind > 1 || t.Size > 1 {
+		var saved bool
+		var saveMode byte
+		if (spell == spellHoldAutoA || spell == spellHoldAutoB) && i == e.nSpellTargets {
+			saved, saveMode = true, 1
+		} else {
+			saved = e.SavingThrow(t, int(e.spellRec(byte(spell), 9)), int(bonus))
+			saveMode = e.spellRec(byte(spell), 8)
+		}
+		if (t.Kind > 1 || t.Size > 1) && spell != spellHoldAnySize {
 			saved = true
 		}
-		e.isUnaffected(t, e.spellTableByte(spell, 10), e.o23_07D6(spell), byte(e.casterLevel(spell)), 0,
-			e.spellTableByte(spell, 8), saved, "is held")
+		e.isUnaffected(t, e.spellRec(byte(spell), 10), e.o23_07D6(spell), byte(e.casterLevel(spell)), 0,
+			saveMode, saved, msg)
 	}
 }
 
@@ -252,9 +272,11 @@ func (e *Engine) o23_1A16() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "is invisi
 // o23_1A4F = ovr23:1A4F: Knock.
 func (e *Engine) o23_1A4F() { e.o23_08C3(int(e.curSpell), 0, 0, 0, 0, "Knock-Knock") }
 
-// o23_1A8A = ovr23:1A8A: Mirror Image, 1d4 images.
+// o23_1A8A = O0C2:2748 is_duplicated: Mirror Image, 1d4 images in the high
+// nibble of the level.
 func (e *Engine) o23_1A8A() {
-	e.o23_08C3(int(e.curSpell), e.Dice(1, 4), 0, 0, 0, "is duplicated")
+	lvl := byte(e.Dice(1, 4))<<4 | byte(e.casterLevel(int(e.curSpell)))
+	e.o23_08C3(int(e.curSpell), int(lvl), 0, 0, 0, "is duplicated")
 }
 
 // o23_1ACC = ovr23:1ACC: "is weakened".
@@ -277,10 +299,10 @@ func (e *Engine) o23_1F41() {
 	if int8(t.Levels[clsFighter]) > 0 {
 		add = byte(e.Dice(1, 8))
 	}
-	str := t.Stats[statStr].Cur + add
+	str := t.Stats[statStr].Base + add
 	if str > 0x12 {
 		if int8(t.Levels[clsFighter]) > 0 {
-			ext = byte(int(str-0x12)*10 + int(t.Str00.Cur))
+			ext = byte(int(str-0x12)*10 + int(t.Str00.Value))
 			if ext > 0x64 {
 				ext = 0x64
 			}
@@ -291,7 +313,7 @@ func (e *Engine) o23_1F41() {
 	}
 	out, ok := e.SetStrength(t, str, ext)
 	if ok {
-		e.CharMessage(t, "is stronger", 0xA, true)
+		e.combatName(t, "is stronger", 0xA, true)
 	}
 	e.AddAffect(t, 0x26, e.o23_07D6(int(e.curSpell)), out, 1)
 }

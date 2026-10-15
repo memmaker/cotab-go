@@ -136,16 +136,16 @@ func (e *Engine) showStat(stat int, hi bool) {
 	}
 	x := sheetStatColumn
 	e.ClearCells(x, stat+sheetStatsRow, 11, stat+sheetStatsRow)
-	if c.Stats[stat].Full < 10 {
+	if c.Stats[stat].Value < 10 {
 		x++
 	}
-	e.displayStringBg(x, stat+sheetStatsRow, col, colourBlack, itoa(int(c.Stats[stat].Full)))
-	if stat == statStr && c.Stats[statStr].Full == strengthMaximum && c.Str00.Cur > 0 {
-		s := itoa(int(c.Str00.Cur))
-		if c.Str00.Cur < 10 {
+	e.displayStringBg(x, stat+sheetStatsRow, col, colourBlack, itoa(int(c.Stats[stat].Value)))
+	if stat == statStr && c.Stats[statStr].Value == strengthMaximum && c.Str00.Value > 0 {
+		s := itoa(int(c.Str00.Value))
+		if c.Str00.Value < 10 {
 			s = "0" + s
 		}
-		if c.Str00.Cur == 100 {
+		if c.Str00.Value == 100 {
 			s = "00"
 		}
 		e.displayStringBg(7, sheetStatsRow, col, colourBlack, "("+s+")")

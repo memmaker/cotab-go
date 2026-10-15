@@ -745,9 +745,9 @@ func (e *Engine) weakenHandler(c *Character, a *Affect, flag byte) {
 	if !e.addAffectNow(c, affectWeakened, a.Data, weakenTime) {
 		return
 	}
-	if c.Stats[statStr].Full > weakestStrength {
+	if c.Stats[statStr].Value > weakestStrength {
 		e.combatName(c, "is weakened", combatMsgRow, true)
-		c.Stats[statStr].Full--
+		c.Stats[statStr].Value--
 		return
 	}
 	if e.FindAffect(c, affectNausea) == nil {
@@ -921,8 +921,8 @@ const feebleScore = 7
 
 // feeblemindHandler = O064:1595 spell_stupid.
 func (e *Engine) feeblemindHandler(c *Character, a *Affect, flag byte) {
-	c.Stats[statInt].Full = feebleScore
-	c.Stats[statWis].Full = feebleScore
+	c.Stats[statInt].Value = feebleScore
+	c.Stats[statWis].Value = feebleScore
 	e.combatName(c, "is stupid", combatMsgRow, true)
 	if e.gameState != stateCombat {
 		return
@@ -1133,7 +1133,7 @@ func (e *Engine) conSaveHandler(c *Character, a *Affect, flag byte) {
 		return
 	}
 	var bonus byte
-	switch con := c.Stats[statCon].Full; {
+	switch con := c.Stats[statCon].Value; {
 	case con >= 4 && con <= 6:
 		bonus = 1
 	case con >= 7 && con <= 10:

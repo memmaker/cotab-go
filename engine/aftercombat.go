@@ -102,7 +102,7 @@ func (e *Engine) giveExp(exp int32) {
 		case 9, 15:
 			g = exp / 3
 		}
-		if prime >= 0 && c.Stats[prime].Cur > 15 {
+		if prime >= 0 && c.Stats[prime].Base > 15 {
 			g += g / 10
 		}
 		c.Exp = uint32(int32(c.Exp) + g)

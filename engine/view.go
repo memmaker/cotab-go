@@ -372,7 +372,7 @@ func (e *Engine) useItem(it *Item) bool {
 		if spell > 0x38 {
 			spell -= 0x17
 		}
-		e.CharMessage(c, "uses an item", 0xA, false)
+		e.combatName(c, "uses an item", 0xA, false)
 		if e.gameState == 5 {
 			e.DisplayString(0, 0x17, 0xA, "Item:")
 			e.ItemName(c, it, 5, 0x17, false, true)

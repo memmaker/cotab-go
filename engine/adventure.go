@@ -506,7 +506,7 @@ func (e *Engine) bashDoor() bool {
 		if ok {
 			break
 		}
-		str, str00 := c.Stats[statStr].Full, c.Str00.Full
+		str, str00 := c.Stats[statStr].Value, c.Str00.Base
 		if e.DoorAt(int(s.posX), int(s.posY), int(s.facing)) == doorWizard {
 			switch str {
 			case 18:

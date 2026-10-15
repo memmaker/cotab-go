@@ -2,7 +2,6 @@ package engine
 
 // The combat main loop and the player's command menus (O057).
 
-import "strings"
 
 // Combat = O057:0100: set up the battle, then rounds until one side is
 // down (or the party stops fighting).
@@ -601,7 +600,7 @@ func (e *Engine) bandage(doIt bool) bool {
 			if doIt {
 				c.Status = 4
 				c.Combat.Dying = 0
-				e.CharMessage(c, "is bandaged", 0xA, true)
+				e.combatName(c, "is bandaged", 0xA, true)
 				doIt = false
 			}
 		}
@@ -725,27 +724,6 @@ func damageText(c *Character) string {
 
 // combatMsgRow is the side panel row combat messages start on.
 const combatMsgRow = 10
-
-// combatSay shows combat text in the side panel under the stats, as
-// O0ED:1788 does (c, if any, named first): fresh starts a new message,
-// otherwise it goes on the current one.
-func (e *Engine) combatSay(c *Character, msg string, fresh bool) {
-	msg = strings.TrimSpace(msg)
-	if fresh {
-		e.ClearCells(sidePanelX1, combatMsgRow, sidePanelX2, sidePanelBot)
-		e.msgCol, e.msgRow = sidePanelX1, combatMsgRow
-	}
-	if c != nil {
-		if e.msgCol != sidePanelX1 {
-			e.msgCol, e.msgRow = sidePanelX1, e.msgRow+1
-		}
-		e.displayName(c, sidePanelX1, e.msgRow, false)
-		e.msgCol, e.msgRow = sidePanelX1, e.msgRow+1
-	}
-	if msg != "" {
-		e.DisplayTextBlock(sidePanelX1, e.msgRow, sidePanelX2, sidePanelBot, colourGreen, false, msg)
-	}
-}
 
 // combatUseHook = 00BA:2B88: redraw the combat screen: the map frame
 // (extra: full width, no panel frame), rows 23-24 cleared, the map centred on the view.

@@ -281,7 +281,7 @@ func (e *Engine) o14_2414(spell, a int, quit *bool) {
 			*quit = e.endTurn(sel)
 		} else {
 			*quit = true
-			e.CharMessage(sel, "Begins Casting", 0xA, true)
+			e.combatName(sel, "Begins Casting", 0xA, true)
 			sel.Combat.Spell = byte(spell)
 			if int(int8(sel.Combat.Delay)) > delay {
 				sel.Combat.Delay -= byte(delay)

@@ -184,12 +184,10 @@ def main():
                     print('retry', s, flush=True)
                     time.sleep(2)
     finally:
-        proc.terminate()
-        try:
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait()
+        # SIGKILL: SIGTERM opens DOSBox-X's quit dialog (an osascript that
+        # inherits the QMP socket and keeps the port taken)
+        proc.kill()
+        proc.wait()
         shutil.rmtree(tmp, ignore_errors=True)
 
 

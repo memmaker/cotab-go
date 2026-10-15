@@ -16,10 +16,17 @@ type Character struct {
 	Slots   [13]*Item   // readied items, +0xCC (set by ApplyItems)
 }
 
-// statPair is one ability score: its current value (lowered by spells and
-// the like) and its full value.
+// statPair is one ability score: the character's own (Base, +0) and the
+// value the rules use (+1), which statAffects works out from it, the
+// readied items and the affects.
 type statPair struct {
-	Cur, Full byte
+	Base, Value byte
+}
+
+// str00Pair is exceptional strength: the value in use (+0) and the
+// character's own (+1), the reverse of statPair.
+type str00Pair struct {
+	Value, Base byte
 }
 
 // charRecord is Curse of the Azure Bonds' 422-byte character record (the
@@ -29,7 +36,7 @@ type statPair struct {
 type charRecord struct {
 	PName           [16]byte    // 0 Pascal string, max 15
 	Stats           [6]statPair // 16 str int wis dex con cha
-	Str00           statPair    // 28 exceptional strength
+	Str00           str00Pair   // 28 exceptional strength
 	Memorized       [84]byte    // 30 spell ids, +128 = still to be memorised
 	SpellsToLearn   byte        // 114
 	THAC0Base       byte        // 115

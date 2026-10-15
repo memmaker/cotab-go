@@ -368,6 +368,9 @@ func (e *Engine) KeyPressed() bool {
 }
 
 func (e *Engine) ReadKey() uint16 {
+	if scriptTrace {
+		fmt.Fprintf(os.Stderr, "key wait pos %d,%d dir %d wall %d cell %d seed %08x\n", e.sc.posX, e.sc.posY, e.sc.facing, e.sc.wallHere, e.sc.cellHere, e.RandSeed)
+	}
 	if e.tr != nil {
 		return e.tr.readKey(e)
 	}

@@ -232,7 +232,7 @@ func (e *Engine) wisdomSlots(c *Character, reset bool) {
 			}
 		}
 	}
-	wis := c.Stats[statWis].Full
+	wis := c.Stats[statWis].Value
 	for _, b := range []struct {
 		above byte
 		slot  int
@@ -255,7 +255,7 @@ const (
 // bonus to the first save, high constitution helps everybody.
 func (e *Engine) savingThrows(c *Character) {
 	conBonus := readiedEffect(c, effectSaveBonus)
-	con := c.Stats[statCon].Full
+	con := c.Stats[statCon].Value
 	for s := 0; s < saveCount; s++ {
 		c.Saves[s] = saveWorst
 		for k := 0; k <= clsMonk; k++ {
@@ -326,7 +326,7 @@ func (e *Engine) thiefSkills(c *Character) {
 	if base < freeActionLevel && freeAction {
 		base, freeAction = freeActionLevel, false
 	}
-	race, dex := int(c.Race), int(c.Stats[statDex].Full)
+	race, dex := int(c.Race), int(c.Stats[statDex].Value)
 	for s := 1; s <= thiefSkillCount; s++ {
 		lvl := base
 		bonus := int8(0) // fix: the original leaves this uninitialised without an item of thievery
