@@ -240,20 +240,50 @@ func (e *Engine) rangeTo(c, t *Character) int {
 	return int(d >> 1)
 }
 
-// casterLevel = 00BA:26C2 (spell): level the spell is cast at by the
-// selected character; items (DS:6DBF) cast cleric and mage spells at 6.
+// Spell classes beyond spellids.go's: a monster's innate power.
+const spellClassInnate = 3
+
+// Levels at which paladins and rangers cast: their level less these.
+const (
+	paladinClericOffset = 8
+	rangerDruidOffset   = 7
+	rangerMageOffset    = 8
+	innateCasterLevel   = 12
+	itemCasterLevel     = 6
+	paladinFirstCasting = 9
+	rangerFirstCasting  = 8
+)
+
+// casterLevel = O0ED:286F (spell): the level the selected character casts
+// the spell at. Paladins cast cleric spells, rangers druid and mage ones,
+// from a few levels on; who casts none (and items, DS:757D) cast at 6.
 func (e *Engine) casterLevel(spell int) int {
-	lvl := 0
-	switch e.X.Bytes(0x31FA+spell*16, 1)[0] {
-	case 0:
-		lvl = int(e.selected().Levels[clsCleric])
-	case 1:
-		lvl = int(e.selected().Levels[clsMage])
-	case 2:
-		lvl = 0xC
+	c := e.selected()
+	level := func(k int) int8 {
+		l := int8(c.Levels[k])
+		if oldClassUsable(c) {
+			l += int8(c.OldLevels[k])
+		}
+		return l
 	}
-	if e.usingItem && e.X.Bytes(0x31FA+spell*16, 1)[0] != 2 {
-		lvl = 6
+	if c.Levels[clsCleric] == 0 && c.Levels[clsMage] == 0 &&
+		int8(c.Levels[clsPaladin]) < paladinFirstCasting && int8(c.Levels[clsRanger]) < rangerFirstCasting {
+		return itemCasterLevel
 	}
-	return lvl
+	class := spellTable[spell&127].class()
+	var lvl int8
+	switch class {
+	case spellClassCleric:
+		lvl = max(level(clsCleric), level(clsPaladin)-paladinClericOffset)
+	case spellClassDruid:
+		lvl = max(level(clsRanger)-rangerDruidOffset, 0)
+	case spellClassMage:
+		lvl = max(level(clsMage), level(clsRanger)-rangerMageOffset)
+	case spellClassInnate:
+		lvl = innateCasterLevel
+	}
+	if e.usingItem && class != spellClassInnate {
+		return itemCasterLevel
+	}
+	return int(byte(lvl))
 }

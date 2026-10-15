@@ -132,7 +132,7 @@ func (e *Engine) o23_14C7() {
 // o23_151B = ovr23:151B: Sleep. 4d4 hit dice of targets fall asleep, weakest
 // first in list order; the others (and the already asleep) leave the list.
 func (e *Engine) o23_151B() {
-	e.spellFlag6820 = 1
+	e.rv.areaSpell = 1
 	e.v4844 = byte(e.Dice(4, 4))
 	for i := 1; i <= e.nSpellTargets; i++ {
 		t := e.tgt(i)
@@ -299,7 +299,7 @@ func (e *Engine) o23_1F41() {
 // o23_206F = ovr23:206F: Animate Dead. Corpses of the party list (status 6,
 // kind 0) are put back on their feet on the caster's side, one per caster level.
 func (e *Engine) o23_206F() {
-	e.spellFlag6820 = 1
+	e.rv.areaSpell = 1
 	lvl := e.casterLevel(int(e.curSpell))
 	e.nSpellTargets = 0
 	sel := e.selected()
@@ -379,7 +379,7 @@ func (e *Engine) o23_234C() { e.o23_08C3(int(e.curSpell), 0, 1, 0, 0, "is diseas
 // affect goes with a chance of 50% +5% per level above, -10% per level
 // below, the level of the affect being its data low nibble.
 func (e *Engine) o23_2385() {
-	e.spellFlag6820 = 1
+	e.rv.areaSpell = 1
 	lvl := e.casterLevel(int(e.curSpell))
 	for i := 1; i <= e.nSpellTargets; i++ {
 		hit := false

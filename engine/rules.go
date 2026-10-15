@@ -797,7 +797,6 @@ func (e *Engine) countSides() {
 	}
 }
 
-
 // Words of the area2 record (DS:4FB6) the combat rules read.
 const (
 	area2Surprise       = 1430 // sides surprised: bit side+1

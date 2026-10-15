@@ -194,4 +194,3 @@ func (e *Engine) shopMenu() {
 		e.playerSummary(e.selected())
 	}
 }
-

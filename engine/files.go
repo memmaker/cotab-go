@@ -313,4 +313,3 @@ func (e *Engine) eraseRosterCopies(c *Character, nested bool) {
 		os.Remove(e.savePath(base + ".spc"))
 	}
 }
-

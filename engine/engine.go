@@ -23,6 +23,7 @@ type Config struct {
 	GameDir, SaveDir string
 	FullIntro        bool   // DS:49D1
 	Param            string // ParamStr(1): "STING" unlocks the 'J' debug key
+	Param2           string // ParamStr(2): the debug word (debugWord) unlocks more
 }
 
 // Engine holds the global state the DOS program kept in its data segment.
@@ -176,7 +177,6 @@ type Engine struct {
 	nSpellTargets       int              // DS:6C94
 	spellCaster         *Character       // DS:6DB5
 	curSpell            byte             // DS:681B spell being cast
-	spellFlag6820       byte             // DS:6820
 	tgtX, tgtY          int              // DS:6DB9/6DBA target square
 	combatTargets       bool             // DS:6B84 points at ovr14:20C3 (set by Combat), else ovr23:0A91
 	whoVar              bool             // SelectCharacter's who is DS:5D92 itself (opWho)

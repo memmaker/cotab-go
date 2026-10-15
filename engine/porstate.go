@@ -65,4 +65,3 @@ type eclState struct {
 
 func (e *Engine) eclByte(a int) byte       { return e.ecl[(a+0x6700)&0xFFFF] }
 func (e *Engine) setEclByte(a int, v byte) { e.ecl[(a+0x6700)&0xFFFF] = v }
-

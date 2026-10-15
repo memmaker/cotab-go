@@ -276,7 +276,6 @@ func coinKindOf(line string) (int, string) {
 	return 0, ""
 }
 
-
 // takeMoney = O0BA:0D0A takeItems: choose a kind of coin in the pool and
 // how much of it the selected member takes, until the pool is empty or the
 // player leaves.

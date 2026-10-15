@@ -1,12 +1,13 @@
 package engine
 
-import (
-	"os"
-	"strings"
-)
-
 // GAME.OVR overlay 14, second half (0x1BF8..0x3C72): choosing targets for
 // spells and missiles, the attack animation and a few combat helpers.
+
+// The combatant panel on the right of the combat screen.
+const (
+	panelLeft, panelTop     = 23, 1
+	panelRight, panelBottom = 38, 21
+)
 
 // aimTarget is the 7-byte record the targeting routines fill in: who was
 // aimed at (nil for an empty square) and the square.
@@ -15,8 +16,17 @@ type aimTarget struct {
 	x, y byte
 }
 
-// spellData returns byte k of the 16-byte spell record at DS:3200.
-func (e *Engine) spellData(spell, k int) byte { return e.X.Bytes(0x3200+(spell&0xFF)*16+k, 1)[0] }
+// Spell table fields used in combat.
+const (
+	spellTargetsField  = 6  // low nibble: how targets are chosen; see spellTargets
+	spellAffectField   = 10 // the affect the spell lays
+	spellCombatField   = 11 // 0: camp only
+	spellCastTimeField = 12 // segments; a third of it is rounds of delay
+	spellAimField      = 14 // 0: the caster himself
+)
+
+// spellData returns field k of the spell's record.
+func (e *Engine) spellData(spell, k int) byte { return spellTable[spell&0xFF][k] }
 
 // o14_1BF8 = ovr14:1BF8 (c, var who): the friend to heal around c: the most
 // hurt of the same side on the nine squares round c (c itself only when
@@ -56,48 +66,53 @@ func (e *Engine) o14_1BF8(c *Character, who **Character) bool {
 	return *who != nil
 }
 
-// chooseSpellTarget = ovr14:1E16 (spell, silent, allowGround, var t): one
+// Spell target kinds (the low nibble of spellTargetsField).
+const (
+	spellTargetsCaster    = 0
+	spellTargetsHitDice   = 5  // creatures up to a rolled number of hit dice
+	spellTargetsAreaFirst = 8  // 8..14: an area round a square, of radius kind&7
+	spellTargetsAreaLast  = 14 // ...
+	spellTargetsOneOrArea = 15 // one creature, or the area round an empty square
+	spellTargetsCountMask = 3  // otherwise: (kind & 3) + 1 creatures
+)
+
+// Hit dice budget of the hit dice spells: 2d4, or Faerie Fire's level.
+const (
+	hitDiceBudgetDice  = 2
+	hitDiceBudgetSides = 4
+)
+
+// chooseSpellTarget = O08D:201C (spell, silent, allowGround, var t): one
 // target for the selected character's spell. With silent 0 the player
-// aims; otherwise it is picked for him. The square goes to DS:6DB9/6DBA.
+// aims; otherwise one is picked for him. The square goes to DS:7573/7574.
 func (e *Engine) chooseSpellTarget(spell, silent, allowGround int, t *aimTarget) bool {
 	sel := e.selected()
 	found := false
 	if silent == 0 {
-		e.o14_3558(sel, e.o23_0729(spell), 0, allowGround, &found, t)
+		allowCreature := b2i(spell != spellDimensionDoor)
+		e.aimAt(sel, e.o23_0729(spell), 0, allowGround, allowCreature, &found, t)
 		sel.Combat.Target = t.c
-	} else if e.spellData(spell, 8) == 0 {
+	} else if e.spellData(spell, spellAimField) == 0 {
 		t.c = sel
-		if spell != 3 || e.o14_1BF8(sel, &t.c) {
+		if spell != spellCureLightWounds || e.o14_1BF8(sel, &t.c) {
 			t.x, t.y = byte(e.combatX(t.c)), byte(e.combatY(t.c))
 			found = true
 		}
-	} else {
-		for tries := 0x14; tries > 0 && !found; tries-- {
-			ok := true
-			if !e.o14_37E4(sel, e.o23_0729(spell), 0, 1) {
-				continue
-			}
-			tp := sel.Combat.Target
-			if area := int(e.spellData(spell, 9)); area > 0 {
-				e.buildNear(e.combatX(tp), e.combatY(tp), area, 0xFF, 1)
-				for _, n := range e.near.list {
-					if int(e.combatant(n.index).Side) != b2i(isParty(sel)) {
-						ok = false
-					}
+	} else if e.o14_37E4(sel, e.o23_0729(spell), 0, 1) {
+		// one try (the loop counter starts at 1)
+		ok := true
+		tp := sel.Combat.Target
+		if e.isHelpless(tp) {
+			for _, a := range helplessAffectData[1:] {
+				if e.spellData(spell, spellAffectField) == a {
+					ok = false
 				}
 			}
-			if e.isHelpless(tp) {
-				for i := 1; i <= 4; i++ {
-					if e.spellData(spell, 4) == e.X.Bytes(0x286B+i, 1)[0] {
-						ok = false
-					}
-				}
-			}
-			if ok {
-				t.c = sel.Combat.Target
-				t.x, t.y = byte(e.combatX(t.c)), byte(e.combatY(t.c))
-				found = true
-			}
+		}
+		if ok {
+			t.c = tp
+			t.x, t.y = byte(e.combatX(t.c)), byte(e.combatY(t.c))
+			found = true
 		}
 	}
 	if found {
@@ -108,77 +123,136 @@ func (e *Engine) chooseSpellTarget(spell, silent, allowGround int, t *aimTarget)
 	return found
 }
 
-// o14_20C3 = ovr14:20C3 (spell, silent, var ok): the targets of the spell
-// into DS:6C91+4i (count DS:6C94). ok is false when none was chosen.
+// hitDiceWeight: what a creature counts against a hit dice spell's budget,
+// by its hit dice (or, for Faerie Fire, its size).
+func hitDiceWeight(spell int, c *Character) int {
+	if spell == spellFaerieFire {
+		switch c.Size {
+		case 1:
+			return 1
+		case 2, 3:
+			return 2
+		case 4:
+			return 4
+		}
+		return 0
+	}
+	switch c.MaxLevel {
+	case 0, 1:
+		return 1
+	case 2:
+		return 2
+	case 3:
+		return 4
+	}
+	return 8
+}
+
+// o14_20C3 = O08D:2231 (spell, silent): the targets of the spell into
+// DS:744B+4i (count DS:744E). False when none was chosen.
 func (e *Engine) o14_20C3(spell, silent int) (ok bool) {
-	var tmp aimTarget
+	var t aimTarget
 	ok = true
 	e.nSpellTargets = 0
-	e.spellFlag6820 = 0
-	e.tgtX, e.tgtY = e.combatX(e.selected()), e.combatY(e.selected())
+	e.rv.areaSpell = 0
 	sel := e.selected()
+	e.tgtX, e.tgtY = e.combatX(sel), e.combatY(sel)
 	fromNear := func(rng int) {
-		e.buildNear(int(e.tgtX), int(e.tgtY), rng, 0xFF, 1)
+		e.buildNear(e.tgtX, e.tgtY, rng, 0xFF, 1)
 		for i, n := range e.near.list {
 			e.setTgt(i+1, e.combatant(n.index))
 		}
 		e.nSpellTargets = len(e.near.list)
-		e.spellFlag6820 = 1
+		e.rv.areaSpell = 1
 	}
-	kind := e.spellData(spell, 0) & 0xF
+	already := func(n int) bool {
+		for k := 1; k <= n; k++ {
+			if e.tgt(k) == t.c {
+				return true
+			}
+		}
+		return false
+	}
+	kind := e.spellData(spell, spellTargetsField) & 0xF
 	switch {
-	case kind == 0:
+	case kind == spellTargetsCaster:
 		e.setTgt(1, sel)
 		e.nSpellTargets = 1
-	case kind == 0xF:
-		if !e.chooseSpellTarget(spell, silent, 0, &tmp) {
+	case kind == spellTargetsHitDice:
+		sum, n, done := 0, 0, false
+		var budget int
+		if spell == spellFaerieFire {
+			budget = e.casterLevel(spell)
+		} else {
+			budget = e.Dice(hitDiceBudgetDice, hitDiceBudgetSides)
+		}
+		for !done && budget != 0 {
+			if !e.chooseSpellTarget(spell, silent, 0, &t) {
+				done = true
+				continue
+			}
+			if !already(n) {
+				n++
+				e.setTgt(n, t.c)
+				e.tgtX, e.tgtY = e.combatX(t.c), e.combatY(t.c)
+				e.nSpellTargets++
+				sum += hitDiceWeight(spell, t.c)
+				if n > 1 && byte(sum) > byte(budget) {
+					done = true
+				}
+			} else if silent != 0 {
+				budget = int(byte(budget - 1))
+			} else {
+				e.BottomMessage("Already been targeted")
+			}
+			e.eraseCursor(int(t.x), int(t.y))
+		}
+	case kind == spellTargetsOneOrArea:
+		if !e.chooseSpellTarget(spell, silent, 0, &t) {
 			ok = false
 		} else if sel.Combat.Target != nil {
 			e.setTgt(1, sel.Combat.Target)
 			e.nSpellTargets = 1
 		} else {
-			fromNear(int(e.spellData(spell, 0)&0xF) >> 4) // always 0, as in the original
+			fromNear(int(kind) >> 4) // always 0, as in the original
 		}
-	case kind >= 8 && kind <= 0xE:
-		if !e.chooseSpellTarget(spell, silent, 1, &tmp) {
+	case kind >= spellTargetsAreaFirst && kind <= spellTargetsAreaLast:
+		if !e.chooseSpellTarget(spell, silent, 1, &t) {
 			ok = false
 		} else {
-			fromNear(int(e.spellData(spell, 0) & 7))
+			fromNear(int(kind & 7))
 		}
 	default:
-		left := int(kind&3) + 1
+		left := int(kind&spellTargetsCountMask) + 1
 		n := 0
 		for left > 0 {
-			if !e.chooseSpellTarget(spell, silent, 0, &tmp) {
-				left--
+			if !e.chooseSpellTarget(spell, silent, 0, &t) {
+				left = 0
 				continue
 			}
-			dup := false
-			for k := 1; k <= n; k++ {
-				if e.tgt(k) == tmp.c {
-					dup = true
-				}
-			}
-			if !dup {
+			if !already(n) {
 				n++
-				e.setTgt(n, tmp.c)
+				e.setTgt(n, t.c)
 				left--
+				e.tgtX, e.tgtY = e.combatX(t.c), e.combatY(t.c)
 			} else if silent == 0 {
 				e.BottomMessage("Already been targeted")
 			} else {
 				left--
 			}
-			e.eraseCursor(e.combatX(e.tgt(n)), e.combatY(e.tgt(n)))
+			e.eraseCursor(int(t.x), int(t.y))
 		}
 		e.nSpellTargets = n
 		if n == 0 {
 			ok = false
+		} else {
+			e.tgtX, e.tgtY = e.combatX(e.tgt(n)), e.combatY(e.tgt(n))
 		}
 	}
 	return
 }
 
-// o14_2414 = ovr14:2414 (spell, a, var quit): the selected character picks
+// o14_2414 = O08D:spell_menu3 276D (spell, a, var quit): the selected character picks
 // (spell 0: from his memorised spells) and casts a spell. Spells with a
 // casting time of 3 or more only begin and are cast in a later round.
 func (e *Engine) o14_2414(spell, a int, quit *bool) {
@@ -188,18 +262,20 @@ func (e *Engine) o14_2414(spell, a int, quit *bool) {
 	if spell == 0 {
 		spell = int(e.SpellList(0, 1, &idx, &have))
 	}
-	if spell > 0 && e.spellData(spell, 5) == 0 {
+	if spell > 0 && e.spellData(spell, spellCombatField) == 0 {
 		e.BottomMessage("Camp Only Spell")
 		spell = 0
 	}
 	if a == 0 {
 		e.combatUseHook()
+		e.showMoves = true
+		e.panelDirty = true
 		e.combatRedrawChar(sel, 3, 1)
 		e.panelDirty = true
 		e.combatPanel(sel)
 	}
 	if spell > 0 {
-		delay := int(e.spellData(spell, 6)) / 3
+		delay := int(e.spellData(spell, spellCastTimeField)) / 3
 		if delay == 0 {
 			e.CastSpell(byte(spell), byte(a), 1, quit)
 			*quit = e.endTurn(sel)
@@ -240,25 +316,89 @@ func (e *Engine) canBackstab(c, target *Character) bool {
 		byte(e.o14_263D(c, target)) == target.Combat.Facing
 }
 
-// o14_263D = ovr14:263D (from, to): the direction 0..7 (8 when none fits)
-// from one combatant to the other.
+// Slopes (times 256) of the borders between the eight directions:
+// tan 67.5 and tan 22.5 degrees.
+const (
+	steepSlope   = 618
+	shallowSlope = 106
+	slopeScale   = 256
+)
+
+// o14_263D = O08D:29BC (from, to): the direction 0..7 from one combatant
+// to the other (north first, clockwise).
 func (e *Engine) o14_263D(from, to *Character) int {
 	x1, y1 := e.combatX(from), e.combatY(from)
 	x2, y2 := e.combatX(to), e.combatY(to)
-	dir := 0
-	for !e.inArc(x1, y1, x2, y2, dir) {
-		dir++
+	dx, dy := x2-x1, y2-y1
+	if dx < 0 {
+		dx = -dx
 	}
-	return dir
+	if dy < 0 {
+		dy = -dy
+	}
+	steep := steepSlope * dx / slopeScale
+	shallow := shallowSlope * dx / slopeScale
+	diagonal := steep >= dy && shallow <= dy
+	for dir := 0; dir < 8; dir++ {
+		var fits bool
+		switch dir {
+		case 0:
+			fits = y2 <= y1 && steep <= dy
+		case 1:
+			fits = y2 <= y1 && x2 >= x1 && diagonal
+		case 2:
+			fits = x2 >= x1 && shallow >= dy
+		case 3:
+			fits = y2 >= y1 && x2 >= x1 && diagonal
+		case 4:
+			fits = y2 >= y1 && steep <= dy
+		case 5:
+			fits = y2 >= y1 && x2 <= x1 && diagonal
+		case 6:
+			fits = x2 <= x1 && shallow >= dy
+		case 7:
+			fits = y2 <= y1 && x2 <= x1 && diagonal
+		}
+		if fits {
+			return dir
+		}
+	}
+	return 8 // never: the eight sectors cover the plane
 }
 
-// attackAnimation = ovr14:26B0 (from, to, weapon): the weapon's sprite
+// Sounds of the attack animation (DS:25BA, DS:25C0, DS:25C6).
+const (
+	sndAnimSwish = 6
+	sndAnimBlast = 9
+	sndAnimThrow = 12
+)
+
+// Item types with their own missile pictures.
+const (
+	itemTypeDagger         = 9
+	itemTypeDart           = 21
+	itemTypeSpear          = 28
+	itemTypeJavelin        = 31
+	itemTypeHammer         = 73
+	itemTypeThrownOnceKind = 100
+	itemTypeBreathFire     = 2
+	itemTypeBreathCold     = 7
+	itemTypeBreathAcid     = 20
+	itemTypeSpitLightning1 = 85
+	itemTypeSpitLightning2 = 86
+	itemTypeSlingStone     = 47
+	itemTypeBoulder        = 98
+	itemTypeSpitAcid       = 101
+)
+
+// attackAnimation = O08D:2BF1 (from, to, weapon): the weapon's sprite
 // flies from one combatant to the other.
 func (e *Engine) attackAnimation(from, to *Character, weapon *Item) {
+	e.PlaySound(sndAnimThrow)
 	dir := e.o14_263D(from, to)
-	frames, delay, base := 1, 0xA, 0xD
-	switch typ := weapon.Type; {
-	case typ == 9 || typ == 0x15 || typ == 0x1C || typ == 0x1F || typ == 0x49:
+	frames, delay, base := 1, 10, 13
+	switch weapon.Type {
+	case itemTypeDagger, itemTypeDart, itemTypeThrownOnceKind, itemTypeSpear, itemTypeJavelin, itemTypeHammer:
 		switch {
 		case dir&1 == 1 && (dir == 3 || dir == 5):
 			e.iconToSprite(base+1, 1, 0, dir == 5)
@@ -267,28 +407,31 @@ func (e *Engine) attackAnimation(from, to *Character, weapon *Item) {
 		default:
 			e.iconToSprite(base+dir%4, dir>>2, 0, false)
 		}
-	case typ == 2 || typ == 7 || typ == 0x14:
+		e.PlaySound(sndAnimThrow)
+	case itemTypeBreathFire, itemTypeBreathCold, itemTypeBreathAcid:
 		e.hitColours(base + 3)
-		frames, delay = 4, 0x32
-	case typ == 0x55 || typ == 0x56:
+		frames, delay = 4, 50
+		e.PlaySound(sndAnimBlast)
+	case itemTypeSpitLightning1, itemTypeSpitLightning2:
 		e.hitColours(base + 4)
-		frames, delay = 4, 0x32
-	default:
-		if typ == 0x2F {
-			base++
-		}
+		frames, delay = 4, 50
+		e.PlaySound(sndAnimSwish)
+	case itemTypeSpitAcid, itemTypeSlingStone, itemTypeBoulder:
+		base++
 		e.iconToSprite(base+7, 0, 0, false)
 		e.iconToSprite(base+7, 1, 1, false)
-		frames, delay = 2, 0x14
+		frames, delay = 2, 10
+		e.PlaySound(sndAnimSwish)
+	default:
+		e.iconToSprite(base+7, 0, 0, false)
+		e.iconToSprite(base+7, 1, 1, false)
+		frames, delay = 2, 20
+		e.PlaySound(sndAnimBlast)
 	}
-	e.soundWait(0)
-	e.PlaySound(sndMissile)
 	e.flyMissile(e.combatX(from), e.combatY(from), e.combatX(to), e.combatY(to), frames, delay)
-	e.PlaySound(sndMissileEnd)
-	e.soundWait(0xA)
 }
 
-// o14_2879 = ovr14:2879: DS:6E2F = the monsters' remaining hit points in
+// o14_2879 = O08D:2E00: DS:75F3 = the monsters' remaining hit points in
 // five percent steps (20 * hp / maximum, times 5; dead ones count in the
 // maximum).
 func (e *Engine) o14_2879() {
@@ -306,7 +449,7 @@ func (e *Engine) o14_2879() {
 	}
 }
 
-// o14_2908 = ovr14:2908 (c): the highest o14_0123 / 2 over the living
+// o14_2908 = O08D:2E8F (c): the highest o14_0123 / 2 over the living
 // combatants on the other side.
 func (e *Engine) o14_2908(c *Character) int {
 	best := byte(0)
@@ -320,7 +463,7 @@ func (e *Engine) o14_2908(c *Character) int {
 	return int(best)
 }
 
-// o14_2998 = ovr14:2998 (c, target): may c attack the target? Attacking
+// o14_2998 = O08D:2F1F (c, target): may c attack the target? Attacking
 // a friend asks first; yes turns every sane character of the party hostile.
 func (e *Engine) o14_2998(c, target *Character) bool {
 	if b2i(isParty(target)) == int(c.Side) || c.Auto != 0 {
@@ -343,9 +486,10 @@ func (e *Engine) o14_2998(c, target *Character) bool {
 	return true
 }
 
-// aimPrompt = ovr14:2AA0 (c, cand, rng, showRange): shows how far the
-// candidate is and asks Next, Prev, Manual, Target, Center or Exit.
-func (e *Engine) aimPrompt(c, cand *Character, rng, showRange int) byte {
+// aimPrompt = O08D:Aim_menu 3027 (c, cand, rng, showRange, allowCreature):
+// shows how far the candidate is and asks Next, Prev, Manual, Target,
+// Center or Exit. The arrow keys come back as extended keys.
+func (e *Engine) aimPrompt(c, cand *Character, rng, showRange, allowCreature int) (byte, bool) {
 	dist := e.rangeTo(c, cand)
 	menu := ""
 	if showRange != 0 {
@@ -355,7 +499,9 @@ func (e *Engine) aimPrompt(c, cand *Character, rng, showRange int) byte {
 		var tmp *Item
 		switch {
 		case showRange == 0:
-			menu = "Target "
+			if allowCreature != 0 {
+				menu = "Target "
+			}
 		case cand == c:
 		case !e.rangedWeapon(c):
 			menu = "Target "
@@ -369,8 +515,7 @@ func (e *Engine) aimPrompt(c, cand *Character, rng, showRange int) byte {
 	e.combatRedrawChar(cand, 3, 1)
 	e.panelDirty = true
 	e.combatPanel(cand)
-	key, _ := e.combatInput("Aim:", menu, false)
-	return key
+	return e.combatInput("Aim:", menu, true)
 }
 
 // combatInput = ovr26:03BD with the picture not animated (prompt, menu,
@@ -379,7 +524,7 @@ func (e *Engine) combatInput(prompt, menu string, allowExtra bool) (byte, bool) 
 	return e.DisplayInput(prompt, menu, 0xD, 0xA, 0xF, allowExtra, false)
 }
 
-// aimConfirm = ovr14:2C3D (c, cand, mode, var found, var t): take cand as
+// aimConfirm = O08D:31D8 (c, cand, mode, var found, var t): take cand as
 // the target. With mode 1 (a missile attack) the attack is made at once.
 func (e *Engine) aimConfirm(c, cand *Character, mode int, found *bool, t *aimTarget) {
 	var res *Item
@@ -408,10 +553,11 @@ func (e *Engine) aimConfirm(c, cand *Character, mode int, found *bool, t *aimTar
 	}
 }
 
-// aimManual = ovr14:2DFA (c, cand, rng, showRange, allowGround, var found,
-// var t): move a cursor over the map with the arrow keys; Enter or T takes
-// the square (and who stands on it), Esc or E gives up.
-func (e *Engine) aimManual(c, cand *Character, rng, showRange, allowGround int, found *bool, t *aimTarget) {
+// aimManual = O08D:3395 (c, cand, rng, showRange, allowGround,
+// allowCreature, var found, var t): move a cursor over the map with the
+// arrow keys; Enter or T takes the square (and who stands on it), Esc or E
+// gives up.
+func (e *Engine) aimManual(c, cand *Character, rng, showRange, allowGround, allowCreature int, found *bool, t *aimTarget) {
 	dxs, dys := stepBytes(stepX), stepBytes(stepY)
 	*t = aimTarget{}
 	x, y := int8(e.combatX(cand)), int8(e.combatY(cand))
@@ -441,7 +587,7 @@ func (e *Engine) aimManual(c, cand *Character, rng, showRange, allowGround int, 
 		if ok {
 			if who > 0 {
 				cand = e.combatant(who)
-			} else if ground == 0x1F {
+			} else if ground == groundBody {
 				for b := 1; b <= e.nbodies; b++ {
 					if int8(e.bodies[b].x) == x && int8(e.bodies[b].y) == y {
 						cand = e.bodies[b].c
@@ -453,23 +599,21 @@ func (e *Engine) aimManual(c, cand *Character, rng, showRange, allowGround int, 
 			e.panelDirty = true
 			e.combatPanel(cand)
 		} else {
-			e.ClearCells(0, 0x17, 0x27, 0x17)
+			e.ClearCells(panelLeft, panelTop, panelRight, panelBottom)
 		}
 		if rng < dist || e.groundInfo(ground)[0] == 0xFF {
 			ok = false
 		}
 		if cand != nil {
-			if !e.o14_1085(c, cand) {
+			if !e.o14_1085(c, cand) || allowCreature == 0 {
 				ok = false
 			}
 			if showRange == 1 {
-				if cand == c || (who == 0 && ground == 0x1F) {
+				var ammo *Item
+				if cand == c || (who == 0 && ground == groundBody) {
 					ok = false
-				} else if e.rangedWeapon(c) {
-					var tmp *Item
-					if !e.ammoFor(c, &tmp) || (e.nearEnemies(c, 1) > 0 && !e.throwable(c)) {
-						ok = false
-					}
+				} else if e.rangedWeapon(c) && e.ammoFor(c, &ammo) && e.nearEnemies(c, 1) > 0 && !e.throwable(c) {
+					ok = false
 				}
 			}
 		} else if allowGround == 0 {
@@ -520,23 +664,23 @@ func (e *Engine) aimManual(c, cand *Character, rng, showRange, allowGround int, 
 				*found = false
 				*t = aimTarget{}
 			}
-		case 0x48:
+		case scanUp:
 			dir = 0
-		case 0x49:
+		case scanPageUp:
 			dir = 1
-		case 0x4D:
+		case scanRight:
 			dir = 2
-		case 0x51:
+		case scanPageDown:
 			dir = 3
-		case 0x50:
+		case scanDown:
 			dir = 4
-		case 0x4F:
+		case scanEnd:
 			dir = 5
-		case 0x4B:
+		case scanLeft:
 			dir = 6
-		case 0x47:
+		case scanHome:
 			dir = 7
-		case 0, 0x45:
+		case 0, 'E':
 			e.eraseCursor(int(x), int(y))
 			*t = aimTarget{}
 			*found = false
@@ -549,11 +693,12 @@ func (e *Engine) aimManual(c, cand *Character, rng, showRange, allowGround int, 
 	}
 }
 
-// o14_3558 = ovr14:3558 (c, rng, showRange, allowGround, var found, var t):
-// the player aims for c. Candidates are walked through nearest first
-// (N next, P previous, M manual cursor, T take, C centre, Esc/E give up).
-// rng 0xFF takes the range of the readied weapon.
-func (e *Engine) o14_3558(c *Character, rangeArg, showRange, allowGround int, found *bool, t *aimTarget) {
+// aimAt = O08D:3B25 (c, rng, showRange, allowGround, allowCreature, var
+// found, var t): the player aims for c. Candidates are walked through
+// nearest first (N next, P previous, M or an arrow key: manual cursor, T
+// take, C centre, Esc/E give up). rng 0xFF takes the range of the readied
+// weapon.
+func (e *Engine) aimAt(c *Character, rangeArg, showRange, allowGround, allowCreature int, found *bool, t *aimTarget) {
 	e.iconToSprite(0x19, 0, 0, false)
 	*t = aimTarget{}
 	*found = false
@@ -615,14 +760,18 @@ func (e *Engine) o14_3558(c *Character, rangeArg, showRange, allowGround int, fo
 			cand = step(by, false)
 			continue
 		}
-		key = e.aimPrompt(c, cand, int(rng), showRange)
+		var ext bool
+		key, ext = e.aimPrompt(c, cand, int(rng), showRange, allowCreature)
+		if ext {
+			key = aimExtendedKey(key)
+		}
 		switch key {
 		case 'N':
 			by, showBy = 1, 1
 		case 'P':
 			by, showBy = 0xFF, 0xFF
-		case 'M':
-			e.aimManual(c, cand, int(rng), showRange, allowGround, found, t)
+		case 'M', scanUp, scanLeft, scanHome, scanEnd, scanPageDown, scanPageUp: // as in the original's case
+			e.aimManual(c, cand, int(rng), showRange, allowGround, allowCreature, found, t)
 			e.iconToSprite(0x19, 0, 0, false)
 			rebuild()
 			showBy = 0
@@ -641,6 +790,15 @@ func (e *Engine) o14_3558(c *Character, rangeArg, showRange, allowGround int, fo
 	if showRange != 0 {
 		e.ClearCells(0, 0x17, 0x27, 0x17)
 	}
+}
+
+// aimExtendedKey: of the extended keys only the arrows count (as Manual).
+func aimExtendedKey(k byte) byte {
+	switch k {
+	case scanUp, scanPageUp, scanRight, scanPageDown, scanDown, scanEnd, scanLeft, scanHome:
+		return 'M'
+	}
+	return 0xFF
 }
 
 // o14_37E4 = ovr14:37E4 (c, rng, a, b): a target for c's attack from the
@@ -693,29 +851,40 @@ func (e *Engine) o14_37E4(c *Character, rng, a, b int) bool {
 	return found
 }
 
-// o14_3B93 = ovr14:3B93: the command line word STING kills every monster
+// godIntervene = O08D:god_intervene: with the debug word (DS:8C94,
+// "Wooden") as the second command line parameter, '-' kills every monster
 // ("The Gods intervene!"). True when it was given.
-func (e *Engine) o14_3B93() bool {
-	// DOS upper-cased the command line, hence EqualFold
-	if len(os.Args) < 2 || !strings.EqualFold(os.Args[1], "STING") {
+func (e *Engine) godIntervene() bool {
+	if e.Cfg.Param2 != debugWord {
 		return false
 	}
 	e.BottomMessage("The Gods intervene!")
 	for _, c := range e.party {
-		if c.Side == 1 {
+		if c.Side == sideMonsters {
 			c.Okay = 0
-			c.Status = 6
+			c.Status = statusDead
 			if i := e.combatIndex(c); i == 0 {
-				e.ncomb = 0 // DS:5F2A is slot 0's size byte
+				e.ncomb = 0 // DS:66C0 slot 0's size byte
 			} else {
 				e.cpos[i].size = 0
 			}
 		}
 		e.endTurn(c)
 	}
-	e.combatCentre(e.cmap.viewX+viewW/2, e.cmap.viewY+3, 0xFF, 8)
+	e.combatCentre(e.cmap.viewX+viewW/2, e.cmap.viewY+viewH/2, 0xFF, 8)
 	return true
 }
 
 // o14_3C6D = ovr14:3C6D: the overlay's initialisation, empty.
 func (e *Engine) o14_3C6D() {}
+
+// debugWord = DS:8C94 (copied from "Wooden" at DS:24EE): as the second
+// command line parameter it skips the copy protection and lets the Gods
+// intervene in combat.
+const debugWord = "Wooden"
+
+// Combat sides.
+const (
+	sideParty    = 0
+	sideMonsters = 1
+)

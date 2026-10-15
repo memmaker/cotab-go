@@ -407,7 +407,7 @@ func (e *Engine) useItem(it *Item) bool {
 
 // spellRec = DS:31FA + 16*spell.
 func (e *Engine) spellRec(spell byte, k int) byte {
-	return e.X.Bytes(0x31FA+int(spell)*16+k, 1)[0]
+	return spellTable[spell][k]
 }
 
 // sellItem = ovr20:1CEE (item): half the value (a twentieth per piece

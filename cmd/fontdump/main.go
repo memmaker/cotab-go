@@ -1,9 +1,9 @@
 package main
 
 import (
+	"cotab/dax"
 	"fmt"
 	"os"
-	"cotab/dax"
 	"strconv"
 )
 

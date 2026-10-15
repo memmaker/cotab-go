@@ -411,7 +411,7 @@ func (e *Engine) aiGiveUp(c *Character) bool {
 }
 
 // aiKeys = ovr10:0FC1 (char): keys during the computer turn: '2' toggles
-// magic, space ends the turn of everyone not yet moved, '-' (o14_3B93).
+// magic, space ends the turn of everyone not yet moved, '-' (godIntervene).
 func (e *Engine) aiKeys(c *Character) bool {
 	r := false
 	if e.keyWaiting() {
@@ -438,7 +438,7 @@ func (e *Engine) aiKeys(c *Character) bool {
 				r = true
 			}
 		case 0x2D:
-			e.o14_3B93()
+			e.godIntervene()
 		}
 	}
 	e.ClearKeyboard()

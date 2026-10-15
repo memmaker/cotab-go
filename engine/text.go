@@ -234,4 +234,3 @@ func (e *Engine) InputNumber(prompt string, colour int) uint16 {
 		}
 	}
 }
-

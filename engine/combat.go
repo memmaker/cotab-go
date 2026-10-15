@@ -132,7 +132,7 @@ func (e *Engine) playerTurn(c *Character) {
 		case 'A':
 			var aim aimTarget
 			var ok bool
-			e.o14_3558(c, 0xFF, 1, 0, &ok, &aim)
+			e.aimAt(c, 0xFF, 1, 0, 1, &ok, &aim)
 			done = ok
 		case 'U':
 			done = e.ItemsMenu() // ovr20:0EF8 (var done)
@@ -180,7 +180,7 @@ func (e *Engine) playerTurn(c *Character) {
 			e.Delay(200)
 			done = true
 		case '-':
-			if e.o14_3B93() {
+			if e.godIntervene() {
 				e.combatRedrawChar(c, 3, 0)
 				done = true
 			} else {

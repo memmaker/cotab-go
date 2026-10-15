@@ -362,6 +362,7 @@ func main() {
 		pl.Play()
 	}
 	eng.Cfg.Param = flag.Arg(0)
+	eng.Cfg.Param2 = flag.Arg(1)
 	go eng.Run()
 
 	g := &game{scr: scr, eng: eng, img: ebiten.NewImage(ega.W, ega.H), buf: make([]byte, ega.W*ega.H*4), dsf: 1}
