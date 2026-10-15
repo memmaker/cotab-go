@@ -133,7 +133,7 @@ func (e *Engine) canStudy(mode int) bool {
 	if msg == "" {
 		return true
 	}
-	e.charMessage(e.selected(), msg, 10, true)
+	e.combatName(e.selected(), msg, 10, true)
 	return false
 }
 
@@ -152,7 +152,7 @@ func (e *Engine) castMenu() {
 				if any {
 					cast = true
 				} else {
-					e.charMessage(e.selected(), "has no spells memorized", 10, true)
+					e.combatName(e.selected(), "has no spells memorized", 10, true)
 				}
 				break
 			}
@@ -189,7 +189,7 @@ func (e *Engine) memorizeInfo() bool {
 		}
 	}
 	if any {
-		e.charMessage(c, "can memorize:", 10, false)
+		e.combatName(c, "can memorize:", 10, false)
 		row := 3
 		for class := 0; class <= 2; class++ {
 			if !has[class] {
@@ -263,7 +263,7 @@ func (e *Engine) memorizeMenu() {
 	for !done {
 		done = !e.memorizeInfo()
 		if done {
-			e.charMessage(e.selected(), "cannot memorize any spells", 10, true)
+			e.combatName(e.selected(), "cannot memorize any spells", 10, true)
 			break
 		}
 		sp := e.spellMenu2(1, 2, &index, &shown)
@@ -318,7 +318,7 @@ func (e *Engine) scribeMenu() {
 		if sp == 0 {
 			done = true
 			if !shown {
-				e.charMessage(c, "has no copyable scrolls", 10, true)
+				e.combatName(c, "has no copyable scrolls", 10, true)
 			} else {
 				redraw = true
 			}
@@ -530,7 +530,7 @@ func (e *Engine) orderMenu() {
 		if key == keyEnter || key == 'P' || key == 'S' {
 			placing = !placing
 			if placing {
-				e.charMessage(e.selected(), "has been selected", 10, false)
+				e.combatName(e.selected(), "has been selected", 10, false)
 			} else {
 				e.clearCombatText()
 			}
@@ -549,19 +549,19 @@ func (e *Engine) dropMember() {
 		}
 		return
 	}
-	e.charMessage(c, "will be gone", 10, false)
+	e.combatName(c, "will be gone", 10, false)
 	if e.YesNo(colourYellow, colourGreen, colourWhite, "Drop from party? ") == 'Y' {
 		if c.Okay != 0 {
-			e.charMessage(c, "bids you farewell", 10, true)
+			e.combatName(c, "bids you farewell", 10, true)
 		} else {
-			e.charMessage(c, "is dumped in a ditch", 10, true)
+			e.combatName(c, "is dumped in a ditch", 10, true)
 		}
 		e.freeSelected()
 		e.ClearCells(17, 1, 38, 11)
 		e.playerSummary(e.selected())
 		return
 	}
-	e.charMessage(c, "Breathes A sigh of relief", 10, true)
+	e.combatName(c, "Breathes A sigh of relief", 10, true)
 }
 
 // Game speed limits.
@@ -1094,7 +1094,7 @@ const wordScrollSpells = 210
 // with which spell.
 func (e *Engine) spellMessage(c *Character, text string, sp byte) {
 	if e.gameState == stateCombat {
-		e.charMessage(c, "Casts a Spell", 10, true)
+		e.combatName(c, "Casts a Spell", 10, true)
 		e.ClearCells(0, 23, 39, 23)
 		e.displayStringBg(0, 23, colourGreen, colourBlack, "Spell:"+spellNames[sp])
 		return

@@ -24,7 +24,7 @@ func (e *Engine) canLoseItem(it *Item) bool {
 	ok := false
 	switch {
 	case it.Readied != 0:
-		e.BottomMessage("Must be unreadied")
+		e.printMessage("Must be unreadied")
 	case !e.isScroll(it):
 		ok = true
 	case it.Spells[0] > 0x7F || it.Spells[1] > 0x7F || it.Spells[2] > 0x7F:
@@ -189,7 +189,7 @@ func (e *Engine) readyItem(it *Item) {
 	c := e.selected()
 	if it.Readied != 0 {
 		if it.Cursed != 0 {
-			e.BottomMessage("It's Cursed")
+			e.printMessage("It's Cursed")
 			return
 		}
 		it.Readied = 0
@@ -230,7 +230,7 @@ func (e *Engine) readyItem(it *Item) {
 			e.itemReadyEffect(it, true)
 		}
 	case 1:
-		e.BottomMessage("Wrong Class")
+		e.printMessage("Wrong Class")
 	case 2:
 		// slot 9 (ring 2 taken) names Slots[9], which may be empty: the
 		// original then reads through a nil pointer.
@@ -239,10 +239,10 @@ func (e *Engine) readyItem(it *Item) {
 			e.ItemName(c, o, 0, 0, false, false)
 			name = o.Name()
 		}
-		e.BottomMessage("already using " + name)
+		e.printMessage("already using " + name)
 	case 3:
 		if !(e.gameState == 5 && c.Auto != 0) {
-			e.BottomMessage("Your hands are full!")
+			e.printMessage("Your hands are full!")
 		}
 	}
 }
@@ -355,11 +355,11 @@ func (e *Engine) tradeItem(it *Item) {
 	}
 	e.view.start = to
 	if e.overloadedBy(to, it) {
-		e.BottomMessage("Overloaded")
+		e.printMessage("Overloaded")
 		return
 	}
 	e.AddItemCopy(to, it)
-	e.RemoveItem(e.selected(), it)
+	e.loseItem(e.selected(), it)
 	e.ApplyItems(to)
 }
 
@@ -368,7 +368,7 @@ func (e *Engine) tradeItem(it *Item) {
 func (e *Engine) halveItem(it *Item) {
 	half := it.Count >> 1
 	if half == 0 {
-		e.BottomMessage("Can't halve that")
+		e.printMessage("Can't halve that")
 		return
 	}
 	n := *it
@@ -399,7 +399,7 @@ func (e *Engine) joinItems(it *Item) {
 		}
 		if int(p.Count)+total <= 0xFF {
 			total += int(p.Count)
-			e.RemoveItem(c, p)
+			e.loseItem(c, p)
 		} else {
 			it.Count = 0xFF
 			p.Count -= byte(0xFF - total)
@@ -410,66 +410,85 @@ func (e *Engine) joinItems(it *Item) {
 	it.Count = byte(total)
 }
 
-// useItem = O0AF:1583 ItemsMenu (item): cast the scroll's spell or the item's own
-// (+0x3D, charges +0x3C). Returns the spell's "turn used" result.
+// Who can read a scroll (O0AF:2478): magic-users and clerics always, a
+// high-level thief now and then.
+const (
+	scrollThiefLevel  = 9  // above: a thief may try
+	scrollThiefChance = 75 // percent
+)
+
+// canReadScroll is the class test of O0AF:2478.
+func (e *Engine) canReadScroll(c *Character) bool {
+	if activeClass(c) == clsMage || currentClass(c) == clsMage || activeClass(c) == clsCleric ||
+		currentClass(c) == clsCleric || int8(c.Levels[clsMage]) > 0 || int8(c.Levels[clsCleric]) > 0 {
+		return true
+	}
+	return int8(c.Levels[clsThief]) > scrollThiefLevel && e.Dice(1, 100) <= scrollThiefChance
+}
+
+// useItem = O0AF:2478 (item, var done): cast the scroll's spell or the
+// item's own (+0x3D & 127, charges +0x3C). Returns done: the spell was cast
+// and, in combat, the turn is over.
 func (e *Engine) useItem(it *Item) bool {
 	idx := -1
 	e.usingItem = false
 	var spell byte
-	quit := false
+	done := false
 	if e.isScroll(it) {
 		e.usedScroll = it
 		var flag bool
 		spell = e.SpellList(2, 1, &idx, &flag)
-	} else if it.Spells[1] > 0 && it.Spells[2] < 0x80 {
+	} else if it.Spells[1] > 0 && it.Spells[2] < itemPowerFlag {
 		e.usingItem = true
-		spell = it.Spells[1]
+		spell = it.Spells[1] & (itemPowerFlag - 1)
 	}
 	if spell == 0 {
 		return false
 	}
 	c := e.selected()
-	if e.gameState == 5 && c.Auto == 0 {
-		e.combatUseHook() // 00BA:2B88
+	if e.gameState == stateCombat && c.Auto == 0 {
+		e.combatUseHook()
 	}
 	if e.usingItem {
-		if spell > 0x38 {
-			spell -= 0x17
-		}
-		e.combatName(c, "uses an item", 0xA, false)
-		if e.gameState == 5 {
-			e.DisplayString(0, 0x17, 0xA, "Item:")
-			e.ItemName(c, it, 5, 0x17, false, true)
+		e.combatName(c, "uses an item", combatMsgRow, false)
+		if e.gameState == stateCombat {
+			e.displayStringBg(0, 23, colourGreen, colourBlack, "Item:")
+			e.ItemName(c, it, 5, 23, false, true)
 		} else {
-			e.ItemName(c, it, 1, 0x16, false, true)
+			e.ItemName(c, it, 1, 22, false, true)
 		}
-		e.MsgDelay()
-		e.ClearMessageArea()
+		e.gameDelay()
+		e.clearCombatText()
 	}
 	e.usingItem = true
-	e.CastSpell(spell, c.Auto, 0, &quit)
-	e.usingItem = false
-	if e.gameState == 5 && e.spellRec(spell, 0xB) != 0 {
-		quit = e.endTurn(c)
+	if !e.isScroll(it) || e.canReadScroll(c) {
+		e.CastSpell(spell, c.Auto, 0, &done)
+	} else {
+		e.combatName(c, "oops!", e.msgRow+1, true)
 	}
-	if quit {
-		if e.isScroll(it) {
-			e.scrollUsed(c, it, spell)
-		} else if it.Spells[0] > 0 {
-			if it.Count > 1 {
-				it.Count--
-			} else {
-				it.Spells[0]--
-				if it.Spells[0] == 0 {
-					e.RemoveItem(c, it)
-				}
+	e.usingItem = false
+	if e.gameState == stateCombat && e.spellRec(spell, spellEndsTurn) != 0 {
+		done = e.endTurn(c)
+	}
+	if !done {
+		return false
+	}
+	if e.isScroll(it) {
+		e.scrollUsed(c, it, spell)
+	} else if it.Spells[0] > 0 {
+		if it.Count > 1 {
+			it.Count--
+		} else {
+			it.Spells[0]--
+			if it.Spells[0] == 0 {
+				e.loseItem(c, it)
 			}
 		}
 	}
-	return quit
+	return true
 }
 
-// spellRec = DS:31FA + 16*spell.
+// spellRec = DS:37DC + 16*spell.
 func (e *Engine) spellRec(spell byte, k int) byte {
 	return spellTable[spell][k]
 }
@@ -496,12 +515,12 @@ func (e *Engine) sellItem(it *Item) {
 	e.DisplayTextBlock(1, 0x15, 0x26, 0x16, 0xE, true,
 		"I'll give you "+itoa(int(v))+" gold pieces for your "+it.Name())
 	if e.YesNo(0xD, 0xA, 0xF, "Is It a Deal? ") == 'Y' {
-		e.BottomMessage("Sold!")
+		e.printMessage("Sold!")
 		c := e.selected()
-		e.RemoveItem(c, it)
+		e.loseItem(c, it)
 		platinum, gold := v/platinumGold, v%platinumGold
 		if over, room := willOverload(c, gold+platinum); over {
-			e.BottomMessage("Overloaded.  Money will be put in pool.")
+			e.printMessage("Overloaded.  Money will be put in pool.")
 			if room > platinum {
 				c.Coins[coinPlatinum] += platinum
 			} else {
@@ -530,7 +549,7 @@ func (e *Engine) identifyItem(it *Item) (redraw bool) {
 			paid = true
 			e.setPoolGold(uint16(g - identifyCost))
 		} else {
-			e.BottomMessage("Not Enough Money")
+			e.printMessage("Not Enough Money")
 		}
 	}
 	if paid {

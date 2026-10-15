@@ -203,7 +203,7 @@ func (e *Engine) chooseSpellTargets(spell, silent int) (ok bool) {
 			} else if silent != 0 {
 				budget = int(byte(budget - 1))
 			} else {
-				e.BottomMessage("Already been targeted")
+				e.printMessage("Already been targeted")
 			}
 			e.eraseCursor(int(t.x), int(t.y))
 		}
@@ -236,7 +236,7 @@ func (e *Engine) chooseSpellTargets(spell, silent int) (ok bool) {
 				left--
 				e.tgtX, e.tgtY = e.combatX(t.c), e.combatY(t.c)
 			} else if silent == 0 {
-				e.BottomMessage("Already been targeted")
+				e.printMessage("Already been targeted")
 			} else {
 				left--
 			}
@@ -263,7 +263,7 @@ func (e *Engine) spellMenuTargets(spell, a int, quit *bool) {
 		spell = int(e.SpellList(0, 1, &idx, &have))
 	}
 	if spell > 0 && e.spellData(spell, spellCombatField) == 0 {
-		e.BottomMessage("Camp Only Spell")
+		e.printMessage("Camp Only Spell")
 		spell = 0
 	}
 	if a == 0 {
@@ -858,7 +858,7 @@ func (e *Engine) godIntervene() bool {
 	if e.Cfg.Param2 != debugWord {
 		return false
 	}
-	e.BottomMessage("The Gods intervene!")
+	e.printMessage("The Gods intervene!")
 	for _, c := range e.party {
 		if c.Side == sideMonsters {
 			c.Okay = 0

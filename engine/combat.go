@@ -177,9 +177,9 @@ func (e *Engine) playerTurn(c *Character) {
 			case keyAlt2:
 				e.v6E30 ^= 1
 				if e.v6E30 != 0 {
-					e.BottomMessage("Magic On")
+					e.printMessage("Magic On")
 				} else {
-					e.BottomMessage("Magic Off")
+					e.printMessage("Magic Off")
 				}
 			case keyAltQ:
 				ci.Delay = 20
@@ -194,7 +194,7 @@ func (e *Engine) playerTurn(c *Character) {
 					e.combatRedrawChar(c, 3, 0)
 					done = true
 				} else {
-					e.BottomMessage("That doesn't work")
+					e.printMessage("That doesn't work")
 				}
 			}
 		}
@@ -279,7 +279,7 @@ func (e *Engine) endRound() (done bool) {
 		}
 	}
 	if e.bandage(false) {
-		e.BottomMessage("Your Teammate is Dying")
+		e.printMessage("Your Teammate is Dying")
 	}
 	e.countSides()
 	e.combatCentre(e.cmap.viewX+viewW/2, e.cmap.viewY+3, 0xFF, 8)
@@ -392,7 +392,7 @@ func (e *Engine) moveAttack(c *Character, key byte) (done bool) {
 				done = false
 			}
 		case stepCost(e.groundInfo(g)[0], d) > int(ci.Moves):
-			e.BottomMessage("can't go there")
+			e.printMessage("can't go there")
 		default:
 			e.leaveAttacks(c, d)
 			if c.Okay == 0 {
@@ -535,7 +535,7 @@ func (e *Engine) ammoFor(c *Character, it **Item) bool {
 // done passes through when no attack is made.
 func (e *Engine) attackTarget(c, t *Character, done bool) bool {
 	if e.rangedWeapon(c) && !e.throwable(c) {
-		e.BottomMessage("Not with that weapon")
+		e.printMessage("Not with that weapon")
 		return done
 	}
 	if !e.mayAttack(c, t) {
@@ -585,7 +585,7 @@ func (e *Engine) otherMenu(c *Character) (done bool) {
 func (e *Engine) guard(c *Character) bool {
 	r := e.endTurn(c)
 	c.Combat.Guarding = 1
-	e.BottomMessage("Guarding")
+	e.printMessage("Guarding")
 	return r
 }
 
@@ -607,23 +607,23 @@ func (e *Engine) bandage(doIt bool) bool {
 	return found
 }
 
-// speedMenu = O057:11FA set_gamespeed: the message delay.
+// speedMenu = O057:11FA set_gamespeed: the game speed (DS:4FC2).
 func (e *Engine) speedMenu() {
 	for key := byte(0x20); key != 0 && key != 'E'; {
 		m := " "
-		if e.msgDelay < 9 {
+		if e.gameSpeed < 9 {
 			m += "Slower "
 		}
-		if e.msgDelay > 0 {
+		if e.gameSpeed > 0 {
 			m += "Faster "
 		}
 		m += "Exit"
-		key, _ = e.DisplayInput("GameSpeed ("+itoa(int(e.msgDelay))+") :", m, 0xD, 0xA, 0xF, false, false)
+		key, _ = e.DisplayInput("GameSpeed ("+itoa(int(e.gameSpeed))+") :", m, 0xD, 0xA, 0xF, false, false)
 		switch key {
 		case 'S':
-			e.msgDelay++
+			e.gameSpeed++
 		case 'F':
-			e.msgDelay--
+			e.gameSpeed--
 		}
 	}
 }
@@ -657,20 +657,20 @@ func (e *Engine) combatPanel(c *Character) {
 	e.ext.panel = c
 	e.ClearCells(sidePanelX1, sidePanelTop, sidePanelX2, sidePanelBot)
 	row := sidePanelTop
-	e.combatName(c, "", row, false)
+	e.combatName(c, " ", row, false)
 	row++
 	e.DisplayString(sidePanelX1, row+1, colourGreen, "Hitpoints")
 	e.displayHP(c, sidePanelValue, row+1, false)
 	row += 2
 	e.DisplayString(sidePanelX1, row+1, colourGreen, "AC")
 	e.displayAC(c, sidePanelAC, row+1)
-	e.panelACRow = row + 1
+	e.msgRow = row + 1
 	if w := c.Slots[0]; w != nil {
 		row += 2
 		e.ItemName(c, w, 0, 0, false, false)
 		e.DisplayTextBlock(sidePanelX1, row+1, sidePanelX2, row+3, colourGreen, true, w.Name())
 	}
-	row = e.panelACRow + 1
+	row = e.msgRow + 1 // the cursor after the weapon name
 	switch {
 	case c.Okay == 0:
 		e.DisplayString(sidePanelX1, row+1, colourWhite, statusNames[c.Status])

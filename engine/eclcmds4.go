@@ -55,6 +55,10 @@ func (e *Engine) robItems(chance byte, c *Character) {
 
 // loseItem = O0ED:159C (c, item): the item leaves the character's list.
 func (e *Engine) loseItem(c *Character, it *Item) {
+	if it == nil {
+		e.displayAndWait(colourYellow, colourBlack, "Nil Item pointer...")
+		return
+	}
 	for i, x := range c.Items {
 		if x == it {
 			c.Items = append(c.Items[:i], c.Items[i+1:]...)

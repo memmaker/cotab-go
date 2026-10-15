@@ -196,7 +196,7 @@ func (e *Engine) saveScreen() func() {
 // bar's key handling and puts the screen back as it was.
 func (e *Engine) FullMap() {
 	if !e.minimapAllowed() {
-		e.DisplayMessageWait(0xE, "Not Here")
+		e.statusMessage("Not Here", colourYellow, colourBlack)
 		return
 	}
 	restore := e.saveScreen()
@@ -256,7 +256,7 @@ func (e *Engine) FullMap() {
 			if e.startWalk(cx, cy) {
 				return
 			}
-			e.DisplayMessageWait(0xE, "No known way there")
+			e.statusMessage("No known way there", colourYellow, colourBlack)
 		case 'L':
 			old := m[cy<<4|cx]
 			if s, ok := e.labelInput(old.text); ok {

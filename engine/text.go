@@ -139,8 +139,8 @@ func punct(c byte) bool { return strings.IndexByte("!,-.:;?", c) >= 0 }
 const textDelayPerSpeed = 3
 
 // DisplayTextBlock = R4CE:0498 press_any_key (x1, y1, x2, y2, colour, clear, s): word
-// wrapped text in the cell box, continuing at the text cursor (DS:5E24 x,
-// DS:5E25 y) when it lies inside the box. When the box is full the player
+// wrapped text in the cell box, continuing at the text cursor (DS:65BA x,
+// DS:65BB y) when it lies inside the box. When the box is full the player
 // is asked to press a key and the box starts over.
 func (e *Engine) DisplayTextBlock(x1, y1, x2, y2, colour int, clear bool, s string) {
 	if e.Trace != nil {

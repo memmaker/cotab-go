@@ -208,13 +208,13 @@ func (e *Engine) holdTargets(bonus int8, msg string) {
 		if (spell == spellHoldAutoA || spell == spellHoldAutoB) && i == e.nSpellTargets {
 			saved, saveMode = true, 1
 		} else {
-			saved = e.SavingThrow(t, int(e.spellRec(byte(spell), 9)), int(bonus))
-			saveMode = e.spellRec(byte(spell), 8)
+			saved = e.SavingThrow(t, int(e.spellRec(byte(spell), spellFieldSaveType)), int(bonus))
+			saveMode = e.spellRec(byte(spell), spellFieldSaveMode)
 		}
 		if (t.Kind > 1 || t.Size > 1) && spell != spellHoldAnySize {
 			saved = true
 		}
-		e.isUnaffected(t, e.spellRec(byte(spell), 10), e.spellAmount(spell), byte(e.casterLevel(spell)), 0,
+		e.isUnaffected(t, e.spellRec(byte(spell), spellFieldAffect), e.spellAmount(spell), byte(e.casterLevel(spell)), 0,
 			saveMode, saved, msg)
 	}
 }
@@ -989,7 +989,7 @@ func (e *Engine) fxSpell98() {
 		if t == nil {
 			continue
 		}
-		e.damagePerson(t, e.RollDice(6, 6), e.spellRec(98, 8), t.Kind != kindSpell98Saves)
+		e.damagePerson(t, e.RollDice(6, 6), e.spellRec(98, spellFieldSaveMode), t.Kind != kindSpell98Saves)
 	}
 }
 

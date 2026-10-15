@@ -87,7 +87,6 @@ type extras struct {
 	list      bool                // the menu belongs to a scrolling list
 	choosing  bool                // SelectCharacter is waiting: highlight the roster entry
 	seen      map[int]*[256]uint8 // per area: 1 seen, 2 visited
-	quick     *quickPick          // CreateCharacter answers its own menus (quickstart)
 
 	// nav.go: keys and mouse
 	ahead    []uint16       // translated keys not yet read
@@ -238,7 +237,7 @@ func (e *Engine) extraKey(k byte) bool {
 	switch k {
 	case 9: // Tab
 		if !e.minimapAllowed() {
-			e.DisplayMessageWait(0xE, "Not Here")
+			e.statusMessage("Not Here", colourYellow, colourBlack)
 			return true
 		}
 		e.ext.minimap = !e.ext.minimap

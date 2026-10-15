@@ -310,7 +310,7 @@ func (e *Engine) fleeBattle(c *Character) bool {
 	if away {
 		e.KillCharacter(c, 3, "Got Away")
 	} else {
-		e.BottomMessage("Escape is blocked")
+		e.printMessage("Escape is blocked")
 	}
 	return e.endTurn(c)
 }

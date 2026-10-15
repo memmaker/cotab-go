@@ -46,7 +46,6 @@ type Engine struct {
 
 	pendingScan byte // ReadKey: scan code waiting after a 0 byte
 	draining    bool // ReadKeyByte is dropping typed-ahead keys
-	msgDelay    byte // DS:49E2, message delay factor (ovr12 sets 1)
 	menuSel     int  // DS:6B2B, DisplayInput selection
 	menuExtra   bool // DS:6B2C
 
@@ -118,7 +117,7 @@ type Engine struct {
 	cm             charMgmtState       // ovr17 create/modify/train state
 	es             eclState            // ovr08/ovr04 interpreter state
 	symPrev        string              // DS:5377
-	msgRow, msgCol int                 // DS:5E25 / 5E24 text-block cursor
+	msgRow, msgCol int                 // DS:65BB / 65BA text-block cursor
 	slowText       bool                // DS:4A00: DisplayTextBlock types out
 	listTop        int                 // DS:6B29 ovr26 list menu: first visible row
 	gs             geoState            // ovr30 map, wall sets and view
@@ -130,7 +129,6 @@ type Engine struct {
 	ac             afterCombat         // ovr06 globals
 	camp           campState           // ovr16/ovr21 globals
 	animInput      bool                // animate the view picture while waiting for a key
-	panelACRow     int                 // DS:65BB, the side panel row of the AC line
 	resting        byte                // DS:6DDA (ovr21 rest): messages skip the box border
 	view           viewState           // ovr20 View screen
 	itemsRedraw    bool                // DS:6821
@@ -400,16 +398,6 @@ func (e *Engine) release() {
 
 // The original's drain loop is dead code: 0899:0104 jumps straight to its exit.
 func (e *Engine) ClearKeyboard() {}
-
-// WaitSeconds = ovr02:0000 — wait n seconds or until a key is pressed, then
-// flush the keyboard.
-func (e *Engine) WaitSeconds(n int) {
-	end := e.Ticks() + int64(n)*100
-	for e.Ticks() < end && !e.keyWaiting() {
-		e.idle()
-	}
-	e.ClearKeyboard()
-}
 
 // idle yields the CPU inside the original's busy-wait loops; it is not a
 // call of the original, so it is untraced and costs no virtual time.

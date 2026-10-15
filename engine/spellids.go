@@ -111,6 +111,22 @@ const (
 	spellClassMage
 )
 
+// Spell table record fields (spellRec).
+const (
+	spellFieldClass         = 0
+	spellFieldLevel         = 1
+	spellFieldRange         = 2
+	spellFieldRangePerLevel = 3
+	spellFieldAmount        = 4
+	spellFieldAmountPerLvl  = 5
+	spellFieldLasts         = 6  // the range is at least 1
+	spellFieldTargets       = 7  // 0: combat only; how the targets are chosen
+	spellFieldSaveMode      = 8  // what a saving throw does
+	spellFieldSaveType      = 9  // the saving throw kind
+	spellFieldAffect        = 10 // the affect the spell lays
+	spellEndsTurn           = 11 // casting it ends the turn
+)
+
 // spellEntry is one 16-byte record of the spell table.
 type spellEntry [16]byte
 

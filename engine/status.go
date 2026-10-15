@@ -19,8 +19,10 @@ func (e *Engine) statusMessage(text string, fg, bg int) {
 	e.ClearRow24()
 }
 
-// printMessage = O0ED:172C string_print01: a green bottom-row message.
-func (e *Engine) printMessage(text string) { e.statusMessage(text, colourGreen, colourBlack) }
+// printMessage = O0ED:172C string_print01 (S40): a green bottom-row message.
+func (e *Engine) printMessage(text string) {
+	e.statusMessage(cut(text, screenLastCol+1), colourGreen, colourBlack)
+}
 
 // displayStringBg = R4CE:0349 (x, y, fg, bg, text): the characters on a
 // background colour, upcased, cut at the right edge.

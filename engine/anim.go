@@ -90,14 +90,6 @@ func (e *Engine) DrawAnimFrame(frame int) {
 	e.Flip()
 }
 
-// DrawAnimFirst draws frame 1 of the loaded picture the way the PICTURE
-// and APPROACH code does: ovr29:0000(3, 3, overlay, frame 1).
-func (e *Engine) DrawAnimFirst() {
-	if len(e.pic.frames) > 0 {
-		e.drawPicAt(3, 3, true, e.pic.frames[0].Image)
-	}
-}
-
 // LoadPortrait = ovr29:05D9 (head, body): HEAD<gfx>/BODY<gfx> blocks, kept
 // while the ids do not change; 0xFF leaves that half alone.
 func (e *Engine) LoadPortrait(head, body int) {
@@ -120,58 +112,5 @@ func (e *Engine) DrawPortrait(x, y int, both bool) {
 	e.drawPicAt(x, y, false, e.port.head)
 	if both {
 		e.drawPicAt(x, y+5, false, e.port.body)
-	}
-}
-
-// ShowPortrait = ovr08:0511 (head, body).
-func (e *Engine) ShowPortrait(head, body int) {
-	e.es.f84E1 = 0
-	e.es.f49FD, e.es.f49FE = byte(head), byte(body)
-	e.LoadPortrait(head, body)
-	e.DrawPortrait(3, 3, true)
-}
-
-// ShowEncounter = ovr08:054E (sprite, pic, dist, flags): draw the approaching
-// monster sprite for its distance, then at distance 0 its close-up picture
-// (or the portrait game[0x5C2] when one is set). flags is DS:84C8: [0] the
-// sprite is loaded, [1] the picture is shown.
-func (e *Engine) ShowEncounter(sprite, pic, dist int, flags *[2]byte) {
-	if flags[1] == 0 && flags[0] != 0 {
-		e.Redraw()
-	}
-	frame := dist + 1
-	if flags[1] == 0 {
-		if flags[0] == 0 {
-			if e.gs.overhead {
-				e.gs.overhead = false
-				e.Redraw()
-			}
-			e.LoadAnimPic("SPRIT", sprite, true)
-			flags[0] = 1
-			e.es.f84E3 = 1
-		}
-		if e.viewMode == 1 {
-			e.DrawAnimFrame(frame)
-		} else {
-			e.DrawAnimFrame(2)
-		}
-	}
-	face := wordAt(e.game, 0x5C2)
-	if flags[1] != 0 && uint16(e.es.f84EA) == face {
-		return
-	}
-	if dist != 0 || e.viewMode != 1 || (e.es.f84E9 != 0 && e.flag49F6 == 0) {
-		return
-	}
-	e.es.f84EA = byte(face)
-	e.es.f84E0 = 1
-	if face == 0xFF {
-		e.LoadAnimPic("PIC", pic, false)
-		flags[1] = 1
-		e.DrawAnimFirst()
-	} else {
-		e.ShowPortrait(int(face), pic)
-		flags[1] = 1
-		e.es.f84E1 = 0
 	}
 }

@@ -1,12 +1,10 @@
 package engine
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/binary"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -145,90 +143,6 @@ func (e *Engine) MessageRow24b(colour int, s string) byte {
 	return e.ReadKeyByte()
 }
 
-// BuildCharList = ovr18:0010: names from charlist.txt, "* " for party members.
-func (e *Engine) BuildCharList() []string {
-	p := e.savePath("charlist.txt")
-	f, err := os.Open(p)
-	if err != nil {
-		return nil
-	}
-	defer f.Close()
-	var list []string
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		name := strings.TrimRight(sc.Text(), "\r")
-		if len(name) > 40 {
-			name = name[:40]
-		}
-		for _, c := range e.party {
-			if c.Name() == name {
-				name = "* " + name
-				if len(name) > 40 {
-					name = name[:40]
-				}
-				break
-			}
-		}
-		list = append(list, name)
-	}
-	return list
-}
-
-// WriteCharList = ovr18:01B8: rewrite charlist.txt without "*" entries.
-func (e *Engine) WriteCharList(list []string) {
-	os.MkdirAll(e.Cfg.SaveDir, 0o755)
-	f, err := os.Create(e.savePath("charlist.txt"))
-	if err != nil {
-		e.fileError("write", "CHARLIST.TXT")
-		return
-	}
-	defer f.Close()
-	for _, n := range list {
-		if len(n) > 0 && n[0] == '*' {
-			continue
-		}
-		f.WriteString(n + "\r\n")
-	}
-}
-
-// LoadMonster = ovr18:0EC4 (index, c): MON<n>CHA/SPC/ITM.DAX block index.
-func (e *Engine) LoadMonster(index int, c *Character) bool {
-	n := strconv.Itoa(int(e.symDAX[4] - '0'))
-	b := e.L.Block("MON"+n+"CHA", index)
-	if b == nil {
-		e.MessageRow24b(0xF, "Unable to load monster")
-		e.Exit()
-		return false
-	}
-	c.setRecord(b)
-	c.Items, c.Affects = nil, nil
-	switch c.Race {
-	case 1, 3, 5:
-		c.IconSize = 1
-	case 2, 4, 6, 7:
-		c.IconSize = 2
-	}
-	for i := 1; i <= 3; i++ {
-		r := byte(e.Dice(1, 6))
-		c.IconColour[i-1] = (r+8)<<4 | r
-	}
-	c.IconColour[3] = 0xC4
-	for i := 5; i <= 6; i++ {
-		r := byte(e.Dice(1, 6))
-		c.IconColour[i-1] = (r+8)<<4 | r
-	}
-	e.loadingMonster = true // DS:557C
-	if b := e.L.Block("MON"+n+"SPC", index); b != nil {
-		c.Affects = readAffects(b)
-	}
-	if b := e.L.Block("MON"+n+"ITM", index); b != nil {
-		c.Items = readRecords[Item](b, itemRecSize)
-	}
-	e.loadingMonster = false
-	e.ClearKeyboard()
-	return true
-}
-
 // Portrait tables DS:8C7.. (gender-major).
 var (
 	portHeads     = [2][8]byte{{1, 2, 3, 4, 5, 8, 0xB, 0xC}, {6, 7, 9, 0xA, 0xD, 0xE, 6, 7}}
@@ -237,41 +151,6 @@ var (
 	portBodyCls5  = [2][5]byte{{2, 2, 2, 2, 2}, {8, 0xA, 0xC, 8, 0xA}}
 	portBodyCls6  = [2][5]byte{{6, 6, 6, 6, 6}, {8, 0xA, 8, 0xA, 8}}
 )
-
-// AddMonsterToParty = ovr18:1262 (index): NPC joins the party.
-func (e *Engine) AddMonsterToParty(index int) {
-	if e.partyCount() > 7 {
-		return
-	}
-	c := &Character{}
-	e.LoadMonster(index, c)
-	c.RandomID = byte(e.Random(0x100))
-	var classes []int
-	for cls := 0; cls < 7; cls++ {
-		if int8(c.Levels[cls]) > 0 { // jle on a signed byte (ovr18:12CA)
-			classes = append(classes, cls)
-		}
-	}
-	if len(classes) == 0 {
-		classes = []int{2}
-	}
-	cls := classes[e.Dice(1, len(classes))-1]
-	r := e.Dice(1, 5) - 1
-	g := int(c.Sex) & 1
-	switch cls {
-	case 0:
-		c.PortBody = portBodyCls0[g][r]
-	case 5:
-		c.PortBody = portBodyCls5[g][r]
-	case 6:
-		c.PortBody = portBodyCls6[g][r]
-	default:
-		c.PortBody = portBodyOther[g][r]
-	}
-	c.PortHead = portHeads[g][e.Dice(1, 8)-1]
-	e.AddToParty(c)
-	e.BuildCharIcon(c, true)
-}
 
 func (e *Engine) partyCount() int { return int(binary.LittleEndian.Uint16(e.game[gsPartyCount:])) }
 func (e *Engine) setPartyCount(n int) {

@@ -104,18 +104,3 @@ func (e *Engine) InputString(prompt string, colour, maxlen int) string {
 	}
 	return string(s)
 }
-
-// DisplayMessageWait = 0709:0D68 (str, colour): message on row 24 for
-// msgDelay*225 ms, then cleared.
-func (e *Engine) DisplayMessageWait(colour int, s string) {
-	if e.Trace != nil {
-		e.Trace("0709:0D68", "DisplayMessageWait", s, colour)
-	}
-	if len(s) > 40 {
-		s = s[:40]
-	}
-	e.ClearRow24()
-	e.DisplayString(0, 24, colour, s)
-	e.Delay(int(e.msgDelay) * 225) // 0709:0DBE
-	e.ClearRow24()
-}

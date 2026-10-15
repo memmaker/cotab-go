@@ -477,9 +477,9 @@ func (e *Engine) aiKeys(c *Character) bool {
 		case 0x32:
 			e.v6E30 ^= 1
 			if e.v6E30 != 0 {
-				e.BottomMessage("Magic On")
+				e.printMessage("Magic On")
 			} else {
-				e.BottomMessage("Magic Off")
+				e.printMessage("Magic Off")
 			}
 		case 0x20:
 			for _, p := range e.party {

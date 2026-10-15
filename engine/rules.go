@@ -587,19 +587,6 @@ func (e *Engine) Revive(c *Character, hp byte) bool {
 	return true
 }
 
-// ClearMessageArea = 00BA:17E3.
-func (e *Engine) ClearMessageArea() {
-	if e.gameState == 5 {
-		e.ClearCells(0, 0x17, 0x27, 0x18)
-		if p := e.ext.panel; p != nil {
-			e.panelDirty = true
-			e.combatPanel(p)
-		}
-	} else {
-		e.ClearCells(1, 0x12, 0x26, 0x16)
-	}
-}
-
 // hitMessage = 00BA:1FEB (char, magical, message): in combat the target
 // flashes (once per message delay step for magic) with a sound.
 func (e *Engine) hitMessage(c *Character, magical bool, msg string) {
@@ -625,7 +612,7 @@ func (e *Engine) hitMessage(c *Character, magical bool, msg string) {
 	e.combatName(c, msg, 0xA, false)
 	n := 0
 	if magical {
-		n = int(e.msgDelay)
+		n = int(e.gameSpeed)
 	}
 	idx := e.combatIndex(c)
 	px, py := int(3*e.combatScreenX[idx]), int(3*e.combatScreenY[idx]) // byte products
@@ -640,43 +627,7 @@ func (e *Engine) hitMessage(c *Character, magical bool, msg string) {
 	e.soundWait(0xA)
 	e.Flip()
 	if n == 0 {
-		e.MsgDelay()
-	}
-}
-
-// ApplyDamage = 00BA:2228 (char, damage): hit points down to 0, then
-// unconscious / dying (bleeding rounds) / dead at 10 below.
-func (e *Engine) ApplyDamage(c *Character, dmg int) {
-	hp := int(c.HP)
-	over, left := 0, 0
-	if hp >= dmg {
-		left = hp - dmg
-	} else {
-		over = dmg - hp
-	}
-	over &= 0xFF
-	switch {
-	case over > 9 || left == 0 && c.Status == 1:
-		c.Status = 6
-	case over > 0:
-		c.Status = 5
-		if e.gameState == 5 && c.Combat != nil {
-			c.Combat.Dying = byte(over)
-		}
-	case left == 0:
-		c.Status = 4
-	}
-	if s := c.Status; s == 0 || s == 1 {
-		c.HP = byte(left)
-		return
-	}
-	c.Okay = 0
-	c.HP = 0
-	if e.gameState == 5 {
-		e.rv.side[int8(c.Side)&1]--
-		if c.Combat != nil {
-			c.Combat.Delay = 0
-		}
+		e.gameDelay()
 	}
 }
 

@@ -187,17 +187,6 @@ type sound struct {
 // DOS sound numbers.
 var amigaFx = [...]int{5, 9, 8, 10, 12, 11, 6, 11, 4, 7, 0}
 
-// Music = the Amiga's playMusic: 1 title and camp, 2 battle, 3 party menu, 5 party killed,
-// 0 stop. The DOS game has no music.
-func (e *Engine) Music(n int) {
-	s := &e.snd
-	s.mu.Lock()
-	if s.am != nil && s.on {
-		s.am.Song(n)
-	}
-	s.mu.Unlock()
-}
-
 // sn76489 is the Tandy/PCjr sound chip: three square wave tones and a noise
 // channel, each with a 4-bit attenuation, programmed through port C0.
 type sn76489 struct {

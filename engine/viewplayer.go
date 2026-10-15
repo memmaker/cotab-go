@@ -221,7 +221,7 @@ func (e *Engine) paladinCure(p *Character) {
 	}
 	answer := byte('Y')
 	if !sick {
-		e.charMessage(who, "is not diseased", 0, false)
+		e.combatName(who, "is not diseased", 0, false)
 		answer = e.YesNo(colourLightMagenta, colourGreen, colourWhite, "cure anyway: ")
 		e.clearCombatText()
 	}
@@ -270,36 +270,3 @@ func (e *Engine) healPlayer(c *Character, points byte, onlyWounded bool) bool {
 }
 
 const affectWakeUp = 78
-
-// Where charMessage writes outside combat.
-const (
-	charMessageRow        = 17
-	charMessageRowResting = 18
-	combatPanelLeft       = 23
-	combatPanelBottom     = 21
-)
-
-// charMessage = O0ED:1788 (c, text, row, wait): the name and the text in
-// the combat panel from row, or in the text window; with wait a pause and
-// the area cleared again.
-func (e *Engine) charMessage(c *Character, text string, row int, wait bool) {
-	if e.gameState == stateCombat {
-		e.ClearCells(combatPanelLeft, row, textRight, combatPanelBottom)
-		e.displayName(c, combatPanelLeft, row, false)
-		e.msgCol, e.msgRow = combatPanelLeft, row+1
-		e.DisplayTextBlock(combatPanelLeft, row+1, textRight, combatPanelBottom, colourGreen, true, text)
-	} else {
-		r := charMessageRow
-		if e.resting != 0 {
-			r = charMessageRowResting
-		}
-		e.ClearCells(textLeft, r, textRight, textBottom)
-		e.displayName(c, textLeft, r+1, false)
-		e.msgCol, e.msgRow = textLeft, r+2
-		e.DisplayTextBlock(textLeft, r+2, textRight, textBottom, colourGreen, true, text)
-	}
-	if wait {
-		e.gameDelay()
-		e.clearCombatText()
-	}
-}

@@ -117,9 +117,6 @@ func (e *Engine) CreateCharacter() {
 	// pick runs one of the four selection menus; false = left with Esc/Exit,
 	// which abandons the whole creation.
 	pick := func(list []*ListNode) (int, bool) {
-		if q := e.ext.quick; q != nil {
-			return q.choose(list)
-		}
 		index, redraw := 1, true
 		var sel *ListNode
 		for {
@@ -276,12 +273,6 @@ func (e *Engine) CreateCharacter() {
 		e.showLevels(c)
 		e.showCombatStats()
 		e.showCoins()
-		if q := e.ext.quick; q != nil {
-			if q.good(c) {
-				break
-			}
-			continue
-		}
 		if e.YesNo(colourLightMagenta, colourGreen, colourWhite, "Reroll stats? ") == 'N' {
 			break
 		}
@@ -289,16 +280,11 @@ func (e *Engine) CreateCharacter() {
 	e.CharacterSheet()
 	undo()
 
-	for q := e.ext.quick; q != nil; q = nil {
-		c.SetName(q.name)
-	}
 	for c.PName[0] == 0 {
 		c.SetName(e.InputString("Character name: ", colourLightMagenta, maxNameLength))
 	}
 	undo = e.selectTemp(c)
-	if e.ext.quick == nil {
-		e.iconBuilder()
-	}
+	e.iconBuilder()
 	for i := range c.Stats {
 		c.Stats[i].Base = c.Stats[i].Value
 	}
@@ -459,12 +445,12 @@ func (e *Engine) DropCharacter() {
 	if e.YesNo(0xE, 0xA, 0xF, "Drop "+c.Name()+" forever? ") == 'Y' &&
 		e.YesNo(0xE, 0xA, 0xF, "Are you sure? ") == 'Y' {
 		if c.Okay == 0 {
-			e.BottomMessage("You dump " + c.Name() + " out back.")
+			e.printMessage("You dump " + c.Name() + " out back.")
 		} else {
-			e.BottomMessage(c.Name() + " bids you farewell.")
+			e.printMessage(c.Name() + " bids you farewell.")
 		}
 		e.freePlayers(false, true) // ovr17:3291
 		return
 	}
-	e.BottomMessage(c.Name() + " breathes a sigh of relief.")
+	e.printMessage(c.Name() + " breathes a sigh of relief.")
 }

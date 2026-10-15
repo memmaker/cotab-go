@@ -28,7 +28,7 @@ no hex/magic numbers, readable names).
   - [x] camp (O09D) and resting (O0B6): menus, magic, memorize, scribe, display, rest, alter, fix: pixel-identical but for campfire frames
   - [x] temple (O042)
   - [x] item functions (O0AF): ready with the item effects (1B04), trade, halve, join, sell (coins + pool), identify (coins or pool)
-  - [ ] O0AF ItemsMenu (use) audit
+  - [x] O0AF items menu (1583) and Use (2478: item spell & 127, scroll class check with the thief chance, "oops!")
   - [ ] training halls (O0A7 train_player is ported; the hall's script path)
 - [ ] M7 combat
   - [x] rules (O0E3): affect groups, saving throw, damage, add/kill/heal/revive, poison and stinking clouds

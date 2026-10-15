@@ -30,11 +30,11 @@ func (e *Engine) spellRange(spell int) int {
 	s := byte(spell)
 	var v byte
 	if !e.usingItem {
-		v = e.spellRec(s, 2) + byte(int(e.spellRec(s, 3))*e.casterLevel(spell))
+		v = e.spellRec(s, spellFieldRange) + byte(int(e.spellRec(s, spellFieldRangePerLevel))*e.casterLevel(spell))
 	} else {
-		v = e.spellRec(s, 2) + byte(int(e.spellRec(s, 3))*6)
+		v = e.spellRec(s, spellFieldRange) + byte(int(e.spellRec(s, spellFieldRangePerLevel))*6)
 	}
-	if v == 0 && e.spellRec(s, 6) != 0 {
+	if v == 0 && e.spellRec(s, spellFieldLasts) != 0 {
 		v = 1
 	}
 	if v == 0xFF {
@@ -63,7 +63,7 @@ func (e *Engine) spellAmount(spell int) int {
 	case 0x43:
 		v = 0x5A0
 	default:
-		v = int(e.spellRec(byte(spell), 4)) + int(e.spellRec(byte(spell), 5))*e.casterLevel(spell)
+		v = int(e.spellRec(byte(spell), spellFieldAmount)) + int(e.spellRec(byte(spell), spellFieldAmountPerLvl))*e.casterLevel(spell)
 	}
 	return int(int16(v))
 }
@@ -93,10 +93,10 @@ func (e *Engine) applySpell(spell, level, call, dmg, dmgType int, msg string) {
 			continue
 		}
 		saved := false
-		if e.spellRec(s, 8) != 0 {
-			saved = e.SavingThrow(t, int(e.spellRec(s, 9)), 0)
+		if e.spellRec(s, spellFieldSaveMode) != 0 {
+			saved = e.SavingThrow(t, int(e.spellRec(s, spellFieldSaveType)), 0)
 		}
-		if e.spellRec(e.curSpell, 2) == 0xFF {
+		if e.spellRec(e.curSpell, spellFieldRange) == 0xFF {
 			e.ApplyItems(t)
 			e.affectGroup(t, 0xB)
 			if !e.AttackHits(e.selected(), t, int(t.AC[0])) {
@@ -105,10 +105,10 @@ func (e *Engine) applySpell(spell, level, call, dmg, dmgType int, msg string) {
 			}
 		}
 		if dmg > 0 {
-			e.damagePerson(t, dmg, e.spellRec(s, 8), saved)
+			e.damagePerson(t, dmg, e.spellRec(s, spellFieldSaveMode), saved)
 		}
-		if e.spellRec(s, 0xA) > 0 {
-			e.isUnaffected(t, e.spellRec(s, 0xA), e.spellAmount(spell), lvl, byte(call), e.spellRec(s, 8), saved, msg)
+		if e.spellRec(s, spellFieldAffect) > 0 {
+			e.isUnaffected(t, e.spellRec(s, spellFieldAffect), e.spellAmount(spell), lvl, byte(call), e.spellRec(s, spellFieldSaveMode), saved, msg)
 		}
 	}
 	e.rv.dmgType = 0
@@ -133,7 +133,7 @@ func (e *Engine) spellTargetSetup(spell, mode int) (ok bool) {
 	e.spellTarget = e.selected()
 	e.nSpellTargets = 1
 	ok = true
-	switch e.spellRec(byte(spell), 7) {
+	switch e.spellRec(byte(spell), spellFieldTargets) {
 	case 1:
 	case 2:
 		e.DrawMainScreen()
@@ -181,7 +181,7 @@ func (e *Engine) applySpellToSide(side int, msg string) {
 func (e *Engine) CastSpell(spell, mode, b byte, quit *bool) {
 	caster := e.selected()
 	ok := true
-	if e.gameState != stateCombat && e.spellRec(spell, 7) == 0 {
+	if e.gameState != stateCombat && e.spellRec(spell, spellFieldTargets) == 0 {
 		if !e.usingItem {
 			e.DisplayString(1, 0x13, colourGreen, spellNames[int(spell)])
 			e.DisplayString(1, 0x14, colourGreen, "can't be cast here...")
@@ -248,7 +248,7 @@ func (e *Engine) CastSpell(spell, mode, b byte, quit *bool) {
 			if mode == 0 && e.YesNo(0xE, 0xA, 0xF, "Abort Spell? ") != 'Y' {
 				continue
 			}
-			e.BottomMessage("Spell Aborted")
+			e.printMessage("Spell Aborted")
 			if !e.usingItem {
 				e.forgetSpell(spell)
 			}
@@ -607,7 +607,7 @@ func (e *Engine) scrollUsed(c *Character, it *Item, spell byte) {
 	it.Spells[idx-1] = 0
 	it.Words[1]--
 	if it.Words[1] < 0xD2 {
-		e.RemoveItem(c, it)
+		e.loseItem(c, it)
 	}
 }
 
@@ -625,7 +625,7 @@ func (e *Engine) castMessage(c *Character, msg string, spell int) {
 	e.displayName(c, 1, 0x13, false)
 	e.DisplayString(len(c.Name())+2, 0x13, colourGreen, msg)
 	e.DisplayString(1, 0x14, colourGreen, spellNames[spell])
-	e.MsgDelay()
+	e.gameDelay()
 	e.clearCombatText()
 }
 
