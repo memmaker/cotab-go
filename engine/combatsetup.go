@@ -11,7 +11,7 @@ func (e *Engine) combatSetup() {
 	e.MsgDelay()
 	e.DisplayString(0, 0x18, 0xA, "A battle begins...")
 	e.Music(2) // Amiga 0x364E2
-	e.v6E30, e.v6DE3, e.rv.hitRoll = 0, 0, 0
+	e.v6E30, e.combatRound, e.rv.hitRoll = 0, 0, 0
 	e.nbodies = 0
 	e.stinkingClouds, e.poisonClouds = nil, nil
 	e.v5D9A = nil

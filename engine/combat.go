@@ -70,6 +70,7 @@ func (e *Engine) takeTurn(c *Character) {
 	e.selectChar(c)
 	e.combatRedrawChar(c, 2, 1)
 	e.ApplyItems(c)
+	e.panelDirty = true
 	e.combatPanel(c)
 	e.affectGroup(c, 0xF)
 	if ci.Spell == 0 {
@@ -105,7 +106,7 @@ func b2i(b bool) int {
 // the combat menu until the turn is used.
 func (e *Engine) playerTurn(c *Character) {
 	if c.Okay == 0 {
-		e.clearCombatInfo(c)
+		e.endTurn(c)
 		return
 	}
 	ci := c.Combat
@@ -114,7 +115,7 @@ func (e *Engine) playerTurn(c *Character) {
 		ci.Spell = 0
 		var quit bool
 		e.CastSpell(s, 0, 1, &quit)
-		e.clearCombatInfo(c)
+		e.endTurn(c)
 		return
 	}
 	done := false
@@ -147,7 +148,7 @@ func (e *Engine) playerTurn(c *Character) {
 			e.showBattleLog()
 		case 'T':
 			e.o14_116A(c)
-			done = e.clearCombatInfo(c)
+			done = e.endTurn(c)
 		case 'Q':
 			e.quickOne(c)
 			e.ClearRow24()
@@ -188,6 +189,7 @@ func (e *Engine) playerTurn(c *Character) {
 		}
 		if !done {
 			e.combatRedrawChar(c, 2, 1)
+			e.panelDirty = true
 			e.combatPanel(c)
 		}
 	}
@@ -247,7 +249,7 @@ func keySet(keys ...byte) (set [256]bool) {
 // endRound = ovr09:0880 (var done): the clock, the dying, the end check.
 func (e *Engine) endRound() (done bool) {
 	e.AdvanceClock(1, 1)
-	e.v6DE3++
+	e.combatRound++
 	e.o14_2879()
 	for _, c := range e.party {
 		e.affectGroup(c, 0x13)
@@ -377,16 +379,16 @@ func (e *Engine) moveAttack(c *Character) (done bool) {
 		default:
 			e.o14_08B2(c, d)
 			if c.Okay == 0 {
-				done = e.clearCombatInfo(c)
+				done = e.endTurn(c)
 				continue
 			}
 			e.o14_0712(c, d)
 			if c.Okay == 0 {
-				done = e.clearCombatInfo(c)
+				done = e.endTurn(c)
 			}
 			e.inPoisonCloud(c, true)
 			if e.isHelpless(c) {
-				done = e.clearCombatInfo(c)
+				done = e.endTurn(c)
 			}
 		}
 	}
@@ -399,9 +401,6 @@ func (e *Engine) moveAttack(c *Character) (done bool) {
 // stepCost = O057:0B26's price of a step onto ground of the given cost:
 // three times it diagonally, twice straight; 255 never passes.
 func stepCost(ground byte, dir int) int {
-	if ground == 255 {
-		return 255
-	}
 	if dir&1 != 0 {
 		return int(byte(int(ground) * 3))
 	}
@@ -551,10 +550,10 @@ func (e *Engine) otherMenu(c *Character) (done bool) {
 			c.Combat.Delay = 1
 			done = true
 		case 'Q':
-			done = e.clearCombatInfo(c)
+			done = e.endTurn(c)
 		case 'B':
 			done = e.bandage(true)
-			done = e.clearCombatInfo(c)
+			done = e.endTurn(c)
 		case 'S':
 			e.speedMenu()
 		}
@@ -564,7 +563,7 @@ func (e *Engine) otherMenu(c *Character) (done bool) {
 
 // guard = 00BA:2686 (char): end the turn on guard.
 func (e *Engine) guard(c *Character) bool {
-	r := e.clearCombatInfo(c)
+	r := e.endTurn(c)
 	c.Combat.Guarding = 1
 	e.BottomMessage("Guarding")
 	return r
@@ -631,6 +630,10 @@ const (
 // combatPanel = O0ED:0A2D (char): the combatant's name, hit points, armour
 // class, readied weapon and (when out of action) status in the side panel.
 func (e *Engine) combatPanel(c *Character) {
+	if !e.panelDirty {
+		return
+	}
+	e.panelDirty = false
 	e.ext.panel = c
 	e.ClearCells(sidePanelX1, sidePanelTop, sidePanelX2, sidePanelBot)
 	row := sidePanelTop

@@ -386,7 +386,7 @@ func (e *Engine) useItem(it *Item) bool {
 	e.CastSpell(spell, c.Auto, 0, &quit)
 	e.usingItem = false
 	if e.gameState == 5 && e.spellRec(spell, 0xB) != 0 {
-		quit = e.clearCombatInfo(c)
+		quit = e.endTurn(c)
 	}
 	if quit {
 		if e.isScroll(it) {

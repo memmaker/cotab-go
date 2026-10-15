@@ -191,10 +191,12 @@ func (e *Engine) addAffectNow(c *Character, typ, data byte, time int) bool {
 	return true
 }
 
-// endTurn = O0ED:27E4 (char): no initiative, spell, guard or moves left.
-func (e *Engine) endTurn(c *Character) {
+// endTurn = O0ED:27E4 (char): no initiative, spell, guard or moves left;
+// always true (the caller's "turn over").
+func (e *Engine) endTurn(c *Character) bool {
 	ci := combatInfo(c)
 	ci.Delay, ci.Spell, ci.Guarding, ci.Moves = 0, 0, 0, 0
+	return true
 }
 
 // combatInfo is c.Combat; outside a fight the original reads whatever its
@@ -525,13 +527,13 @@ func (e *Engine) slowPoisonHandler(c *Character, a *Affect, flag byte) {
 
 // The spiritual hammer item.
 const (
-	hammerType    = 20
-	hammerWord1   = 20
-	hammerWord2   = 243
-	hammerPlus    = 1
-	hammerFlags   = 160
-	maxItemsHeld  = 16
-	hammerAffect  = affectSpiritualHammer
+	hammerType   = 20
+	hammerWord1  = 20
+	hammerWord2  = 243
+	hammerPlus   = 1
+	hammerFlags  = 160
+	maxItemsHeld = 16
+	hammerAffect = affectSpiritualHammer
 )
 
 // spiritualHammerHandler = O064:0583: the hammer appears in the caster's
@@ -774,11 +776,11 @@ func (e *Engine) wastingHandler(c *Character, a *Affect, flag byte) {
 
 // Creature sizes and kinds the racial affects look at.
 const (
-	sizeMask      = 127
-	sizeLarge     = 2
-	kindGiantA    = 2
-	kindGiantB    = 10
-	kindManSized  = 1
+	sizeMask     = 127
+	sizeLarge    = 2
+	kindGiantA   = 2
+	kindGiantB   = 10
+	kindManSized = 1
 )
 
 // vsGiantsHandler = O064:1153: large giants hit a dwarf or gnome less.
@@ -1205,9 +1207,11 @@ func (e *Engine) burnsHandler(c *Character, a *Affect, flag byte) {
 	}
 }
 
-func (e *Engine) avoidRanged60Handler(c *Character, a *Affect, flag byte) { e.avoidDistantAttack(c, 60) } // O064:20DA
-func (e *Engine) magicResist50Handler(c *Character, a *Affect, flag byte) { e.resistRoll(50) }           // O064:214F
-func (e *Engine) magicResist15Handler(c *Character, a *Affect, flag byte) { e.resistRoll(15) }           // O064:215D
+func (e *Engine) avoidRanged60Handler(c *Character, a *Affect, flag byte) {
+	e.avoidDistantAttack(c, 60)
+}                                                                         // O064:20DA
+func (e *Engine) magicResist50Handler(c *Character, a *Affect, flag byte) { e.resistRoll(50) } // O064:214F
+func (e *Engine) magicResist15Handler(c *Character, a *Affect, flag byte) { e.resistRoll(15) } // O064:215D
 
 // elfResistHandler = O064:216B: 90% against sleep and charm.
 func (e *Engine) elfResistHandler(c *Character, a *Affect, flag byte) {
@@ -1292,11 +1296,11 @@ func (e *Engine) magicWeaponsHalvedHandler(c *Character, a *Affect, flag byte) {
 
 // Item types the defences look at.
 const (
-	itemTypeSling      = 85
-	itemTypeLongBow    = 87
-	itemTypeShortBow   = 88
-	itemTypeArrow      = 28
-	slayingArrowWord   = 135
+	itemTypeSling    = 85
+	itemTypeLongBow  = 87
+	itemTypeShortBow = 88
+	itemTypeArrow    = 28
+	slayingArrowWord = 135
 )
 
 // slingStonesHandler = O064:22F9: a sling does d6+1.
@@ -1335,11 +1339,11 @@ func (e *Engine) avoidsBowsHandler(c *Character, a *Affect, flag byte) {
 
 // Acid spit.
 const (
-	spitChance   = 25
-	spitRange    = 4
-	spitColours  = 23
-	spitFrames   = 1
-	spitDelay    = 30
+	spitChance  = 25
+	spitRange   = 4
+	spitColours = 23
+	spitFrames  = 1
+	spitDelay   = 30
 )
 
 // spitsAcidHandler = O064:23F6: a quarter of the time, once, at a near

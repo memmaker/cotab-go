@@ -161,7 +161,7 @@ type Engine struct {
 	terrain        byte                // DS:465A wilderness square of the battle
 	stinkingClouds []*cloudRecord      // DS:7575
 	poisonClouds   []*cloudRecord      // DS:7579
-	v6E30, v6DE3   byte
+	v6E30          byte
 	v5D9A          *Item
 	v49F4          byte
 	v49F7          byte // DS:49F7 debug display (never set)
@@ -183,9 +183,11 @@ type Engine struct {
 	spellFx             [0x44]func()     // DS:6B84 spell effect table (slot 0 unused)
 	v4844, v4845        byte             // DS:4844/4845 spell scratch
 	v681A, v681D, v681E byte             // DS:681A speed value, 681D, 681E affect scratch
-	itemCall    bool  // DS:759C the next affect call is a readied item's
-	callItem    *Item // the item it is for
-	combatRound byte  // DS:75A7 rounds since the fight (or the last wait) began
+	panelDirty          bool             // DS:75FF the side panel is to be redrawn
+	showMoves           bool             // DS:7600 the acting combatant's moves are drawn
+	itemCall            bool             // DS:759C the next affect call is a readied item's
+	callItem            *Item            // the item it is for
+	combatRound         byte             // DS:75A7 rounds since the fight (or the last wait) began
 	v6825               byte             // DS:6825 flee/surrender roll
 	hits6822, shots6E2C [3]byte          // DS:6822+i / 6E2C+i, i = 1..2 attack slots
 	v443C, v443D, v443E byte             // DS:443C..443E computer-turn movement state

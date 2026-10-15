@@ -493,18 +493,18 @@ func (e *Engine) combatCentre(x, y, r, dir int) {
 	e.Flip()
 }
 
-// combatTurn = ovr32:0AF8 (char, dir, pose, hide): face dir and draw the
+// combatTurn = O121:0B3F (char, dir, pose, hide): face dir and draw the
 // icon in the given pose (not with hide).
 func (e *Engine) combatTurn(c *Character, dir, pose byte, hide bool) {
 	idx := e.combatIndex(c)
-	if !e.combatOnScreen(c, true) {
+	if !e.combatOnScreen(c, true) && e.showMoves {
 		e.combatCentre(e.combatX(c), e.combatY(c), 3, 8)
 	}
-	if dir>>2 != c.Combat.Facing>>2 || pose != 0 || hide {
+	if (dir>>2 != c.Combat.Facing>>2 || pose != 0 || hide) && e.showMoves {
 		e.combatClearIcon(0, 0, idx)
 	}
 	c.Combat.Facing = dir
-	if !hide && e.combatOnScreen(c, true) {
+	if !hide && e.combatOnScreen(c, false) && e.showMoves {
 		e.drawIcon(int(e.combatScreenX[idx]), int(e.combatScreenY[idx]), dir, pose, c.Order)
 		e.Flip()
 	}

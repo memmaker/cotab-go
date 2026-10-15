@@ -511,3 +511,20 @@ var spellTableData = [101][16]byte{
 	{3, 6, 0, 0, 0, 0, 0, 1, 0, 4, 0, 2, 0, 1, 0, 0},
 	{2, 4, 0, 0, 0, 10, 4, 0, 1, 4, 0, 1, 4, 4, 1, 0},
 }
+
+// turnUndeadRolls = DS:0369 + 10*undead + column: the d20 a cleric needs to
+// turn undead of each row (1..10), by cleric column (levels 1..8, 9..13,
+// 14 and up). 0: turned automatically, negative: destroyed (needing its
+// absolute value), 99: impossible.
+var turnUndeadRolls = [10][10]int8{
+	{10, 7, 4, 1, 1, 0, 0, -1, -1, -1},
+	{13, 10, 7, 1, 1, 0, 0, 0, -1, -1},
+	{16, 13, 10, 4, 1, 1, 0, 0, 0, -1},
+	{19, 16, 13, 7, 4, 1, 1, 0, 0, -1},
+	{20, 19, 16, 10, 7, 4, 1, 1, 0, 0},
+	{99, 20, 19, 13, 10, 7, 4, 1, 1, 0},
+	{99, 99, 20, 16, 13, 10, 7, 4, 1, 0},
+	{99, 99, 99, 20, 16, 13, 10, 7, 4, 1},
+	{99, 99, 99, 99, 20, 16, 13, 10, 7, 1},
+	{99, 99, 99, 99, 99, 20, 16, 13, 10, 4},
+}

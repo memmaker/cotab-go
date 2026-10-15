@@ -552,7 +552,7 @@ func (e *Engine) fxReading() { e.o23_08C3(int(e.curSpell), 0xFF, 1, 0, 0, "is Re
 // (type 0x58). Half the time (when DS:6DE3 is set) nothing happens; the
 // monster breathes at the target square with its hit points as damage.
 func (e *Engine) o23_30D9(c *Character, a *Affect, flag int) {
-	if e.v6DE3 != 0 && e.Dice(1, 100) <= 0x32 {
+	if e.combatRound != 0 && e.Dice(1, 100) <= 0x32 {
 		return
 	}
 	cx, cy := e.combatX(c), e.combatY(c)
@@ -576,7 +576,7 @@ func (e *Engine) o23_30D9(c *Character, a *Affect, flag int) {
 	} else {
 		e.RemoveAffect(c, 0x58, a)
 	}
-	e.clearCombatInfo(c)
+	e.endTurn(c)
 }
 
 // scrollUsed = ovr23:328A (char, item, spell): the spell is wiped from the

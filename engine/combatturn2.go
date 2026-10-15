@@ -195,13 +195,14 @@ func (e *Engine) o14_2414(spell, a int, quit *bool) {
 	if a == 0 {
 		e.combatUseHook()
 		e.combatRedrawChar(sel, 3, 1)
+		e.panelDirty = true
 		e.combatPanel(sel)
 	}
 	if spell > 0 {
 		delay := int(e.spellData(spell, 6)) / 3
 		if delay == 0 {
 			e.CastSpell(byte(spell), byte(a), 1, quit)
-			*quit = e.clearCombatInfo(sel)
+			*quit = e.endTurn(sel)
 		} else {
 			*quit = true
 			e.CharMessage(sel, "Begins Casting", 0xA, true)
@@ -215,22 +216,28 @@ func (e *Engine) o14_2414(spell, a int, quit *bool) {
 	}
 }
 
-// rangedFacing = ovr14:2574 (c, target): c holds a missile weapon (or none)
-// and ammunition fitting it, and c stands behind the target (the direction
-// from c to it is the one the target faces).
-func (e *Engine) rangedFacing(c, target *Character) bool {
-	flag := false
-	w, ammo := c.Slots[0], c.Slots[2] // +0xCC, +0xD4
-	var wt byte                       // uninitialised in the original when there is no weapon
+// Weapons a thief backstabs with.
+const (
+	itemTypeClub        = 97
+	itemTypeBackstab7   = 7
+	itemTypeBackstab8   = 8
+	itemTypeBackstabLow = 35
+	itemTypeBackstabTop = 37
+)
+
+// canBackstab = O08D:28D7 (c, target): a thief with no weapon or a short
+// one, behind a man-sized target that others are already fighting.
+func (e *Engine) canBackstab(c, target *Character) bool {
+	w := c.Slots[0]
+	var wt byte // unset in the original when there is no weapon
 	if w != nil {
 		wt = w.Type
 	}
-	if int8(c.Levels[clsThief]) > 0 && (ammo == nil || ammo.Type == 0x32) {
-		if w == nil || wt == 7 || wt == 8 || (wt > 0x22 && wt < 0x26) {
-			flag = true
-		}
-	}
-	return flag && target.Combat.Attackers > 1 && byte(e.o14_263D(c, target)) == target.Combat.Facing
+	thief := int8(c.Levels[clsThief]) > 0 || int8(c.OldLevels[clsThief]) > 0 && oldClassUsable(c)
+	weapon := w == nil || wt == itemTypeClub || wt == itemTypeBackstab7 || wt == itemTypeBackstab8 ||
+		wt >= itemTypeBackstabLow && wt <= itemTypeBackstabTop
+	return thief && weapon && target.Combat.Attackers > 1 && target.Size&sizeMask <= 1 &&
+		byte(e.o14_263D(c, target)) == target.Combat.Facing
 }
 
 // o14_263D = ovr14:263D (from, to): the direction 0..7 (8 when none fits)
@@ -360,6 +367,7 @@ func (e *Engine) aimPrompt(c, cand *Character, rng, showRange int) byte {
 	}
 	menu = cut("Next Prev Manual "+menu+"Center Exit", 0x28)
 	e.combatRedrawChar(cand, 3, 1)
+	e.panelDirty = true
 	e.combatPanel(cand)
 	key, _ := e.combatInput("Aim:", menu, false)
 	return key
@@ -389,7 +397,7 @@ func (e *Engine) aimConfirm(c, cand *Character, mode int, found *bool, t *aimTar
 	e.combatCentre(e.cmap.viewX+viewW/2, e.cmap.viewY+3, 3, 8)
 	if mode == 1 {
 		if e.o14_0E82(c, cand) {
-			*found = e.clearCombatInfo(c)
+			*found = e.endTurn(c)
 		} else {
 			e.o14_17F6(c, cand)
 			if e.rangedWeapon(c) && e.ammoFor(c, &res) && e.throwable(c) && e.rangeTo(c, cand) == 1 {
@@ -442,6 +450,7 @@ func (e *Engine) aimManual(c, cand *Character, rng, showRange, allowGround int, 
 			}
 		}
 		if cand != nil {
+			e.panelDirty = true
 			e.combatPanel(cand)
 		} else {
 			e.ClearCells(0, 0x17, 0x27, 0x17)
@@ -702,7 +711,7 @@ func (e *Engine) o14_3B93() bool {
 				e.cpos[i].size = 0
 			}
 		}
-		e.clearCombatInfo(c)
+		e.endTurn(c)
 	}
 	e.combatCentre(e.cmap.viewX+viewW/2, e.cmap.viewY+3, 0xFF, 8)
 	return true

@@ -334,9 +334,9 @@ func (e *Engine) AttackHits(att, def *Character, need int) bool {
 	}
 	e.affectGroup(att, grpAttacker)
 	e.affectGroup(def, grpDefender)
-	adj := int(int8(e.game[0x6E2]))
+	adj := int(int8(e.game[area2PartyHit]))
 	if att.Side != 0 {
-		adj = int(int8(e.game[0x6E0]))
+		adj = int(int8(e.game[area2MonsterHit]))
 	}
 	return e.rv.hitRoll >= 0 && int(e.rv.hitRoll)+int(att.THAC0)+adj >= int(byte(need))
 }
@@ -409,7 +409,7 @@ func (e *Engine) KillCharacter(c *Character, status byte, msg string) {
 	e.Flip()
 	e.cpos[idx].size = 0
 	e.combatRedrawMap()
-	if e.clearCombatInfo(c) {
+	if e.endTurn(c) {
 		e.downAffects(c)
 	}
 }
@@ -544,7 +544,7 @@ func (e *Engine) damagePerson(c *Character, dmg int, mode byte, saved bool) {
 		msg += "from Magic"
 	}
 	e.hitMessage(c, false, msg)
-	e.ApplyDamage(c, int(e.rv.damage))
+	e.damagePlayer(c, e.rv.damage)
 	if e.gameState == stateCombat {
 		ci := combatInfo(c)
 		ci.CanCast = 0
@@ -672,6 +672,7 @@ func (e *Engine) ClearMessageArea() {
 	if e.gameState == 5 {
 		e.ClearCells(0, 0x17, 0x27, 0x18)
 		if p := e.ext.panel; p != nil {
+			e.panelDirty = true
 			e.combatPanel(p)
 		}
 	} else {
@@ -796,11 +797,11 @@ func (e *Engine) countSides() {
 	}
 }
 
-// clearCombatInfo = 00BA:2637 (char): reset the combat block; always true.
-func (e *Engine) clearCombatInfo(c *Character) bool {
-	if c.Combat != nil {
-		ci := c.Combat
-		ci.Delay, ci.Spell, ci.Guarding, ci.Moves = 0, 0, 0, 0
-	}
-	return true
-}
+
+// Words of the area2 record (DS:4FB6) the combat rules read.
+const (
+	area2Surprise       = 1430 // sides surprised: bit side+1
+	area2MonsterHit     = 1760 // to-hit modifier of the monsters' side
+	area2PartyHit       = 1762 // to-hit modifier of the party
+	area2PartyMoveBonus = 1764 // added to the party's movement
+)

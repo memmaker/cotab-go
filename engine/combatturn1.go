@@ -4,9 +4,6 @@ package engine
 // movement, attacks of opportunity, fleeing, sweeps, turning undead and the
 // attack itself. The second half (from 1BF8) is ported separately.
 
-// ds2 reads the word at DS:ofs of the exe image.
-func (e *Engine) ds2(ofs int) int { return int(wordAt(e.X.Bytes(ofs, 2), 0)) }
-
 // turnSetup = ovr14:0000 (char): fill the combat block for a new round.
 func (e *Engine) o14_0000(c *Character) {
 	cb := c.Combat
@@ -14,7 +11,7 @@ func (e *Engine) o14_0000(c *Character) {
 	e.o14_0D23(c)
 	e.v681A = c.BaseAttack[1]
 	e.v681D = 0
-	e.affectGroup(c, 0x12)
+	e.affectGroup(c, grpSpeed)
 	c.Attacks[1] = byte(e.o14_0E52(e.v681A))
 	cb.Sweeps = c.FightLevel
 	if c.Okay != 0 {
@@ -22,7 +19,7 @@ func (e *Engine) o14_0000(c *Character) {
 		if int8(cb.Delay) < 1 {
 			cb.Delay = 1
 		}
-		if byte((int(int8(c.Side))+1)&int(wordAt(e.game, 0x596))) != 0 { // only the low byte is tested
+		if byte((int(int8(c.Side))+1)&int(wordAt(e.game, area2Surprise))) != 0 { // only the low byte is tested
 			cb.Delay -= 6
 		}
 		if int8(cb.Delay) < 0 || int8(cb.Delay) > 0x14 {
@@ -39,14 +36,14 @@ func (e *Engine) o14_0000(c *Character) {
 func (e *Engine) o14_0123(c *Character) int {
 	v := c.Move
 	if c.Side == 0 {
-		v += byte(wordAt(e.game, 0x6E4))
+		v += byte(wordAt(e.game, area2PartyMoveBonus))
 	}
 	e.v681D = 1
 	if v < 1 || v > 0x60 {
 		v = 1
 	}
 	e.v681A = v << 1
-	e.affectGroup(c, 0x12)
+	e.affectGroup(c, grpSpeed)
 	e.v681D = 0
 	return int(e.v681A)
 }
@@ -57,37 +54,59 @@ func (e *Engine) o14_0123(c *Character) int {
 func (e *Engine) o14_0191(a, b *Character, slot int) {
 	d := int(int8(a.Bonus[slot-1])) + e.RollDice(int(a.Dice[slot-1]), int(a.Sides[slot-1]))
 	e.rv.damage = byte(d)
-	// (the original compares the byte with 0 "above or equal": never clamps)
-	if e.rangedFacing(a, b) {
-		e.rv.damage = byte(int(e.rv.damage) * (int(uint16(int16(int8(a.Levels[clsThief]))))>>2 + 2))
+	// (the original compares the byte with 0: never clamps)
+	if e.canBackstab(a, b) {
+		usable := 0
+		if oldClassUsable(a) {
+			usable = 1
+		}
+		lvl := int(int8(a.Levels[clsThief])) + int(int8(a.OldLevels[clsThief]))*usable
+		e.rv.damage = byte(int(e.rv.damage) * (int(uint16(int16(lvl-1)))>>2 + 2))
 	}
 	e.rv.dmgType = 0
-	e.affectGroup(a, 4)
-	e.affectGroup(b, 5)
+	e.affectGroup(a, grpDamageBonus)
+	e.affectGroup(b, grpWeaponDamage)
 }
 
-// o14_02F9 (att, vic, kind, damage, shown, hit): the attack text. kind 1 is
-// a plain hit, 2 a backstab, 3 a kill of a helpless target; damage is
-// applied, shown printed; hit 0 is a miss.
+// Attack text kinds.
+const (
+	attackPlain      = 0
+	attackFromBehind = 1
+	attackBackstab   = 2
+	attackSlay       = 3
+)
+
+// Side panel cells of the attack text.
+const (
+	attackTextColumn = 23
+	attackTextRow    = 12
+	attackTextRight  = 38
+	attackTextLines  = 3
+)
+
+// o14_02F9 = O08D:0318 backstab (att, vic, kind, damage, shown, hit): the
+// attack text. kind: attackPlain .. attackSlay; damage is applied, shown
+// printed; hit 0 is a miss.
 func (e *Engine) o14_02F9(a, b *Character, kind, damage, shown, hit int) {
 	var s string
 	switch kind {
-	case 2:
+	case attackBackstab:
 		s = "-Backstabs-"
-	case 3:
+	case attackSlay:
 		s = "slays helpless"
 	default:
 		s = "Attacks"
 	}
-	e.CharMessage(a, s, 0xA, false)
+	e.combatName(a, s, combatMsgRow, false)
+	row := attackTextRow
+	e.displayName(b, attackTextColumn, row, false)
+	row++
 	s = ""
-	if kind == 1 {
+	if kind == attackFromBehind {
 		s = "(from behind) "
 	}
-	if hit == 0 {
-		s += "and Misses"
-	} else {
-		if kind == 3 {
+	if hit != 0 {
+		if kind == attackSlay {
 			s = "with one cruel blow"
 		} else {
 			s += "Hitting for " + itoa(shown&0xFF)
@@ -98,39 +117,45 @@ func (e *Engine) o14_02F9(a, b *Character, kind, damage, shown, hit int) {
 			}
 			s += "of damage"
 		}
-		e.ApplyDamage(b, damage&0xFF)
+		e.damagePlayer(b, byte(damage))
+	} else {
+		s += "and Misses"
 	}
-	e.combatSay(b, s, false)
+	if b.Status != statusDisintegrated {
+		e.DisplayTextBlock(attackTextColumn, row, attackTextRight, row+attackTextLines, colourGreen, false, s)
+	}
+	row = int(e.msgRow) + 1
 	if damage&0xFF > 0 {
 		b.Combat.CanCast = 0
 		if b.Combat.Spell > 0 {
-			e.MsgDelay()
-			e.CharMessage(b, "lost a spell", 0xC, true)
-			e.forgetSpell(b.Combat.Spell)
+			e.gameDelay()
+			e.combatName(b, "lost a spell", combatMsgRow+2, true)
+			forgetSpellOf(b, b.Combat.Spell)
 			b.Combat.Spell = 0
 		} else {
-			e.MsgDelay()
+			e.gameDelay()
 		}
 	} else {
-		e.MsgDelay()
+		e.gameDelay()
 	}
 	if b.Okay == 0 {
-		e.CharMessage(b, "goes down", 0, false)
-		if b.Status == 5 {
-			e.combatSay(nil, "and is Dying", false)
+		e.combatName(b, "goes down", row, false)
+		row += 2
+		if b.Status == statusDying {
+			e.DisplayString(attackTextColumn, row, colourGreen, "and is Dying")
 		}
-		if st := b.Status; st >= 6 && st <= 8 { // set at CS:02CF
-			e.CharMessage(b, "is killed", 0, false)
+		if st := b.Status; st >= statusDead && st <= statusDisintegrated {
+			e.combatName(b, "is killed", row, false)
 		}
 		e.downAffects(b)
-		e.affectGroup(b, 0xD)
+		e.affectGroup(b, grpDown)
 		if b.Okay == 0 {
 			e.combatRemoveFromMap(b)
 		} else {
-			e.MsgDelay()
+			e.gameDelay()
 		}
 	}
-	e.ClearMessageArea()
+	e.clearCombatText()
 }
 
 // o14_0627 (char): the enemies next to a mover that were waiting (+7) lose
@@ -169,14 +194,18 @@ func (e *Engine) o14_0712(c *Character, dir int) {
 	margin := 1
 	if c.Auto != 0 {
 		margin = 3
-		if !e.combatInView(int(int8(nx))-e.cmap.viewX, int(int8(ny))-e.cmap.viewY) {
+		if !e.combatInView(int(int8(nx))-e.cmap.viewX, int(int8(ny))-e.cmap.viewY) && e.showMoves {
 			e.combatCentre(int(ox), int(oy), 2, 8)
 		}
 	}
-	e.combatClearIcon(0, 0, idx)
+	if e.showMoves {
+		e.combatClearIcon(0, 0, idx)
+	}
 	e.cpos[idx].x, e.cpos[idx].y = nx, ny
 	e.combatRedrawMap()
-	e.combatCentre(int(nx), int(ny), margin, 8)
+	if e.showMoves {
+		e.combatCentre(int(nx), int(ny), margin, 8)
+	}
 	cb.Attackers, cb.Flank = 0, 0
 	e.PlaySound(sndStep)
 	e.o14_0627(c)
@@ -218,11 +247,14 @@ func (e *Engine) o14_08B2(c *Character, dir int) {
 		if lst[i] == 0 || c.Okay == 0 {
 			continue
 		}
+		e.panelDirty, e.showMoves = true, true
 		t := e.combatant(lst[i])
 		if e.isHelpless(t) || !e.o14_1085(t, c) {
 			continue
 		}
-		if e.FindAffect(t, 0x4B) != nil || e.FindAffect(t, 0x4A) != nil {
+		// (affect 75 is the bonus against kind 3 and 74 is unused: Pool's
+		// held and holding numbers, kept by CotAB)
+		if e.FindAffect(t, affectVsKind3) != nil || e.FindAffect(t, 74) != nil {
 			continue
 		}
 		attacked := false
@@ -254,6 +286,7 @@ func (e *Engine) o14_08B2(c *Character, dir int) {
 			attacked = true
 			t.Combat.Target = saved
 			if c.Okay != 0 {
+				e.panelDirty = true
 				e.combatPanel(c)
 			}
 		}
@@ -279,7 +312,7 @@ func (e *Engine) o14_0C6A(c *Character) bool {
 	} else {
 		e.BottomMessage("Escape is blocked")
 	}
-	return e.clearCombatInfo(c)
+	return e.endTurn(c)
 }
 
 // o14_0D23 (char): the character's speed in +0x113 from its movement base
@@ -323,7 +356,7 @@ func (e *Engine) o14_0D23(c *Character) {
 
 // o14_0E52 (v): half of v, rounded up when DS:6DE3 is odd.
 func (e *Engine) o14_0E52(v byte) int {
-	if e.v6DE3&1 != 0 {
+	if e.combatRound&1 != 0 {
 		v++
 	}
 	return int(v >> 1)
@@ -384,11 +417,11 @@ func (e *Engine) o14_1085(t, c *Character) bool {
 		return true
 	}
 	e.v681E = 0
-	e.affectGroup(c, 1)
+	e.affectGroup(c, grpAttackerExtra)
 	if e.v681E == 0 {
 		saved := t.Combat.Target
 		t.Combat.Target = c
-		e.affectGroup(t, 0)
+		e.affectGroup(t, grpNone)
 		t.Combat.Target = saved
 	}
 	return e.v681E == 0
@@ -396,18 +429,22 @@ func (e *Engine) o14_1085(t, c *Character) bool {
 
 // o14_116A (char): a cleric turns undead (ovr14:116A).
 func (e *Engine) o14_116A(c *Character) {
-	e.CharMessage(c, "turns undead...", 0xA, false)
-	e.ClearRow24()
-	e.MsgDelay()
+	e.combatName(c, "turns undead...", combatMsgRow, false)
+	e.ClearRow24() // O104 redraw_screen
+	e.gameDelay()
 	any, stop := false, false
 	c.Combat.TurnUsed = 1
 	limit := 6
 	hd := e.Dice(1, 0xC)
 	roll := e.Dice(1, 0x14)
 	var cls int
-	switch lv := int8(c.Levels[clsCleric]); {
+	usable := 0
+	if oldClassUsable(c) {
+		usable = 1
+	}
+	switch lv := int8(int(c.Levels[clsCleric]) + int(c.OldLevels[clsCleric])*usable); {
 	case lv >= 1 && lv <= 8:
-		cls = int(lv)
+		cls = int(c.Levels[clsCleric]) // the original's column is the current level alone
 	case lv >= 9 && lv <= 13:
 		cls = 9
 	default:
@@ -415,7 +452,7 @@ func (e *Engine) o14_116A(c *Character) {
 	}
 	var t *Character
 	for e.o14_1351(c, &t) && hd > 0 && !stop {
-		x := int(int8(e.X.Bytes(0x447+int(t.Undead)*10+cls, 1)[0]))
+		x := int(turnUndeadRolls[int(t.Undead)-1][cls-1])
 		ax := x
 		if ax < 0 {
 			ax = -ax
@@ -426,14 +463,15 @@ func (e *Engine) o14_116A(c *Character) {
 		}
 		any = true
 		e.combatRedrawChar(t, 3, 0)
+		e.panelDirty = true
 		e.combatPanel(t)
 		if x > 0 {
 			t.Combat.Turned = 1
 			e.hitMessage(t, true, "is turned")
 		} else {
-			e.CharMessage(t, "Is destroyed", 0xA, false)
+			e.combatName(t, "Is destroyed", combatMsgRow, false)
 			e.combatRemoveFromMap(t)
-			t.Status = 8
+			t.Status = statusDisintegrated
 			t.Okay = 0
 		}
 		if limit > 0 {
@@ -443,14 +481,14 @@ func (e *Engine) o14_116A(c *Character) {
 		if hd == 0 && limit > 0 && x < 0 {
 			hd++
 		}
-		e.ClearMessageArea()
+		e.clearCombatText()
 	}
 	if !any {
-		e.BottomMessage("Nothing Happens...")
+		e.printMessage("Nothing Happens...")
 	}
 	e.countSides()
-	e.clearCombatInfo(c)
-	e.ClearMessageArea()
+	e.endTurn(c)
+	e.clearCombatText()
 }
 
 // o14_1351 (var out, char) bool: the weakest (lowest +0x76 > 0) enemy not
@@ -473,7 +511,7 @@ func (e *Engine) o14_1351(c *Character, out **Character) bool {
 
 // o14_1406 (att, vic, w, var done): the attacker's attack slots against the
 // victim; done is 1 when the attacker has used all its attacks.
-func (e *Engine) o14_1406(a, b *Character, w int) (done bool) {
+func (e *Engine) o14_1406(a, b *Character, w int, it *Item) (done bool) {
 	acb := a.Combat
 	done = false
 	e.hits6822[1], e.hits6822[2] = 0, 0
@@ -487,7 +525,7 @@ func (e *Engine) o14_1406(a, b *Character, w int) (done bool) {
 			acb.AttackSlot--
 		}
 		e.shots6E2C[acb.AttackSlot]++
-		e.o14_02F9(a, b, 3, (int(b.HP)+5)&0xFF, 1, 1)
+		e.o14_02F9(a, b, attackSlay, (int(b.HP)+5)&0xFF, 1, 1)
 		e.removeInvisibility(a)
 		for s := 1; s <= 2; s++ {
 			a.Attacks[s-1] = 0
@@ -502,11 +540,11 @@ func (e *Engine) o14_1406(a, b *Character, w int) (done bool) {
 			a.Bonus[0] = byte(int(int8(a.Bonus[0])) - int(int8(e.baseItem(typ, 0xB))) + int(int8(e.baseItem(typ, 4))))
 		}
 		e.ApplyItems(b)
-		e.affectGroup(b, 0xB)
+		e.affectGroup(b, grpArmour)
 		hand := 0
 		var need byte
-		if e.rangedFacing(a, b) {
-			need = b.AC[1] - 2
+		if e.canBackstab(a, b) {
+			need = b.AC[1] - 4
 		} else {
 			if b.Combat.Attackers > 1 && byte(e.o14_263D(a, b)) == b.Combat.Facing && b.Combat.Flank > 4 {
 				w = 1
@@ -519,12 +557,12 @@ func (e *Engine) o14_1406(a, b *Character, w int) (done bool) {
 		bonus := int(need)
 		e.o14_1B1E(a, b, &bonus)
 		need = byte(bonus)
-		mode := 0
+		mode := attackPlain
 		if w != 0 {
-			mode = 1
+			mode = attackFromBehind
 		}
-		if e.rangedFacing(a, b) {
-			mode = 2
+		if e.canBackstab(a, b) {
+			mode = attackBackstab
 		}
 		for s := int(acb.AttackSlot); s >= 1; s-- {
 			for a.Attacks[s-1] != 0 && !stop {
@@ -546,6 +584,9 @@ func (e *Engine) o14_1406(a, b *Character, w int) (done bool) {
 				}
 			}
 		}
+		if it != nil && it.Count == 0 && it.Type == itemTypeThrownOnce {
+			a.Attacks[0], a.Attacks[1] = 0, 0
+		}
 		if !any {
 			e.PlaySound(sndMiss)
 			e.o14_02F9(a, b, mode, 0, 0, 0)
@@ -558,11 +599,26 @@ func (e *Engine) o14_1406(a, b *Character, w int) (done bool) {
 		}
 		acb.Sweeps = 0
 	}
+	if a.Okay == 0 {
+		done = true
+	}
 	if done {
-		done = e.clearCombatInfo(a)
+		e.endTurn(a)
 	}
 	return
 }
+
+// Weapons that animate their attack, and the flag of a thrown weapon that
+// comes back.
+const (
+	itemTypeLightning  = 47
+	itemTypeShootsBolt = 101
+	itemReturns        = 137
+)
+
+// itemTypeThrownOnce: a thrown weapon of this type ends the attacks when
+// the last one is gone.
+const itemTypeThrownOnce = 100
 
 // o14_17F6 (att, vic): the victim counts one more attack and turns towards
 // the attacker (the turned amount accumulates in +0x12).
@@ -580,15 +636,23 @@ func (e *Engine) o14_17F6(att, vic *Character) {
 // (turning both, then the slots of o14_1406). item is a thrown item that is
 // spent; done is set when the attacker's turn ends.
 func (e *Engine) o14_1884(a, b *Character, flag int, it *Item) (done bool) {
-	if b.Combat.Attackers < 3 && flag == 0 {
-		dir := byte(e.o14_263D(b, a))
-		if e.combatOnScreen(b, false) {
-			e.combatTurn(b, dir, 0, false)
-		} else {
-			b.Combat.Facing = dir
+	e.showMoves = true
+	e.panelDirty = true
+	// (O08D:19DB also writes round + 15 to the first byte of the near list)
+	var dir byte
+	if b.Combat.Attackers < 2 && flag == 0 {
+		dir = byte(e.o14_263D(b, a))
+		b.Combat.Facing = (dir + 4) % 8
+	} else if e.combatOnScreen(b, false) {
+		dir = b.Combat.Facing
+		if flag == 0 {
+			b.Combat.Facing = (dir + 4) % 8
 		}
 	}
-	dir := byte(e.o14_263D(a, b))
+	if e.combatOnScreen(b, false) {
+		e.combatTurn(b, dir, 0, false)
+	}
+	dir = byte(e.o14_263D(a, b))
 	e.combatPanel(a)
 	e.combatTurn(a, dir, 1, false)
 	a.Combat.Target = b
@@ -596,8 +660,8 @@ func (e *Engine) o14_1884(a, b *Character, flag int, it *Item) (done bool) {
 	if it != nil {
 		e.attackAnimation(a, b, it)
 	}
-	if a.Slots[0] != nil && a.Slots[0].Type == 0x2F {
-		e.attackAnimation(a, b, a.Slots[0])
+	if w := a.Slots[0]; w != nil && (w.Type == itemTypeLightning || w.Type == itemTypeShootsBolt) {
+		e.attackAnimation(a, b, w)
 	}
 	done = true
 	if a.Attacks[0] > 0 || a.Attacks[1] > 0 {
@@ -607,21 +671,21 @@ func (e *Engine) o14_1884(a, b *Character, flag int, it *Item) (done bool) {
 				e.partySel = i
 			}
 		}
-		done = e.o14_1406(a, b, flag)
+		done = e.o14_1406(a, b, flag, it)
 		if it != nil {
 			if it.Count > 0 {
 				it.Count -= e.shots6E2C[1]
 			}
 			if it.Count == 0 {
-				if e.throwable(a) && it.Spells[2] != 0x89 {
+				if e.throwable(a) && it.Spells[2] != itemReturns {
 					cp := *it
 					n := &cp
 					e.run.treasure = append([]*Item{n}, e.run.treasure...)
 					n.Readied = 0
-					e.RemoveItem(a, it)
+					e.loseItem(a, it)
 					e.v5D9A = n
 				} else {
-					e.RemoveItem(a, it)
+					e.loseItem(a, it)
 				}
 			}
 		}
@@ -629,7 +693,7 @@ func (e *Engine) o14_1884(a, b *Character, flag int, it *Item) (done bool) {
 		e.partySel = saved
 	}
 	if done {
-		done = e.clearCombatInfo(a)
+		done = e.endTurn(a)
 	}
 	if e.combatOnScreen(a, false) {
 		e.combatTurn(a, a.Combat.Facing, 1, true)

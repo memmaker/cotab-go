@@ -10,7 +10,7 @@ func (e *Engine) o10_000F(c *Character) {
 	e.ClearRow24()
 	e.ClearMessageArea()
 	if c.Okay == 0 {
-		done = e.clearCombatInfo(c)
+		done = e.endTurn(c)
 	}
 	ci := c.Combat
 	d := ci.Pattern
@@ -33,16 +33,16 @@ func (e *Engine) o10_000F(c *Character) {
 		return
 	}
 	if e.aiCastFromItem(c) {
-		done = e.clearCombatInfo(c)
+		done = e.endTurn(c)
 		return
 	}
 	if ci.Spell > 0 {
 		e.CastSpell(ci.Spell, 1, 1, &done)
-		done = e.clearCombatInfo(c)
+		done = e.endTurn(c)
 		return
 	}
 	if e.aiTryCast(c) {
-		done = e.clearCombatInfo(c)
+		done = e.endTurn(c)
 		return
 	}
 	if e.aiCastKnown(c) {
@@ -266,7 +266,7 @@ func (e *Engine) aiMoveStep(c *Character) {
 	if done {
 		ci.Moves = 0
 		ci.Fleeing = 0
-		done = e.clearCombatInfo(c)
+		done = e.endTurn(c)
 	} else {
 		d = (int(e.X.Bytes(0x2AE+int(ci.Pattern)*5+i, 1)[0]) + dir) % 8
 		if i == 6 || int(e.v443C) == (d+4)%8 {
@@ -294,12 +294,12 @@ func (e *Engine) aiMoveStep(c *Character) {
 	e.combatTurn(c, byte(d), 0, false)
 	e.o14_08B2(c, int(ci.Facing))
 	if c.Okay == 0 {
-		done = e.clearCombatInfo(c)
+		done = e.endTurn(c)
 		return
 	}
 	e.o14_0712(c, int(ci.Facing))
 	if c.Okay == 0 {
-		done = e.clearCombatInfo(c)
+		done = e.endTurn(c)
 	}
 	e.inPoisonCloud(c, true)
 }
@@ -379,7 +379,7 @@ func (e *Engine) aiAttackLoop(c *Character) bool {
 			continue
 		}
 		if e.o14_0E82(c, tgt) {
-			stop = e.clearCombatInfo(c)
+			stop = e.endTurn(c)
 			continue
 		}
 		e.o14_17F6(c, tgt)
@@ -405,7 +405,7 @@ func (e *Engine) aiAttackLoop(c *Character) bool {
 func (e *Engine) aiGiveUp(c *Character) bool {
 	e.ClearMessageArea()
 	if e.isHelpless(c) || e.rangedWeapon(c) || c.Combat.Delay == 0 {
-		return e.clearCombatInfo(c)
+		return e.endTurn(c)
 	}
 	return e.guard(c)
 }
@@ -484,7 +484,7 @@ func (e *Engine) aiFleeCheck(c *Character) bool {
 	}
 	if c.Stats[statInt].Cur > 5 {
 		e.KillCharacter(c, 4, "Surrenders")
-		r = e.clearCombatInfo(c)
+		r = e.endTurn(c)
 	}
 	return r
 }
@@ -632,6 +632,7 @@ func (e *Engine) aiPickWeapon(c *Character) {
 	}
 	e.ApplyItems(c)
 	if done {
+		e.panelDirty = true
 		e.combatPanel(c)
 	}
 }
