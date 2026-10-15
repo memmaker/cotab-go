@@ -710,17 +710,6 @@ func (e *Engine) clearCombatText() {
 	e.ClearCells(1, 18, 38, 22)
 }
 
-// damageText is the damage of the readied attack, as the View page shows it.
-func damageText(c *Character) string {
-	d := itoa(int(c.Dice[0])) + "d" + itoa(int(c.Sides[0]))
-	if b := int8(c.Bonus[0]); b > 0 {
-		d += "+" + itoa(int(b))
-	} else if b < 0 {
-		d += "-" + itoa(-int(b)) // abs in 16 bits: -128 shows 128
-	}
-	return d
-}
-
 // combatMsgRow is the side panel row combat messages start on.
 const combatMsgRow = 10
 

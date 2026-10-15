@@ -31,13 +31,6 @@ var walkQuiet = func() (q [0x3E]bool) {
 	return
 }()
 
-// walkOp notes an ECL op run during a walk.
-func (e *Engine) walkOp(op byte) {
-	if w := e.ext.walk; w != nil && (int(op) >= len(walkQuiet) || !walkQuiet[op]) {
-		w.event = true
-	}
-}
-
 // startWalk sets off for (tx, ty); false when no known way leads there.
 func (e *Engine) startWalk(tx, ty int) bool {
 	if e.partyX() == tx && e.partyY() == ty {

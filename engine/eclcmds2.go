@@ -1,17 +1,7 @@
 package engine
 
-import (
-	"fmt"
-	"os"
-)
-
 // More script commands (O03C), and the ones still to port: those step over
 // their operands (parse_command) and say so on stderr.
-
-func (e *Engine) unported(name string) {
-	fmt.Fprintf(os.Stderr, "cotab: script command %d (%s) at %d not ported yet\n", e.sc.command, name, e.sc.pc)
-	e.skipCommand()
-}
 
 // cmdOnGotoGosub = O03C:1AE5 (ON GOTO, ON GOSUB): jump to the n-th of the
 // addresses that follow.

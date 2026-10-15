@@ -7,8 +7,6 @@ package engine
 // [6] minimum 1 flag, [7] targeting kind, [8] save mode, [9] save type,
 // [0xA] affect type.
 
-import ()
-
 // tgt / setTgt = DS:6C91 + 4*i: the spell target list (1-based). Slot 1 is
 // DS:6C95, kept in e.spellTarget.
 func (e *Engine) tgt(i int) *Character {
@@ -749,6 +747,3 @@ func (e *Engine) spellTableInit() {
 	e.spellFx[99] = e.fxHeal2d4
 	e.spellFx[100] = e.fxCursed
 }
-
-// spellNone = O0C2:0000: empty (entry 0).
-func (e *Engine) spellNone() {}

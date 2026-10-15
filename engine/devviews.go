@@ -31,9 +31,9 @@ func (e *Engine) DevScene(name string) func() {
 	switch name {
 	case "shop":
 		return func() {
-			e.run.treasure = nil
+			e.treasureItems = nil
 			for _, t := range []byte{0x3F, 0x15, 0x49, 0x3D, 0x32, 0x05} {
-				e.run.treasure = append(e.run.treasure, e.createItem(t))
+				e.treasureItems = append(e.treasureItems, e.createItem(t))
 			}
 			e.shopMenu()
 			e.DrawMainScreen()
@@ -41,14 +41,15 @@ func (e *Engine) DevScene(name string) func() {
 	case "temple":
 		return func() {
 			c := e.selected()
-			e.purse.gold = 10000
+			c.Coins[coinPlatinum] = 2000
 			c.HP = 1
 			e.templeMenu()
 			e.DrawMainScreen()
 		}
 	case "appraise":
 		return func() {
-			e.purse.gems, e.purse.jewelry = 3, 2
+			c := e.selected()
+			c.Coins[coinGems], c.Coins[coinJewelry] = 3, 2
 			e.shopMenu()
 			e.DrawMainScreen()
 		}
@@ -87,11 +88,11 @@ func (e *Engine) DevScene(name string) func() {
 		}
 	case "loot":
 		return func() {
-			e.run.treasure = nil
+			e.treasureItems = nil
 			for _, t := range []byte{0x3F, 0x15, 0x49} {
-				e.run.treasure = append(e.run.treasure, e.createItem(t))
+				e.treasureItems = append(e.treasureItems, e.createItem(t))
 			}
-			e.loot = purse{gold: 156, gems: 7}
+			e.treasureCoins[coinGold], e.treasureCoins[coinGems] = 156, 7
 			e.AfterCombat()
 			e.DrawMainScreen()
 		}

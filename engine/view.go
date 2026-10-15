@@ -1,6 +1,6 @@
 package engine
 
-// ovr20: the View screen (character sheet, items, money, spell lists).
+// O0AF: the View screen (character sheet, items, money, spell lists).
 
 // ClearScreen = 0709:0CAB.
 func (e *Engine) ClearScreen() {
@@ -18,19 +18,7 @@ type viewState struct {
 	start *Character // DS:471A
 }
 
-// inventory runs ItemsMenu for ViewCharacter (extra:
-// leave reports that the View page should close too: F1-F6 switched to
-// another member, or Esc in an inventory F1-F6 opened, unless P came back
-// to the View page).
-func (e *Engine) inventory(direct bool) (quit, leave bool) {
-	e.ext.toSheet, e.ext.switchTo = false, false
-	quit = e.ItemsMenu()
-	leave = !quit && (e.ext.switchTo || direct && !e.ext.toSheet)
-	e.ext.toSheet, e.ext.switchTo = false, false
-	return quit, leave
-}
-
-// canLoseItem = ovr20:0D70 (item): readied items must be unreadied first;
+// canLoseItem = O0AF:0EC1 (item): readied items must be unreadied first;
 // a scroll someone is about to scribe from asks before it goes.
 func (e *Engine) canLoseItem(it *Item) bool {
 	ok := false
@@ -194,7 +182,7 @@ const (
 	baseSidesLarge = 3
 )
 
-// readyItem = ovr20:14D0 (item): ready or unready, with the reasons it
+// readyItem = O0AF:1ED6 ready_Item (item): ready or unready, with the reasons it
 // cannot be readied and the item's own effect (+0x3E > 0x7F).
 func (e *Engine) readyItem(it *Item) {
 	effect := it.Spells[2] > 0x7F
@@ -206,7 +194,7 @@ func (e *Engine) readyItem(it *Item) {
 		}
 		it.Readied = 0
 		if effect {
-			e.itemAffect(it, c, 1)
+			e.itemReadyEffect(it, false)
 		}
 		return
 	}
@@ -239,7 +227,7 @@ func (e *Engine) readyItem(it *Item) {
 	case 0:
 		it.Readied = 1
 		if effect {
-			e.itemAffect(it, c, 0)
+			e.itemReadyEffect(it, true)
 		}
 	case 1:
 		e.BottomMessage("Wrong Class")
@@ -259,17 +247,105 @@ func (e *Engine) readyItem(it *Item) {
 	}
 }
 
-// itemAffect calls ovr25:0000 with the item standing in for the affect
-// record, as the original does.
-func (e *Engine) itemAffect(it *Item, c *Character, flag byte) {
-	a := &Affect{Item: it}
-	// the affect fields are the item's first bytes, as in the original
-	n := it.PName
-	a.Type, a.Time, a.Data, a.Call = n[0], uint16(n[1])|uint16(n[2])<<8, n[3], n[4]
-	e.callAffect(it.Spells[2], c, a, flag)
+// Item powers itemReadyEffect knows beyond classcalc.go's.
+const (
+	effectGrantsAffect   = 0 // the affect Spells[1] names
+	effectAlignmentBurn  = 4 // Spells[1]: alignment (low nibble), damage (high)
+	effectStrength       = 5
+	effectConstitution   = 6
+	effectScore          = 8 // Spells[1]: the score
+	effectHammer         = 9 // unready: the spiritual hammer goes
+	effectDexterity      = 10
+	effectIntelligence   = 12
+	effectStrAndInt      = 13
+	alignmentMask        = 15
+	alignmentDamageShift = 4
+	wizardrySlots        = 3 // the first mage slot levels the ring doubles
+	mageSlotLevels       = 5
+)
+
+// itemReadyEffect = O0AF:1B04 (item, ready): what a magic item does as it
+// is readied (ready) or put away.
+func (e *Engine) itemReadyEffect(it *Item, ready bool) {
+	c := e.selected()
+	switch itemEffect(it) & (itemPowerFlag - 1) {
+	case effectGrantsAffect:
+		e.itemCall = true
+		e.callItem = it
+		var flag byte
+		if !ready {
+			flag = 1
+		}
+		e.callAffect(itemEffect(it), c, nil, flag)
+	case effectWizardry:
+		if ready {
+			for s := 0; s < wizardrySlots; s++ {
+				c.SpellSlots[slotsMage+s] *= 2
+			}
+			break
+		}
+		lvl := int(int8(c.Levels[clsMage]))
+		if oldClassUsable(c) {
+			lvl += int(int8(c.OldLevels[clsMage]))
+		}
+		for s := 0; s < mageSlotLevels; s++ {
+			c.SpellSlots[slotsMage+s] = 0
+		}
+		c.SpellSlots[slotsMage] = 1
+		for l := 2; l <= lvl; l++ {
+			for s := 1; s <= mageSlotLevels; s++ {
+				c.SpellSlots[slotsMage+s-1] += mageSlotData[l*mageSlotLevels+s]
+			}
+		}
+		// memorized spells beyond the slots are forgotten
+		var used [mageSlotLevels + 1]int
+		for i, sp := range c.Memorized {
+			if sp == 0 || spellClass(sp) != spellClassMage {
+				continue
+			}
+			l := int(spellLevel(sp))
+			used[l]++
+			if used[l] > int(c.SpellSlots[slotsMage+l-1]) {
+				c.Memorized[i] = 0
+			}
+		}
+	case effectFreeAction:
+		e.statAffects(c, statDex)
+		e.thiefSkills(c)
+	case effectAlignmentBurn:
+		if it.Spells[1]&alignmentMask != c.Alignment {
+			it.Readied = 0
+			e.rv.dmgType = dmgMagic
+			if e.gameState == stateCombat {
+				e.combatUseHook()
+			}
+			e.damagePerson(c, int(it.Spells[1]>>alignmentDamageShift), 0, false)
+			e.itemsRedraw = true
+		}
+	case effectStrength:
+		e.statAffects(c, statStr)
+	case effectConstitution:
+		e.statAffects(c, statCon)
+		e.statAffects(c, statCha)
+	case effectScore:
+		e.statAffects(c, int(it.Spells[1]))
+	case effectHammer:
+		if !ready {
+			e.RemoveAffect(c, affectSpiritualHammer, nil)
+		}
+	case effectDexterity:
+		e.statAffects(c, statDex)
+	case effectThievery:
+		e.thiefSkills(c)
+	case effectIntelligence:
+		e.statAffects(c, statInt)
+	case effectStrAndInt:
+		e.statAffects(c, statStr)
+		e.statAffects(c, statInt)
+	}
 }
 
-// tradeItem = ovr20:1734 (item).
+// tradeItem = O0AF:211C (item).
 func (e *Engine) tradeItem(it *Item) {
 	to := e.view.start
 	e.DrawMainScreen()
@@ -278,7 +354,7 @@ func (e *Engine) tradeItem(it *Item) {
 		return
 	}
 	e.view.start = to
-	if e.overloaded(it, to) {
+	if e.overloadedBy(to, it) {
 		e.BottomMessage("Overloaded")
 		return
 	}
@@ -287,7 +363,7 @@ func (e *Engine) tradeItem(it *Item) {
 	e.ApplyItems(to)
 }
 
-// halveItem = ovr20:17ED (item): half the stack becomes a new unreadied
+// halveItem = O0AF:21D5 (item): half the stack becomes a new unreadied
 // item right after it.
 func (e *Engine) halveItem(it *Item) {
 	half := it.Count >> 1
@@ -308,7 +384,7 @@ func (e *Engine) halveItem(it *Item) {
 	}
 }
 
-// joinItems = ovr20:189D (item): every matching stack joins it, up to 255
+// joinItems = O0AF:2285 (item): every matching stack joins it, up to 255
 // a stack. (The original compares +0x3C..+0x3E of each item with itself.)
 func (e *Engine) joinItems(it *Item) {
 	total := int(it.Count)
@@ -334,7 +410,7 @@ func (e *Engine) joinItems(it *Item) {
 	it.Count = byte(total)
 }
 
-// useItem = ovr20:1A8A (item): cast the scroll's spell or the item's own
+// useItem = O0AF:1583 ItemsMenu (item): cast the scroll's spell or the item's own
 // (+0x3D, charges +0x3C). Returns the spell's "turn used" result.
 func (e *Engine) useItem(it *Item) bool {
 	idx := -1
@@ -398,30 +474,66 @@ func (e *Engine) spellRec(spell byte, k int) byte {
 	return spellTable[spell][k]
 }
 
-// sellItem = ovr20:1CEE (item): half the value (a twentieth per piece
-// of a stack), paid into the party's gold.
+// Selling and identifying (O0AF:27C2, 2A29).
+const (
+	stackSaleDivisor = 20  // a stack sells for count × half price / 20
+	identifyCost     = 200 // gold pieces
+)
+
+// sellItem = O0AF:27C2 (item): half the price (a twentieth of that per
+// piece of a stack), paid in platinum and gold; what the seller cannot
+// carry goes into the treasure pool.
 func (e *Engine) sellItem(it *Item) {
-	v := it.Price >> 1
+	var v uint16
+	if it.Price > 0 {
+		v = it.Price >> 1
+	}
 	if it.Count > 1 {
 		// (the arrows/quarrels branch of the original can never be taken)
-		v = uint16(uint32(uint16(uint32(it.Count)*uint32(v))) / 0x14)
+		v = uint16(uint32(it.Count)*uint32(v)) / stackSaleDivisor
 	}
 	e.ItemName(e.viewChar(), it, 0, 0, false, false)
 	e.DisplayTextBlock(1, 0x15, 0x26, 0x16, 0xE, true,
 		"I'll give you "+itoa(int(v))+" gold pieces for your "+it.Name())
 	if e.YesNo(0xD, 0xA, 0xF, "Is It a Deal? ") == 'Y' {
 		e.BottomMessage("Sold!")
-		e.RemoveItem(e.selected(), it)
-		e.purse.gold += int(v)
+		c := e.selected()
+		e.RemoveItem(c, it)
+		platinum, gold := v/platinumGold, v%platinumGold
+		if over, room := willOverload(c, gold+platinum); over {
+			e.BottomMessage("Overloaded.  Money will be put in pool.")
+			if room > platinum {
+				c.Coins[coinPlatinum] += platinum
+			} else {
+				c.Coins[coinPlatinum] += room
+				e.treasureCoins[coinPlatinum] += int32(platinum - room)
+			}
+		} else {
+			c.Coins[coinPlatinum] += platinum
+		}
+		c.Coins[coinGold] += gold
 	}
 	e.ClearCells(1, 0x15, 0x26, 0x16)
 }
 
-// identifyItem = ovr20:1F52 (item, redraw): 200 gp shows the hidden words.
+// identifyItem = O0AF:2A29 (item, redraw): 200 gp, from the character or
+// else the treasure pool, shows the hidden words.
 func (e *Engine) identifyItem(it *Item) (redraw bool) {
+	paid := false
 	e.ItemName(e.viewChar(), it, 0, 0, false, false)
 	e.DisplayTextBlock(1, 0x15, 0x26, 0x16, 0xE, true, "For 200 gold pieces I'll identify your "+it.Name())
-	if e.YesNo(0xD, 0xA, 0xF, "Is It a Deal? ") == 'Y' && e.pay(200) {
+	if e.YesNo(0xD, 0xA, 0xF, "Is It a Deal? ") == 'Y' {
+		if g := goldWorth(e.selected()); g >= identifyCost {
+			paid = true
+			e.setGold(uint16(g - identifyCost))
+		} else if g := poolGold(e.treasureCoins); g >= identifyCost {
+			paid = true
+			e.setPoolGold(uint16(g - identifyCost))
+		} else {
+			e.BottomMessage("Not Enough Money")
+		}
+	}
+	if paid {
 		if it.Hidden == 0 {
 			e.DisplayTextBlock(1, 0x15, 0x26, 0x16, 0xE, true, "I can't tell anything new about your "+it.Name())
 		} else {
@@ -430,27 +542,13 @@ func (e *Engine) identifyItem(it *Item) (redraw bool) {
 			e.DisplayTextBlock(1, 0x15, 0x26, 0x16, 0xE, true, "It looks like some sort of "+it.Name())
 			redraw = true
 		}
-		e.MsgDelay()
+		e.gameDelay()
 	}
 	e.ClearCells(1, 0x15, 0x26, 0x16)
 	return
 }
 
-// overloaded = ovr20:275B (item, char): no room for one more item.
-func (e *Engine) overloaded(it *Item, c *Character) bool {
-	e.ApplyItems(c)
-	over := c.ItemCount > 0xF
-	w := it.Weight
-	if it.Count > 0 {
-		w *= uint16(it.Count)
-	}
-	if int32(c.Weight+w) > int32(strCarry(c))+1500 {
-		over = true
-	}
-	return over
-}
-
-// SpellList = ovr20:299C (kind, mode, index, any): the list of spells of
+// SpellList = O0AF:347C spell_menu2 (kind, mode, index, any): the list of spells of
 // one kind (0 memory, 1 book, 2 scroll, 3 scrolls, 4 choose, 5 to be
 // memorised, 6 to be scribed); returns the chosen spell or 0.
 func (e *Engine) SpellList(kind, mode int, index *int, any *bool) byte {

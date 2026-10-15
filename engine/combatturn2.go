@@ -875,9 +875,6 @@ func (e *Engine) godIntervene() bool {
 	return true
 }
 
-// o08dInit = O08D:48D9 empty66: the overlay's initialisation, empty.
-func (e *Engine) o08dInit() {}
-
 // debugWord = DS:8C94 (copied from "Wooden" at DS:24EE): as the second
 // command line parameter it skips the copy protection and lets the Gods
 // intervene in combat.

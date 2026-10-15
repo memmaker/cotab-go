@@ -1,7 +1,5 @@
 package engine
 
-import "strings"
-
 // Navigation that works the same way on every screen (not in the DOS
 // game). Keys are
 // translated as the game reads them (Engine.ReadKey), so the ported
@@ -47,10 +45,6 @@ type navCtx struct {
 	extraOK bool       // the menu takes keypad keys
 	exit    bool       // the menu has an Exit item (and no other E hotkey)
 	hot     func(byte) // highlight the item with this hotkey
-}
-
-func menuHasExit(menu string) bool {
-	return strings.Contains(menu, "Exit") && strings.Count(menu, "E") == 1
 }
 
 // region is a clickable part of the screen in text cells (inclusive).
@@ -240,15 +234,6 @@ func (e *Engine) rosterClick(cx, cy int) uint16 {
 	return 0x4F00
 }
 
-// rosterRegion makes the roster clickable for a menu that takes the keypad.
-func (e *Engine) rosterRegion() {
-	x := 1
-	if e.gameState != 0 {
-		x = 0x11
-	}
-	e.addRegion(region{x0: x, y0: 4, x1: 0x26, y1: 4 + len(e.party) - 1, click: e.rosterClick})
-}
-
 // combatSquare is the combat map square shown at cell (cx, cy): the page
 // sits at cell (pageCol,1) and a square is 3x3 cells.
 func (e *Engine) combatSquare(cx, cy int) (x, y int, ok bool) {
@@ -261,28 +246,6 @@ func (e *Engine) combatSquare(cx, cy int) (x, y int, ok bool) {
 
 // stepKeys are the keypad scan codes of the 8 directions (N, NE, E ... NW).
 var stepKeys = [8]uint16{0x4800, 0x4900, 0x4D00, 0x5100, 0x5000, 0x4F00, 0x4B00, 0x4700}
-
-// pollMouse runs the hover action of the region the pointer moved onto.
-func (e *Engine) pollMouse() {
-	if e.tr != nil { // no window
-		return
-	}
-	cx, cy, ok := e.S.Mouse()
-	at := 0
-	if ok {
-		at = cy*40 + cx + 1
-	}
-	if at == e.ext.mouseAt {
-		return
-	}
-	e.ext.mouseAt = at
-	if !ok || e.ext.modal > 0 {
-		return
-	}
-	if r := e.regionAt(cx, cy); r != nil && r.hover != nil {
-		r.hover()
-	}
-}
 
 // showHint updates the window's hint line.
 func (e *Engine) showHint() {

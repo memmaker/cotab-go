@@ -101,22 +101,8 @@ func (e *Engine) selectMember(c *Character) {
 	}
 }
 
-// freeSelected = O0A7:3A25 free_players (0, 1): the selected member leaves
-// the party (its icon freed); the one before it is selected.
-func (e *Engine) freeSelected() {
-	if len(e.party) == 0 {
-		return
-	}
-	i := e.partySel
-	e.freeIcon(e.party[i].Order)
-	e.party = append(e.party[:i], e.party[i+1:]...)
-	putWord(e.game, 2*cvPartyCount, wordAt(e.game, 2*cvPartyCount)-1)
-	if i > 0 {
-		e.partySel = i - 1
-	} else {
-		e.partySel = 0
-	}
-}
+// freeSelected = O0A7:3A25 free_players (0, 1).
+func (e *Engine) freeSelected() { e.freePlayers(false, true) }
 
 // statusLine = O0ED:2B67 camping_search: position, facing, time and
 // "camping" / "search" under the view.

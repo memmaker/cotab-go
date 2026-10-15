@@ -214,7 +214,7 @@ func (e *Engine) PartyMenu() {
 			if enabled[menuRemove] && len(e.party) > 0 {
 				if c := e.selected(); !c.NPC() {
 					e.SaveCharacter(c, "")
-					e.RemoveSelected(false, true)
+					e.freePlayers(false, true)
 				} else {
 					e.DropCharacter() // non-player characters can only be dropped
 				}
@@ -346,10 +346,10 @@ func (e *Engine) SelectCharacter(prompt string, exit bool, who *Character) *Char
 	}
 }
 
-// RemoveSelected = ovr17:3291 (keepCount, freeIcon): the selected member
+// freePlayers = ovr17:3291 (keepCount, freeIcon): the selected member
 // leaves the party list; the one before it (or the new first) becomes
 // selected. Unless keepCount, the party count (game +0x67C) drops.
-func (e *Engine) RemoveSelected(keepCount, freeIcon bool) {
+func (e *Engine) freePlayers(keepCount, freeIcon bool) {
 	if len(e.party) == 0 {
 		return
 	}

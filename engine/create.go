@@ -463,7 +463,7 @@ func (e *Engine) DropCharacter() {
 		} else {
 			e.BottomMessage(c.Name() + " bids you farewell.")
 		}
-		e.RemoveSelected(false, true) // ovr17:3291
+		e.freePlayers(false, true) // ovr17:3291
 		return
 	}
 	e.BottomMessage(c.Name() + " breathes a sigh of relief.")

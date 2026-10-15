@@ -129,8 +129,6 @@ type Engine struct {
 	ext            extras              // convenience features (extras.go)
 	ac             afterCombat         // ovr06 globals
 	camp           campState           // ovr16/ovr21 globals
-	purse          purse               // the party's money
-	loot           purse               // DS:67F4 money found, taken after the fight
 	animInput      bool                // animate the view picture while waiting for a key
 	panelACRow     int                 // DS:65BB, the side panel row of the AC line
 	resting        byte                // DS:6DDA (ovr21 rest): messages skip the box border
@@ -161,8 +159,8 @@ type Engine struct {
 	stinkingClouds []*cloudRecord      // DS:7575
 	poisonClouds   []*cloudRecord      // DS:7579
 	v6E30          byte
-	v5D9A          *Item
-	v49F7          byte // DS:49F7 debug display (never set)
+	thrownItem     *Item // p6528: the thrown item that ends the treasure monsters left
+	v49F7          byte  // DS:49F7 debug display (never set)
 
 	// combat overlays (ovr10/13/14/23)
 	spellTarget         *Character              // DS:6C95 target slot 1

@@ -2,9 +2,6 @@ package engine
 
 // Items: names, lists and the START helpers around them.
 
-// itemWord: the n-th word item names are made of.
-func (e *Engine) itemWord(n byte) string { return itemWords[n] }
-
 func (it *Item) Name() string {
 	n := int(it.PName[0])
 	if n > 0x28 {
@@ -17,31 +14,6 @@ func (it *Item) setName(s string) {
 	s = cut(s, 0x28)
 	it.PName[0] = byte(len(s))
 	copy(it.PName[1:41], s)
-}
-
-// itemStats (extra): Angband-style base stats after the name, "(1d8) "
-// for weapon damage, "<6> " for the armour class it gives (the font has
-// no square brackets); magic pluses stay in the name.
-func (e *Engine) itemStats(typ byte) string {
-	s := ""
-	if n, d := e.baseItem(typ, 9), e.baseItem(typ, 0xA); n > 0 && d > 0 {
-		s = "(" + itoa(int(n)) + "d" + itoa(int(d))
-		if b := int8(e.baseItem(typ, 0xB)); b > 0 {
-			s += "+" + itoa(int(b))
-		} else if b < 0 {
-			s += itoa(int(b))
-		}
-		s += ") "
-	}
-	if v := int(e.baseItem(typ, 6)); v > 0x80 {
-		if v &= 0x7F; v >= 50 {
-			v -= 50 // body armour counts up from AC 10 = 50
-		}
-		if v > 0 {
-			s += "<" + itoa(v) + "> "
-		}
-	}
-	return s
 }
 
 // RemoveItem = 00BA:1509 (char, item): unlinks the item and frees it.

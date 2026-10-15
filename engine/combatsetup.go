@@ -14,7 +14,7 @@ func (e *Engine) combatSetup() {
 	e.roundLimit = combatRoundsWithoutAttack
 	e.nbodies = 0
 	e.stinkingClouds, e.poisonClouds = nil, nil
-	e.v5D9A = nil
+	e.thrownItem = nil
 	e.bodies = [10]body{}
 	putWord(e.game, 0x666, 0)
 	e.combatMapSetup()
@@ -548,7 +548,7 @@ func (e *Engine) placeCombatants() {
 		if e.placeOne(idx) {
 			if c.Okay == 0 {
 				e.cpos[idx].size = 0
-				if e.run.f84D4 == 0 && c.Combat.Extra == 0 {
+				if !e.duelling && c.Combat.Extra == 0 {
 					x, y := e.cpos[idx].x, e.cpos[idx].y
 					e.nbodies++
 					e.bodies[e.nbodies] = body{c: c, x: x, y: y, ground: e.cmap.ground[y][x]}
@@ -565,7 +565,7 @@ func (e *Engine) placeCombatants() {
 		if c.Combat.Extra == 1 { // no room: the extra leaves
 			e.combatants[idx-1] = nil
 			e.partySel = i
-			e.RemoveSelected(true, false)
+			e.freePlayers(true, false)
 			i--
 			continue
 		}

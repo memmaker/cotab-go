@@ -7,11 +7,6 @@ import (
 // Story and housekeeping routines of ovr18, ovr19 and ovr34, and the duel
 // set-up of ovr08.
 
-// o18_23E0, o19_08F6 and o34_00F7 are empty routines (push bp / pop bp).
-func (e *Engine) o18_23E0() {}
-func (e *Engine) o19_08F6() {}
-func (e *Engine) o34_00F7() {}
-
 // ProgramEight = ovr19:02A4: the Tyranthraxus finale. The FINAL pictures
 // are drawn on the page, then animated; the dragon dies, Tyranthraxus
 // speaks, and the screen is rebuilt.
@@ -140,39 +135,5 @@ func (e *Engine) recolourFrame(from, to []byte, frame int, random bool, im *dax.
 				}
 			}
 		}
-	}
-}
-
-// DuelSetup = ovr08:1A6F (n): only the selected member fights (the others,
-// by name, are made inactive). With n set a clone of the selected member,
-// "ROLF" with the CPIC picture, is appended as the opponent and gets
-// copies of the member's items, in reverse order.
-func (e *Engine) DuelSetup(n int) {
-	e.run.f84D4 = 1
-	putWord(e.game, 0x5CC, uint16(int16(int8(n))))
-	sel := e.selected()
-	if sel == nil {
-		return
-	}
-	for _, c := range e.party {
-		if c.Name() != sel.Name() { // 0AF8:0C10 compares the name strings
-			c.Okay = 0
-		}
-	}
-	if n == 0 {
-		return
-	}
-	e.LoadIconPic("CPIC", 0xB, int(e.es.v6F83))  // ovr33:01C8
-	cl := &Character{charRecord: sel.charRecord} // no affects, no items yet
-	cl.Okay = 1
-	cl.SetName("ROLF")
-	cl.Auto = 1
-	cl.Side = 1
-	cl.Control = 0xB2
-	cl.Order = e.es.v6F83
-	e.party = append(e.party, cl)
-	for _, it := range sel.Items {
-		c := *it
-		cl.Items = append([]*Item{&c}, cl.Items...)
 	}
 }

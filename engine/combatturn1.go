@@ -683,10 +683,10 @@ func (e *Engine) fullAttack(a, b *Character, flag int, it *Item) (done bool) {
 				if e.throwable(a) && it.Spells[2] != itemReturns {
 					cp := *it
 					n := &cp
-					e.run.treasure = append([]*Item{n}, e.run.treasure...)
+					e.treasureItems = append([]*Item{n}, e.treasureItems...)
 					n.Readied = 0
 					e.loseItem(a, it)
-					e.v5D9A = n
+					e.thrownItem = n
 				} else {
 					e.loseItem(a, it)
 				}

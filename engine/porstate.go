@@ -17,11 +17,9 @@ type eclRun struct {
 	searchSave  byte       // DS:84DD
 	f84DE       byte
 	f84E4       byte
-	f84E7       byte // monsters were loaded
-	f84D4       byte
+	f84E7       byte       // monsters were loaded
 	sprite      int        // DS:6F81
 	closeup     int        // DS:6F82
-	treasure    []*Item    // DS:6810 list
 	doorTry     [3]byte    // DS:6DDE..6DE0: bash, pick, knock still allowed
 	effTick     [0x49]byte // DS:471D: member i has timed effects to run down
 	itemType    byte       // TREASURE: last random item type
@@ -57,11 +55,8 @@ type eclState struct {
 	cell                                                          byte   // DS:6AB1
 	f84C8                                                         [2]byte
 	f84CC, f84CE, f84D0                                           uint16
-	f84D2, f84D3, f84D4                                           byte
+	f84D2, f84D3                                                  byte
 	f84E0, f84E1, f84E2, f84E3, f84E5, f84E6, f84E8, f84E9, f84EA byte
 	f70C6                                                         byte
 	f49FD, f49FE                                                  byte
 }
-
-func (e *Engine) eclByte(a int) byte       { return e.ecl[(a+0x6700)&0xFFFF] }
-func (e *Engine) setEclByte(a int, v byte) { e.ecl[(a+0x6700)&0xFFFF] = v }

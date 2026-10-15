@@ -20,13 +20,15 @@ no hex/magic numbers, readable names).
   - [x] view: adventure frame, EGA sky (bands, sun/moon, SKY 252 floor), 3D view and overhead map, pictures (PIC/SPRIT/HEAD/BODY/bigpic)
   - [x] commands 0..35, 37..64 except COMBAT (36) and PROGRAM (56); first scene .. overhead map pixel-identical to DOSBox
   - [ ] COMBAT (36: shops O048, temple O042, after-combat O045, combat O057) and PROGRAM (56)
+  - [x] after-combat O045 (outcome, experience, hired shares, treasure menu, take money/items): ported from CotAB, replacing Pool ovr06 and the party purse
   - [ ] the duel (O04C:1B9A), the sound calls (R699, M8)
   - [ ] parity: PARLAY's prompt (the original passes a char as its prompt string)
 - [ ] M6 camp, shops, temples, training (paladin/ranger etc.)
   - [x] shop (O048) with money (O0BA: pool, share, take, appraise) and View (O0AF viewPlayer, items menu, trade/drop coins, paladin heal/cure): pixel-identical
   - [x] camp (O09D) and resting (O0B6): menus, magic, memorize, scribe, display, rest, alter, fix: pixel-identical but for campfire frames
   - [x] temple (O042)
-  - [ ] item functions still Pool of Radiance's, being audited: ready, use, trade, halve, join, sell, identify
+  - [x] item functions (O0AF): ready with the item effects (1B04), trade, halve, join, sell (coins + pool), identify (coins or pool)
+  - [ ] O0AF ItemsMenu (use) audit
   - [ ] training halls (O0A7 train_player is ported; the hall's script path)
 - [ ] M7 combat
   - [x] rules (O0E3): affect groups, saving throw, damage, add/kill/heal/revive, poison and stinking clouds
@@ -72,7 +74,6 @@ raw EGA colour indices.
 - Ice body (O064:1243) tests DS:5D0B (unrelated) where fire body tests the saving throw; the port tests the
   saving throw (DS:6FC2) for both.
 - Constitution save bonus (O064:1E42) below 4 adds an unset local; the port adds nothing.
-- Appraise "Keep" with no items lost the gem; the port keeps it.
 - ENCOUNTER with a digit that is no menu item read past its reaction table; the port asks again.
 - Cones (O0C2:17CF) hand lineOfSight an unset local as the range; the port gives no range limit (walls still
   cut the cone).
@@ -80,3 +81,9 @@ raw EGA colour indices.
   Cloud's table run on (DS:27D9); Entangle's duration comes from bytes past the spell table (6 + 3/level);
   once Fear's cone meets a combatant twice, later ones on the line are left out.
 - The shop's "Excuse me" text: unchanged; DIVIDE by zero in scripts gives 0 instead of a runtime error.
+- Ring of wizardry put away (O0AF:1B04): the original looks up each memorized spell's class in the spell table
+  without masking bit 7 (a spell being memorized); the port masks it, so such spells count too.
+- Sell (O0AF:27C2) compares a byte local read as a word (the room left) with the platinum; the port uses the byte.
+- Experience (O045:0037) divides by the party count less the idle members; when that is 0 the original
+  stops with a divide error, the port does not divide.
+- Taking loot (O045:0DFC) with nothing selected handed a nil item to the shop's overloaded check; the port stops.

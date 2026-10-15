@@ -175,24 +175,3 @@ func (e *Engine) ShowEncounter(sprite, pic, dist int, flags *[2]byte) {
 		e.es.f84E1 = 0
 	}
 }
-
-// animateWhileWaiting = the wait loop of ovr26:03BD: until a key arrives,
-// cycle the view picture's frames at (3,3), each shown for its delay in
-// tenths of a second (area+0x3FE forces a change every pass). Runs when
-// the caller asked for animation or area+0x3FE is set.
-func (e *Engine) animateWhileWaiting() {
-	a := &e.pic
-	force := len(e.area) > 0x3FF && wordAt(e.area, 0x3FE) != 0
-	if !force && !e.animInput || a.cur == 0 || a.cur > len(a.frames) || e.ext.fullMap {
-		return
-	}
-	// ovr26:04CC: the current frame is redrawn on every poll
-	e.drawPicAt(3, 3, e.animInput, a.frames[a.cur-1].Image)
-	if e.Ticks()-a.last >= int64(a.frames[a.cur-1].Delay)*10 || force {
-		a.cur++
-		if a.cur > len(a.frames) {
-			a.cur = 1
-		}
-		a.last = e.Ticks()
-	}
-}

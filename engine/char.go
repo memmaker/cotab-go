@@ -148,15 +148,6 @@ func (c *Character) record() []byte {
 	return buf.Bytes()
 }
 
-// spellSlot is the number of spells of a level (1..3) a class (0 cleric,
-// 1 magic-user) can memorise; 0 for anything else.
-func (c *Character) spellSlot(class, level int) byte {
-	if class < 0 || class > 1 || level < 1 || level > 3 {
-		return 0
-	}
-	return c.SpellSlots[3*class+level-1]
-}
-
 func (c *Character) Name() string {
 	n := min(int(c.PName[0]), 15)
 	return string(c.PName[1 : 1+n])

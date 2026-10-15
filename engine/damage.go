@@ -59,6 +59,7 @@ func (e *Engine) damageWithMessage(dmg byte, c *Character) {
 const (
 	statusOkay        = 0
 	statusAnimated    = 1
+	statusRunning     = 3
 	statusUnconscious = 4
 	statusDying       = 5
 	statusDead        = 6
