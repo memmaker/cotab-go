@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// DisplayChar = 0709:01DF display_char(upcase, ch, count, colour, y, x).
+// DisplayChar = R4CE:01DF display_char(upcase, ch, count, colour, y, x).
 // The glyph is 8x8 at cell (x,y); set bits take the colour, clear bits are
 // black (the EGA path writes every plane byte, so the cell is overwritten).
 // Glyph index = upcase(ch) mod 0x40 into 8X8D1 block 201.
@@ -17,16 +17,16 @@ func (e *Engine) DisplayChar(x, y, colour int, ch byte, upcase bool) {
 // indicator of the menus; the original always draws on black).
 func (e *Engine) displayCharBg(x, y, colour, bg int, ch byte, upcase bool) {
 	if e.Trace != nil {
-		e.Trace("0709:01DF", "DisplayChar", x, y, colour, 1, int(ch), b2i(upcase))
+		e.Trace("R4CE:01DF", "DisplayChar", x, y, colour, 1, int(ch), b2i(upcase))
 	}
 	e.drawChar(x, y, colour, bg, ch, upcase)
 }
 
-// displayCharN = 0709:01DF with a repeat count: ch drawn count times from x on.
+// displayCharN = R4CE:01DF with a repeat count: ch drawn count times from x on.
 // ponytail: cells past column 0x27 are dropped; the original writes on into the next row's video memory.
 func (e *Engine) displayCharN(x, y, colour, count int, ch byte, upcase bool) {
 	if e.Trace != nil {
-		e.Trace("0709:01DF", "DisplayChar", x, y, colour, count, int(ch), b2i(upcase))
+		e.Trace("R4CE:01DF", "DisplayChar", x, y, colour, count, int(ch), b2i(upcase))
 	}
 	if x > 0x27 || y > 0x18 {
 		return
@@ -64,11 +64,11 @@ func (e *Engine) paintChar(x, y, colour, bg int, ch byte, upcase bool) {
 	}
 }
 
-// DisplayString = 0709:0626 displayString(x, y, colour, str): characters
+// DisplayString = R4CE:0349 displayString(x, y, colour, str): characters
 // are drawn left to right, each upcased, no wrapping (x stops at 0x27).
 func (e *Engine) DisplayString(x, y, colour int, s string) {
 	if e.Trace != nil {
-		e.Trace("0709:0626", "DisplayString", x, y, colour, s)
+		e.Trace("R4CE:0349", "DisplayString", x, y, colour, s)
 	}
 	if x > 0x27 || y > 0x27 {
 		return
@@ -78,26 +78,26 @@ func (e *Engine) DisplayString(x, y, colour int, s string) {
 	}
 }
 
-// ClearCells = 03F1:0137: fill cells [x1..x2] x [y1..y2] with black.
+// ClearCells = R133:04CD: fill cells [x1..x2] x [y1..y2] with black.
 func (e *Engine) ClearCells(x1, y1, x2, y2 int) {
 	if e.Trace != nil {
-		e.Trace("03F1:0137", "ClearCells", x1, y1, x2, y2)
+		e.Trace("R133:04CD", "ClearCells", x1, y1, x2, y2)
 	}
 	e.fillCells(x1, y1, x2, y2)
 }
 
-// fillCells = 0709:00B7 (x1, y1, x2, y2, page, 0) for both EGA pages.
+// fillCells = R4CE:00B7 (x1, y1, x2, y2, page, 0) for both EGA pages.
 func (e *Engine) fillCells(x1, y1, x2, y2 int) {
 	if e.Trace != nil {
-		e.Trace("0709:00B7", "FillCells", x1, y1, x2, y2, 0, 0)
-		e.Trace("0709:00B7", "FillCells", x1, y1, x2, y2, 1, 0)
+		e.Trace("R4CE:00B7", "FillCells", x1, y1, x2, y2, 0, 0)
+		e.Trace("R4CE:00B7", "FillCells", x1, y1, x2, y2, 1, 0)
 	}
 	e.S.Lock()
 	e.S.Fill(x1*8, y1*8, x2*8+8, y2*8+8, 0)
 	e.S.Unlock()
 }
 
-// DrawBorder = 03F1:0000: draw a frame around the cell rectangle using
+// DrawBorder = Pool 03F1:0000: draw a frame around the cell rectangle using
 // symbols 0x114+style*3 (+0 corner, +1 vertical, +2 horizontal).
 func (e *Engine) DrawBorder(x1, y1, x2, y2, style int) {
 	x1, y1, x2, y2 = x1-1, y1-1, x2+1, y2+1
@@ -116,11 +116,11 @@ func (e *Engine) DrawBorder(x1, y1, x2, y2, style int) {
 	}
 }
 
-// DrawBoxTitled = 03F1:02E8: clear the interior, draw the border, then
+// DrawBoxTitled = Pool 03F1:02E8: clear the interior, draw the border, then
 // centre the title on row y1 in the given colour.
 func (e *Engine) DrawBoxTitled(x1, y1, x2, y2, style, colour int, title string) {
 	if e.Trace != nil {
-		e.Trace("03F1:02E8", "DrawBoxTitled", x1, y1, x2, y2, style, colour, title)
+		e.Trace("Pool 03F1:02E8", "DrawBoxTitled", x1, y1, x2, y2, style, colour, title)
 	}
 	if len(title) > 0x28 {
 		title = title[:0x28]
@@ -144,7 +144,7 @@ const textDelayPerSpeed = 3
 // is asked to press a key and the box starts over.
 func (e *Engine) DisplayTextBlock(x1, y1, x2, y2, colour int, clear bool, s string) {
 	if e.Trace != nil {
-		e.Trace("0709:0768", "DisplayTextBlock", x1, y1, x2, y2, colour, b2i(clear), s)
+		e.Trace("R4CE:0498", "DisplayTextBlock", x1, y1, x2, y2, colour, b2i(clear), s)
 	}
 	if x1 > 0x27 || y1 > 0x18 || x2 > 0x27 || y2 > 0x27 {
 		return
@@ -165,7 +165,7 @@ func (e *Engine) DisplayTextBlock(x1, y1, x2, y2, colour int, clear bool, s stri
 	}
 	at := func(k int) byte { return s[k-1] } // Pascal 1-based
 	i := 1
-	// printSeg = 0709:06A7: s[i..j] at the cursor, i = j+1.
+	// printSeg = R4CE:03CE: s[i..j] at the cursor, i = j+1.
 	printSeg := func(j int) {
 		for ; i <= j; i++ {
 			e.DisplayChar(e.msgCol, e.msgRow, colour, at(i), true)
@@ -193,7 +193,7 @@ func (e *Engine) DisplayTextBlock(x1, y1, x2, y2, colour int, clear bool, s stri
 			// at x2, but that test can never hold after the > above.)
 			e.msgCol = x1
 			e.msgRow++
-			for i < n && at(i) == ' ' { // 0709:0714
+			for i < n && at(i) == ' ' { // R4CE:0444
 				i++
 			}
 			if e.msgRow > y2 && i < n {
@@ -216,15 +216,15 @@ func (e *Engine) DisplayTextBlock(x1, y1, x2, y2, colour int, clear bool, s stri
 	}
 }
 
-// ClearBox = 0709:0DD3 (x1, y1, x2, y2): blank the cell rectangle.
+// ClearBox = R4CE:0B2E (x1, y1, x2, y2): blank the cell rectangle.
 func (e *Engine) ClearBox(x1, y1, x2, y2 int) {
 	if e.Trace != nil {
-		e.Trace("0709:0DD3", "ClearBox", x1, y1, x2, y2)
+		e.Trace("R4CE:0B2E", "ClearBox", x1, y1, x2, y2)
 	}
 	e.fillCells(x1, y1, x2, y2)
 }
 
-// InputNumber = 0709:0B66 (prompt, colour): a 6-character line read until
+// InputNumber = R4CE:08A7 (prompt, colour): a 6-character line read until
 // it parses as 0..65536; the low word is returned.
 func (e *Engine) InputNumber(prompt string, colour int) uint16 {
 	for {

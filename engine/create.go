@@ -5,7 +5,7 @@ package engine
 // charMgmtState holds ovr17 state (filled in by the ovr17 port).
 type charMgmtState struct{}
 
-// freeCharacter = ovr17:0000 (var c): disposes the combat block, the item
+// freeCharacter = O0A7:003C (var c): disposes the combat block, the item
 // and affect lists and the record, then nils the pointer. Go's collector
 // does the freeing.
 func (e *Engine) freeCharacter(c **Character) {
@@ -435,7 +435,7 @@ func (e *Engine) rollHitPoints(c *Character) {
 	e.trainSilently(c)
 }
 
-// DropCharacter = ovr17:1F37: asks twice, then the selected member leaves
+// DropCharacter = O0A7:25DA: asks twice, then the selected member leaves
 // the party (a hired NPC bids farewell, anyone else is dumped).
 func (e *Engine) DropCharacter() {
 	if len(e.party) == 0 {
@@ -449,7 +449,7 @@ func (e *Engine) DropCharacter() {
 		} else {
 			e.printMessage(c.Name() + " bids you farewell.")
 		}
-		e.freePlayers(false, true) // ovr17:3291
+		e.freePlayers(false, true) // O0A7:3A25
 		return
 	}
 	e.printMessage(c.Name() + " breathes a sigh of relief.")

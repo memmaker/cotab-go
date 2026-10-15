@@ -2,10 +2,10 @@ package engine
 
 // O0AF: the View screen (character sheet, items, money, spell lists).
 
-// ClearScreen = 0709:0CAB.
+// ClearScreen = R4CE:0A02.
 func (e *Engine) ClearScreen() {
 	if e.Trace != nil {
-		e.Trace("0709:0CAB", "ClearScreen")
+		e.Trace("R4CE:0A02", "ClearScreen")
 	}
 	e.fillCells(0, 0, 0x27, 0x18)
 }

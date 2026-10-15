@@ -1,7 +1,7 @@
 // Command fixture builds a save fixture for a trace scenario
 // (decomp/emu/saves/NAME): save A of SAVE/ with its party, moved into
 // another area. The area's ECL block replaces the saved script, as when a
-// script enters it (ovr04:0BD1 opNewECL), and the party stands at x,y.
+// script enters it (Pool ovr04:0BD1 opNewECL), and the party stands at x,y.
 //
 //	fixture -out DIR [-block N -walls A,B,C [-geo G]] [-x X -y Y -dir D] [-set VAR=VAL ...] [-strong]
 //

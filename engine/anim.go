@@ -12,7 +12,7 @@ type animPic struct {
 	block  int    // DS:6B1C (-1 = nothing loaded)
 	frames []dax.SpriteFrame
 	cur    int   // DS:6ABF frame shown while waiting for input (1-based)
-	last   int64 // ovr26:03BD [bp-57]: tick of the last frame change in the current DisplayInput
+	last   int64 // O104:03D8 [bp-57]: tick of the last frame change in the current DisplayInput
 }
 
 // portrait = DS:6B00..6B09: the cached HEAD and BODY pictures.
@@ -21,7 +21,7 @@ type portrait struct {
 	head, body     *dax.Image
 }
 
-// LoadAnimPic = ovr29:00A2 (name, block, masked): load <name><gfx>.DAX
+// LoadAnimPic = O110:0103 (name, block, masked): load <name><gfx>.DAX
 // block into the view-window picture, unless it is already there. PIC and
 // FINAL frames after the first are stored XORed against the first; the
 // first PIC block is cut to 4 frames. Sprites are masked on colour 0.
@@ -42,7 +42,7 @@ func (e *Engine) LoadAnimPic(name string, block int, masked bool) {
 		fr = fr[:4]
 	}
 	if masked && (e.Cfg.Graphics == 'E' || e.Cfg.Graphics == 'T') { // DS:4A1E != 0
-		for _, f := range fr { // 0464:1E5C(DS:0C6C, DS:0C7C, 0, 0): colour 13 -> opaque black
+		for _, f := range fr { // R226:15F3(DS:0C6C, DS:0C7C, 0, 0): colour 13 -> opaque black
 			e.recolourFrame(maskFrom[:], maskTo[:], 0, false, f.Image)
 		}
 	}
@@ -54,14 +54,14 @@ func (e *Engine) LoadAnimPic(name string, block int, masked bool) {
 var maskFrom = [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15} // DS:0C6C
 var maskTo = [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 0, 14, 15}    // DS:0C7C
 
-// FreeAnimPic = ovr29:048F.
+// FreeAnimPic = O110:0556.
 func (e *Engine) FreeAnimPic() {
 	e.pic = animPic{block: -1}
 }
 
-// drawPicAt = ovr29:0000 (x, y, overlay, pic): an overlay picture goes
-// through 0464:0D71 at page cell (x-1,y-1), which is screen cell (x,y)
-// (the page starts one cell in); otherwise 0464:1951.
+// drawPicAt = O110:000A (x, y, overlay, pic): an overlay picture goes
+// through R226:0B94 at page cell (x-1,y-1), which is screen cell (x,y)
+// (the page starts one cell in); otherwise R226:10E7.
 func (e *Engine) drawPicAt(x, y int, overlay bool, im *dax.Image) {
 	if im == nil {
 		return
@@ -74,7 +74,7 @@ func (e *Engine) drawPicAt(x, y int, overlay bool, im *dax.Image) {
 	}
 }
 
-// DrawAnimFrame = ovr29:0708 (pic, frame): frame 1..3 of a sprite at its
+// DrawAnimFrame = O110:074D (pic, frame): frame 1..3 of a sprite at its
 // own cell offset inside the view window.
 func (e *Engine) DrawAnimFrame(frame int) {
 	if frame < 1 || frame > 3 {
@@ -86,11 +86,11 @@ func (e *Engine) DrawAnimFrame(frame int) {
 		return
 	}
 	im := e.pic.frames[frame-1].Image
-	e.drawPage(im.X+2, im.Y+2, im, 0, true, false) // 0464:0D71 at (x+3-1, y+3-1)
+	e.drawPage(im.X+2, im.Y+2, im, 0, true, false) // R226:0B94 at (x+3-1, y+3-1)
 	e.Flip()
 }
 
-// LoadPortrait = ovr29:05D9 (head, body): HEAD<gfx>/BODY<gfx> blocks, kept
+// LoadPortrait = O110:05D8 (head, body): HEAD<gfx>/BODY<gfx> blocks, kept
 // while the ids do not change; 0xFF leaves that half alone.
 func (e *Engine) LoadPortrait(head, body int) {
 	p := &e.port
@@ -106,8 +106,8 @@ func (e *Engine) LoadPortrait(head, body int) {
 	e.ClearKeyboard()
 }
 
-// DrawPortrait = ovr29:0697 (x, y, both): the head at (x,y) and, when both
-// is set, the body five rows below (nested drawers ovr29:0050 / ovr29:0070).
+// DrawPortrait = O110:06DC (x, y, both): the head at (x,y) and, when both
+// is set, the body five rows below (nested drawers O110:008D / O110:00AD).
 func (e *Engine) DrawPortrait(x, y int, both bool) {
 	e.drawPicAt(x, y, false, e.port.head)
 	if both {

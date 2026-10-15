@@ -1,8 +1,8 @@
 package engine
 
-// Party menu, ported from ovr17:0161 and the list display 00BA:0767.
+// Party menu, ported from Pool ovr17:0161 and the list display O0ED:07A2.
 
-// DisplayPartyList = 00BA:0767 (selected): the roster with AC and HP.
+// DisplayPartyList = O0ED:07A2 (selected): the roster with AC and HP.
 // While adventuring with the minimap on (extras.go) the panel shows the
 // map instead.
 func (e *Engine) DisplayPartyList() {
@@ -63,7 +63,7 @@ func (e *Engine) drawPartyList() {
 	e.ClearCells(x, y, 0x26, y)
 }
 
-// partyKeypad = ovr20:27DF (key): Home selects the previous character
+// partyKeypad = O0AF:32CF (key): Home selects the previous character
 // (wrapping to the last), End the next (wrapping to the first: the original
 // leaves its walker on the head when there is no next), anything else the first.
 func (e *Engine) partyKeypad(k byte) {
@@ -261,7 +261,7 @@ func (e *Engine) PartyMenu() {
 	}
 }
 
-// SelectCharacter = 00BA:2C48 (prompt, exit, var who): pick a party member
+// SelectCharacter = O0ED:2E23 (prompt, exit, var who): pick a party member
 // with Next/Prev (keypad) and Select; Exit (offered when exit is set)
 // gives nil. The roster highlights the current choice.
 func (e *Engine) SelectCharacter(prompt string, exit bool, who *Character) *Character {
@@ -290,7 +290,7 @@ func (e *Engine) SelectCharacter(prompt string, exit bool, who *Character) *Char
 		// who stays highlighted while the menu waits (the view animation
 		// redraws the roster).
 		e.rosterHi, e.rosterNone = who, who == nil
-		e.DisplayPartyList() // 00BA:0767 (who)
+		e.DisplayPartyList() // O0ED:07A2 (who)
 		mark := e.regionMark()
 		{ // extra (nav.go): click a member to select it
 			e.addRegion(region{x0: 0, y0: 0, x1: 0x27, y1: 0x17, click: func(cx, cy int) uint16 {
@@ -301,10 +301,10 @@ func (e *Engine) SelectCharacter(prompt string, exit bool, who *Character) *Char
 				return 0
 			}})
 		}
-		key, extra := e.DisplayInput(prompt+" ", menu, 0xD, 0xA, 0xF, true, e.gameState == 2 || e.gameState == 6) // 00BA:2C48 at 3844
+		key, extra := e.DisplayInput(prompt+" ", menu, 0xD, 0xA, 0xF, true, e.gameState == 2 || e.gameState == 6) // O0ED:2E23 at 3844
 		e.regionCut(mark)
 		e.rosterHi, e.rosterNone = nil, false
-		// The exit set (DS 00BA:2C1F) is checked before the extra flag.
+		// The exit set (DS O0ED:2DFA) is checked before the extra flag.
 		switch key {
 		case 13, 'S', 0x1B:
 			return who
@@ -321,7 +321,7 @@ func (e *Engine) SelectCharacter(prompt string, exit bool, who *Character) *Char
 				if who == nil {
 					// nil^.next reads 0000:0104 (the INT 41h vector, garbage in
 					// the original); the harness pins it to nil, and nil wraps to
-					// the first member (00BA:2D40)
+					// the first member (O0ED:2F1B)
 					who = e.party[0]
 				} else if i+1 < len(e.party) {
 					who = e.party[i+1]
@@ -346,7 +346,7 @@ func (e *Engine) SelectCharacter(prompt string, exit bool, who *Character) *Char
 	}
 }
 
-// freePlayers = ovr17:3291 (keepCount, freeIcon): the selected member
+// freePlayers = O0A7:3A25 (keepCount, freeIcon): the selected member
 // leaves the party list; the one before it (or the new first) becomes
 // selected. Unless keepCount, the party count (game +0x67C) drops.
 func (e *Engine) freePlayers(keepCount, freeIcon bool) {
@@ -358,7 +358,7 @@ func (e *Engine) freePlayers(keepCount, freeIcon bool) {
 		return
 	}
 	if freeIcon {
-		e.freeIcon(e.party[i].Order) // ovr33:014E
+		e.freeIcon(e.party[i].Order) // O12A:0156
 	}
 	e.party = append(e.party[:i], e.party[i+1:]...)
 	if i > 0 {

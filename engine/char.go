@@ -162,7 +162,7 @@ func (c *Character) SetName(s string) {
 	copy(c.PName[1:], s)
 }
 
-// IntToStr = 00BA:1037.
+// IntToStr = O0ED:10CC.
 func itoa(n int) string { return strconv.Itoa(n) }
 
 func abs(n int) int {

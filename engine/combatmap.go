@@ -9,7 +9,7 @@ type nearEntry struct{ index, dist, dir byte }
 
 type nearState struct{ list []nearEntry } // DS:6716..671A
 
-// Flip = 0464:1B52: show the drawing page. The port draws straight to the
+// Flip = R226:12E9: show the drawing page. The port draws straight to the
 // shown screen (Hold/Release frame the 3D view), so there is nothing to do.
 func (e *Engine) Flip() { e.traceFlip() }
 
@@ -81,7 +81,7 @@ func (e *Engine) step(l *line) bool {
 	return moved
 }
 
-// flyMissile = 00BA:1A29 (x1, y1, x2, y2, frames, delay): the missile
+// flyMissile = O0ED:1AA4 (x1, y1, x2, y2, frames, delay): the missile
 // sprite (DS:6E36, loaded by hitColours) flies from square to square in
 // thirds of a square, cycling its frames and scrolling the map along.
 func (e *Engine) flyMissile(x1, y1, x2, y2, frames, delay int) {
@@ -187,10 +187,10 @@ func (e *Engine) flyMissile(x1, y1, x2, y2, frames, delay int) {
 	e.Flip()
 }
 
-// isParty = 00BA:23B7 (char): true for the party side.
+// isParty = O0ED:2564 (char): true for the party side.
 func isParty(c *Character) bool { return c.Side == 0 }
 
-// nearEnemies = 00BA:2433 (char, range): combatants of the other side
+// nearEnemies = O0ED:25E0 (char, range): combatants of the other side
 // within range; the near list keeps only them, copied to DS:6DE4.
 func (e *Engine) nearEnemies(c *Character, r int) int {
 	e.nearCombatants(c, e.combatX(c), e.combatY(c), r)
@@ -211,7 +211,7 @@ func (e *Engine) nearEnemies(c *Character, r int) int {
 	return len(kept)
 }
 
-// rangeTo = 00BA:255B (char, target): distance in squares (list distance
+// rangeTo = O0ED:2708 (char, target): distance in squares (list distance
 // halved) from char to target, the near list left as it was.
 func (e *Engine) rangeTo(c, t *Character) int {
 	saved := e.near

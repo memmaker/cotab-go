@@ -18,7 +18,7 @@ const dimColour = 8
 // skipped: the cursor passes over the node.
 func (p *ListNode) skipped() bool { return p.Flag != 0 || p.Dim }
 
-// newList = ovr26:1140: n empty nodes (n<2 gives 1 node). freeList is a no-op.
+// newList = O104:1253: n empty nodes (n<2 gives 1 node). freeList is a no-op.
 func newList(n int) []*ListNode {
 	if n < 1 {
 		n = 1
@@ -39,7 +39,7 @@ type listMenuCtx struct {
 	width, rows, total, leadingHdr int
 }
 
-// nth = ovr26:0000 (nil when i >= count or negative).
+// nth = O104:000F (nil when i >= count or negative).
 func (c *listMenuCtx) nth(i int) *ListNode {
 	if i < 0 || i >= len(c.list) {
 		return nil
@@ -47,8 +47,8 @@ func (c *listMenuCtx) nth(i int) *ListNode {
 	return c.list[i]
 }
 
-// drawRows = ovr26:07A4: full redraw of the list area from node first.
-// (lastHeaderBefore, ovr26:0711, is computed there but never used.)
+// drawRows = O104:0897: full redraw of the list area from node first.
+// (lastHeaderBefore, O104:0804, is computed there but never used.)
 func (e *Engine) lmDrawRows(c *listMenuCtx, first int) {
 	e.ClearCells(c.x1, c.y1, c.x2, c.y2)
 	y := c.y1
@@ -66,7 +66,7 @@ func (e *Engine) lmDrawRows(c *listMenuCtx, first int) {
 	}
 }
 
-// firstNonSpace = ovr26:08D7, lastNonSpace = ovr26:0923 (1-based).
+// firstNonSpace = O104:09D3, lastNonSpace = O104:0A1F (1-based).
 func firstNonSpace(s string) int {
 	i := 1
 	for i < len(s) && s[i-1] == ' ' {
@@ -104,7 +104,7 @@ func (e *Engine) lmDrawRow(c *listMenuCtx, i int, highlighted bool) {
 	}
 }
 
-// lmStep moves the cursor one row with the wrap rules of ovr26:0CC5 (without
+// lmStep moves the cursor one row with the wrap rules of O104:0DCA (without
 // the header skip).
 func (e *Engine) lmStep(c *listMenuCtx, forward bool) {
 	top := e.listTop
@@ -127,7 +127,7 @@ func (e *Engine) lmStep(c *listMenuCtx, forward bool) {
 	}
 }
 
-// lmSkipHeaders = ovr26:0B03: up to rows times, step past header rows.
+// lmSkipHeaders = O104:0C08: up to rows times, step past header rows.
 func (e *Engine) lmSkipHeaders(c *listMenuCtx, forward bool) {
 	for k := 0; k < c.rows; k++ {
 		if p := c.nth(*c.index); p != nil && !p.skipped() {
@@ -137,13 +137,13 @@ func (e *Engine) lmSkipHeaders(c *listMenuCtx, forward bool) {
 	}
 }
 
-// lmMoveCursor = ovr26:0CC5.
+// lmMoveCursor = O104:0DCA.
 func (e *Engine) lmMoveCursor(c *listMenuCtx, forward bool) {
 	e.lmStep(c, forward)
 	e.lmSkipHeaders(c, forward)
 }
 
-// lmPageScroll = ovr26:0C33.
+// lmPageScroll = O104:0D38.
 func (e *Engine) lmPageScroll(c *listMenuCtx, forward bool) {
 	rel := *c.index - e.listTop
 	if forward {
@@ -162,7 +162,7 @@ func (e *Engine) lmPageScroll(c *listMenuCtx, forward bool) {
 	e.lmDrawRows(c, e.listTop)
 }
 
-// ListMenu = ovr26:0D9A. index is 0-based in/out (persists across calls),
+// ListMenu = O104:0E9F. index is 0-based in/out (persists across calls),
 // redraw is set to force a full redraw and is cleared here. Returns the
 // DisplayInput key (0 on exit) and sets *selected to the node under the
 // cursor (nil on exit).

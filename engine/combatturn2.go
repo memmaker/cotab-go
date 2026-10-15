@@ -518,7 +518,7 @@ func (e *Engine) aimPrompt(c, cand *Character, rng, showRange, allowCreature int
 	return e.combatInput("Aim:", menu, true)
 }
 
-// combatInput = ovr26:03BD with the picture not animated (prompt, menu,
+// combatInput = O104:03D8 with the picture not animated (prompt, menu,
 // allowExtra): the key, and the DS:6E31 flag is dropped.
 func (e *Engine) combatInput(prompt, menu string, allowExtra bool) (byte, bool) {
 	return e.DisplayInput(prompt, menu, 0xD, 0xA, 0xF, allowExtra, false)
@@ -713,15 +713,15 @@ func (e *Engine) aimAt(c *Character, rangeArg, showRange, allowGround, allowCrea
 	if rng == 0 || rng == 0xFF {
 		rng = 1
 	}
-	// nested ovr14:32E6 and ovr14:3389 work on the caller's locals
+	// nested O08D:388F and O08D:3932 work on the caller's locals
 	var list []nearEntry
 	var cur, count, prevX, prevY byte
-	rebuild := func() { // ovr14:32E6
+	rebuild := func() { // O08D:388F
 		e.buildNear(e.combatX(c), e.combatY(c), 0x7F, 0xFF, e.combatSize(c))
 		list = append([]nearEntry(nil), e.near.list...)
 		count = byte(len(list))
 	}
-	step := func(by byte, show bool) *Character { // ovr14:3389
+	step := func(by byte, show bool) *Character { // O08D:3932
 		ent := func(i byte) nearEntry {
 			if int(i) < 1 || int(i) > len(list) {
 				return nearEntry{}

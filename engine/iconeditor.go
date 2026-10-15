@@ -24,7 +24,7 @@ func (e *Engine) iconBuilder() {
 	var sub, key byte
 	var face bool
 	for {
-		e.BuildCharIcon(c, false) // ovr18:0482
+		e.BuildCharIcon(c, false) // O0A1:0A90
 		state = 1
 		var colours [6]byte
 		copy(colours[:], c.IconColour[:])

@@ -3,7 +3,7 @@ package dax
 import "encoding/binary"
 
 // Image is a decoded picture block: Count frames of Height x Width*8 pixels,
-// one byte per pixel (EGA colour 0..15). A masked load (0464:0111 with the
+// one byte per pixel (EGA colour 0..15). A masked load (R226:0111 with the
 // mask flag) does what the original does: pixels of the mask colour go into
 // a separate mask and read as colour 0. Here they are stored as Clear (16)
 // and Mask is set to Clear: masked draws skip them, plain draws show black.

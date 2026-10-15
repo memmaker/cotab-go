@@ -94,12 +94,12 @@ func (e *Engine) savePath(name string) string {
 	return filepath.Join(dir, strings.ToUpper(name))
 }
 
-func (e *Engine) fileExists(path string) bool { // 0802:02EB
+func (e *Engine) fileExists(path string) bool { // Pool 0802:02EB
 	st, err := os.Stat(path)
 	return err == nil && !st.IsDir()
 }
 
-// removeSubstr = 0802:0356; makeFileName = 0802:0425.
+// removeSubstr = R5BD:054B; makeFileName = R5BD:061A.
 // The scan runs over the original length and does not recheck the position
 // after a deletion, so adjacent copies leave every second one (original quirk).
 func removeSubstr(s, sub string) string {
@@ -133,10 +133,10 @@ func (e *Engine) fileError(verb, path string) {
 	e.MessageRow24b(0xE, s)
 }
 
-// MessageRow24b = 0709:0BF5: clear row 24, show, wait for a key.
+// MessageRow24b = Pool 0709:0BF5: clear row 24, show, wait for a key.
 func (e *Engine) MessageRow24b(colour int, s string) byte {
 	if e.Trace != nil {
-		e.Trace("0709:0BF5", "MessageRow24b", colour, s)
+		e.Trace("Pool 0709:0BF5", "MessageRow24b", colour, s)
 	}
 	e.ClearRow24()
 	e.DisplayString(0, 24, colour, s)

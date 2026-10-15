@@ -3,9 +3,9 @@ package engine
 import "strconv"
 
 // The adventure screen: frames, the view window and the status line.
-// Ported from 00BA:272A/27D9/290B and ovr27.
+// Ported from Pool 00BA:272A/27D9/290B and ovr27.
 
-// skyFg = ovr27:00C7, the horizon colour for DS:6F69.
+// skyFg = O10D:0014, the horizon colour for DS:6F69.
 func skyFg(v byte) byte {
 	switch v {
 	case 8, 0x41:
@@ -14,7 +14,7 @@ func skyFg(v byte) byte {
 	return 0xF
 }
 
-// skyBand = ovr27:00FB, the band colour for DS:6F69.
+// skyBand = O10D:0048, the band colour for DS:6F69.
 func skyBand(v byte) byte {
 	if v == 8 {
 		return 8
@@ -22,7 +22,7 @@ func skyBand(v byte) byte {
 	return 7
 }
 
-// skyGround = ovr27:012F, the ground colour for DS:6F68.
+// skyGround = O10D:007C, the ground colour for DS:6F68.
 func skyGround(v byte) byte {
 	switch v {
 	case 0xB:
@@ -33,7 +33,7 @@ func skyGround(v byte) byte {
 	return 6
 }
 
-// Redraw = ovr27:016D: redraw the view window for the current view mode.
+// Redraw = Pool ovr27:016D: redraw the view window for the current view mode.
 func (e *Engine) Redraw() {
 	mode := e.viewMode
 	if wordAt(e.area, 0x1CC) != 0 {
@@ -62,7 +62,7 @@ func (e *Engine) Redraw() {
 	}
 }
 
-// DrawMainFrame = 00BA:272A (inner): the screen, text and view-window
+// DrawMainFrame = Pool 00BA:272A (inner): the screen, text and view-window
 // frames, plus the inner picture frame when inner is set.
 func (e *Engine) DrawMainFrame(inner bool) {
 	e.DrawBoxTitled(1, 1, 0x26, 0x16, 0, 0xF, "")
@@ -73,7 +73,7 @@ func (e *Engine) DrawMainFrame(inner bool) {
 	}
 }
 
-// DrawMainScreen = 00BA:27D9: rebuild the whole screen for DS:49F3.
+// DrawMainScreen = Pool 00BA:27D9: rebuild the whole screen for DS:49F3.
 func (e *Engine) DrawMainScreen() {
 	switch e.gameState {
 	case 0:
@@ -104,7 +104,7 @@ func (e *Engine) DrawMainScreen() {
 	}
 }
 
-// pad2 pads a number string with "0" to two characters (00BA:290B).
+// pad2 pads a number string with "0" to two characters (O0ED:2B66).
 func pad2(n int) string {
 	s := strconv.Itoa(n & 0xFFFF)
 	if len(s) > 2 {
@@ -116,7 +116,7 @@ func pad2(n int) string {
 	return s
 }
 
-// StatusLine = 00BA:290B: "x,y dir hh:mm" (+ camping/search) under the
+// StatusLine = O0ED:2B66: "x,y dir hh:mm" (+ camping/search) under the
 // party list.
 func (e *Engine) StatusLine() {
 	x, y := e.partyX(), e.partyY()

@@ -1,11 +1,11 @@
 package engine
 
-// keyWaiting = 0A40:02FD as Turbo Pascal's Crt has it: true while the
+// keyWaiting = R811:05DB as Turbo Pascal's Crt has it: true while the
 // scan code of an extended key is still to be read, else the BIOS check.
 // keyWaiting = Turbo Pascal KeyPressed: a pending scan code counts.
 func (e *Engine) keyWaiting() bool { return e.pendingScan != 0 || e.KeyPressed() }
 
-// crtReadKey = 0A40:030F, Turbo Pascal's ReadKey: an extended key (zero
+// crtReadKey = R811:05ED, Turbo Pascal's ReadKey: an extended key (zero
 // ASCII) reads as 0, then its scan code on the next call. The convenience
 // keys (F1, gamepad, mouse, extras.go and nav.go) are translated by
 // Engine.ReadKey and never reach the game as such.
@@ -23,7 +23,7 @@ func (e *Engine) crtReadKey() byte {
 	return byte(k)
 }
 
-// ReadKeyByte = 0899:0059: one key as the game reads it. Ctrl-S toggles the
+// ReadKeyByte = R670:0112: one key as the game reads it. Ctrl-S toggles the
 // sound; with the STING parameter Ctrl-D toggles the debug display and
 // Ctrl-C quits. After a non-zero key, keys typed ahead are drained and the
 // last one wins.
@@ -37,7 +37,7 @@ func (e *Engine) ReadKeyByte() byte {
 			e.v49F7 ^= 1
 		}
 		if k == 3 {
-			e.Exit() // 0899:0000
+			e.Exit() // R670:0000
 		}
 	}
 	if k != 0 {
@@ -50,10 +50,10 @@ func (e *Engine) ReadKeyByte() byte {
 	return k
 }
 
-// DisplaySpaces = 0709:05EB (x, y, colour, count): count blank cells.
+// DisplaySpaces = R4CE:030A (x, y, colour, count): count blank cells.
 func (e *Engine) DisplaySpaces(x, y, colour, count int) {
 	if e.Trace != nil {
-		e.Trace("0709:05EB", "DisplaySpaces", x, y, colour, count)
+		e.Trace("R4CE:030A", "DisplaySpaces", x, y, colour, count)
 	}
 	if x > 0x27 || y > 0x18 {
 		return

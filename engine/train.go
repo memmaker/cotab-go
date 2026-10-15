@@ -415,7 +415,7 @@ func (e *Engine) maxHitPoints(c *Character) byte {
 	return byte(int(sum) / n)
 }
 
-// iconPane = ovr17:34DF (x, y) nested in the icon editor: the two poses
+// iconPane = O0A7:3B7C (x, y) nested in the icon editor: the two poses
 // of the icon in slot 0xC at icon square (x,y), on a cleared 12 cell
 // panel (on EGA over the slot 0x19 background icons).
 func (e *Engine) iconPane(x, y int) {
@@ -428,10 +428,10 @@ func (e *Engine) iconPane(x, y int) {
 	}
 	e.drawIcon(x, y, 0, 0, 0xC)
 	e.drawIcon(x+3, y, 0, 1, 0xC)
-	e.Flip() // 0464:1B52
+	e.Flip() // R226:12E9
 }
 
-// iconCopy = ovr17:35BE (src, dst, recolour) nested in the icon editor:
+// iconCopy = O0A7:3C5B (src, dst, recolour) nested in the icon editor:
 // copy both poses of icon slot src into slot dst (the original also
 // copies the mask planes, which the port keeps in the image); with
 // recolour the selected character's six colour pairs (+0xC1..) replace
@@ -461,7 +461,7 @@ func (e *Engine) iconCopy(src, dst byte, recolour bool) {
 	}
 }
 
-// recolourIcon = 0464:1E5C (identity, to, 0, 0, icon): colour i becomes
+// recolourIcon = R226:15F3 (identity, to, 0, 0, icon): colour i becomes
 // to[i] for i = 0..15 in turn, so a pixel already moved to a later colour
 // moves again (3 -> 15 -> to[15]). Mask pixels are left alone. Amiga
 // pixels (extra) take the same end result through amigaIconColour.

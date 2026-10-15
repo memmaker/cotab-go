@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-// Init = ovr12:002D: allocate the global records, set the start state and
+// Init = O060:0054: allocate the global records, set the start state and
 // load the always-resident assets. Everything the DOS code zeroed with
 // FillChar is zero-valued here.
 func (e *Engine) Init() {
@@ -26,15 +26,15 @@ func (e *Engine) Init() {
 	e.symPrev = e.symDAX                  // DS:5377
 	e.newGameState()
 
-	e.font = e.daxBlock(e.symDAX, 201) // 0709:017C
+	e.font = e.daxBlock(e.symDAX, 201) // R4CE:017C
 	e.ClearRow24()
 	e.DisplayString(0, 24, 0xA, "Loading...Please Wait")
-	e.LoadSymbolSet(4, 202) // ovr35:003B
+	e.LoadSymbolSet(4, 202) // Pool ovr35:003B
 	e.LoadSymbolSet(0, 203)
-	e.sqrpaci[0] = e.LoadPic("SQRPACI", 1) // 0464:0111 → DS:5E52
+	e.sqrpaci[0] = e.LoadPic("SQRPACI", 1) // R226:0111 → DS:5E52
 	e.sqrpaci[1] = e.LoadPic("SQRPACI", 2) // DS:5E56
 	for i := 0; i <= 0xB; i++ {
-		e.LoadIconPic("COMSPR", i, i+0xD) // ovr33:01C8
+		e.LoadIconPic("COMSPR", i, i+0xD) // O12A:01D0
 	}
 	e.LoadIconPic("COMSPR", 0x19, 0x19)
 	e.picturesOn, e.loadingMessage = true, true // b4FD7, b4FD8 (O060:0054)
@@ -44,8 +44,8 @@ func (e *Engine) Init() {
 	}
 	e.items = e.readItems() // ITEMS file, 2-byte header then 0x810 bytes → DS:5582
 	e.ClearRow24()
-	e.Randomize()      // 0AF8:1247
-	e.spellTableInit() // ovr23:3413
+	e.Randomize()      // R811:24D1
+	e.spellTableInit() // O0C2:658F
 	setupAffectHandlers()
 }
 

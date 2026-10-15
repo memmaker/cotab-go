@@ -99,7 +99,7 @@ type Engine struct {
 
 	party      []*Character // DS:5D96 list head ...
 	partySel   int          // DS:5D92 selected character
-	rosterHi   *Character   // SelectCharacter: 00BA:0767 highlights this one (nil: partySel)
+	rosterHi   *Character   // SelectCharacter: O0ED:07A2 highlights this one (nil: partySel)
 	rosterNone bool         // ... or no one (who = nil)
 	loadedGame bool         // DS:49F8
 	saved      bool         // DS:557D
@@ -312,11 +312,11 @@ func (e *Engine) Exit() {
 	os.Exit(0)
 }
 
-// Randomize = 0AF8:1247: RandSeed = DOS time (CX = hour:min low word,
+// Randomize = R811:24D1: RandSeed = DOS time (CX = hour:min low word,
 // DX = sec:hundredths high word).
 func (e *Engine) Randomize() {
 	if e.Trace != nil {
-		e.Trace("0AF8:1247", "Randomize")
+		e.Trace("R811:24D1", "Randomize")
 	}
 	if e.FixedSeed != nil {
 		e.RandSeed = *e.FixedSeed
@@ -326,7 +326,7 @@ func (e *Engine) Randomize() {
 	e.RandSeed = uint32(t.Hour())<<8 | uint32(t.Minute()) | (uint32(t.Second())<<8|uint32(t.Nanosecond()/1e7))<<16
 }
 
-// Random = Turbo Pascal Random(n) (0AF8:11C0): RandSeed = RandSeed*0x08088405+1,
+// Random = Turbo Pascal Random(n) (R811:244A): RandSeed = RandSeed*0x08088405+1,
 // then the high word mod n. The seed advances even for n = 0, which returns 0.
 func (e *Engine) Random(n int) int {
 	e.RandSeed = e.RandSeed*0x08088405 + 1
@@ -336,10 +336,10 @@ func (e *Engine) Random(n int) int {
 	return int(uint16(e.RandSeed>>16) % uint16(n))
 }
 
-// Ticks = 0709:0C3F, time in hundredths of a second.
+// Ticks = R4CE:0988, time in hundredths of a second.
 func (e *Engine) Ticks() int64 {
 	if e.tr != nil { // virtual clock: 10 ms per call (emu prims.py _ticks)
-		e.Trace("0709:0C3F", "Ticks")
+		e.Trace("R4CE:0988", "Ticks")
 		t := e.tr.ms / 10
 		e.tr.ms += 10
 		return t
@@ -347,10 +347,10 @@ func (e *Engine) Ticks() int64 {
 	return int64(time.Since(e.start) / (10 * time.Millisecond))
 }
 
-// Delay = 0A40:029C (Turbo Pascal Delay, milliseconds).
+// Delay = Crt:029C (Turbo Pascal Delay, milliseconds).
 func (e *Engine) Delay(ms int) {
 	if e.tr != nil {
-		e.Trace("0A40:029C", "Delay", ms)
+		e.Trace("Crt:029C", "Delay", ms)
 		e.tr.ms += int64(ms)
 		return
 	}
@@ -359,7 +359,7 @@ func (e *Engine) Delay(ms int) {
 	e.S.SetState(ega.Working)
 }
 
-// KeyPressed / ReadKey / ClearKeyboard = 0A40:02FD, BIOS read, 0899:0104.
+// KeyPressed / ReadKey / ClearKeyboard = R811:05DB, BIOS read, R670:0252.
 func (e *Engine) KeyPressed() bool {
 	if e.tr != nil {
 		return e.tr.keyPressed(e)
@@ -409,7 +409,7 @@ func (e *Engine) release() {
 	}
 }
 
-// The original's drain loop is dead code: 0899:0104 jumps straight to its exit.
+// The original's drain loop is dead code: R670:0252 jumps straight to its exit.
 func (e *Engine) ClearKeyboard() {}
 
 // idle yields the CPU inside the original's busy-wait loops; it is not a

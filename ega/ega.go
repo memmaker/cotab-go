@@ -105,7 +105,7 @@ func (s *Screen) Idle() bool { return s.state.Load() == Waiting && len(s.Keys) =
 
 // Hold freezes what the window shows until the matching Release, so a
 // picture built in several passes (the 3D view) appears at once like the
-// DOS back buffer flip (0464:1B52).
+// DOS back buffer flip (R226:12E9).
 func (s *Screen) Hold() {
 	s.mu.Lock()
 	if s.held == 0 {

@@ -7,7 +7,7 @@ package engine
 func (e *Engine) Combat() {
 	e.gameState = 5
 	e.ext.panel = nil
-	e.combatTargets = true // DS:6B84 = 0068:0066 (ovr14:20C3)
+	e.combatTargets = true // DS:6B84 = 0068:0066 (O08D:2231)
 	e.combatSetup()
 	done := e.rv.side[0] == 0 || e.rv.side[1] == 0
 	for !done {
@@ -494,20 +494,20 @@ func (e *Engine) markReach(reach map[[2]int][]int, on bool) {
 	e.Flip()
 }
 
-// rangedWeapon = 00BA:2E03 (char): the readied weapon shoots (base item
+// rangedWeapon = O0ED:2FE4 (char): the readied weapon shoots (base item
 // +0xC above 1).
 func (e *Engine) rangedWeapon(c *Character) bool {
 	w := c.Slots[0]
 	return w != nil && e.baseItem(w.Type, 0xC) > 1
 }
 
-// throwable = 00BA:2E46 (char): a ranged weapon that also works in melee
+// throwable = O0ED:3027 (char): a ranged weapon that also works in melee
 // (base item flags 0x14).
 func (e *Engine) throwable(c *Character) bool {
 	return e.rangedWeapon(c) && e.baseItem(c.Slots[0].Type, 0xE)&0x14 == 0x14
 }
 
-// ammoFor = 00BA:2E8B (char, var item): the item a ranged attack uses up
+// ammoFor = O0ED:306C (char, var item): the item a ranged attack uses up
 // (the weapon itself, the arrows in slot 11 or the bolts in slot 12); true
 // when there is one or the weapon needs none (flags 0x0A).
 func (e *Engine) ammoFor(c *Character, it **Item) bool {
@@ -581,7 +581,7 @@ func (e *Engine) otherMenu(c *Character) (done bool) {
 	return
 }
 
-// guard = 00BA:2686 (char): end the turn on guard.
+// guard = O0ED:2833 (char): end the turn on guard.
 func (e *Engine) guard(c *Character) bool {
 	r := e.endTurn(c)
 	c.Combat.Guarding = 1
@@ -713,7 +713,7 @@ func (e *Engine) clearCombatText() {
 // combatMsgRow is the side panel row combat messages start on.
 const combatMsgRow = 10
 
-// combatUseHook = 00BA:2B88: redraw the combat screen: the map frame
+// combatUseHook = O0ED:2DC0: redraw the combat screen: the map frame
 // (extra: full width, no panel frame), rows 23-24 cleared, the map centred on the view.
 func (e *Engine) combatUseHook() {
 	e.combatViewLeave() // O121:00F2: the combat palette

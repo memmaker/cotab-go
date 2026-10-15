@@ -37,7 +37,7 @@ func (e *Engine) combatSetup() {
 	e.gameState = stateCombat
 }
 
-// flushKey = 0899:0122: a waiting key is read and dropped.
+// flushKey = Pool 0899:0122: a waiting key is read and dropped.
 func (e *Engine) flushKey() {
 	if e.keyWaiting() {
 		e.ReadKeyByte()
@@ -66,7 +66,7 @@ func (e *Engine) combatMapSetup() {
 // (game word 1420).
 func (e *Engine) combatBlocks() {
 	for i, c := range e.party {
-		e.ApplyItems(c) // 00BA:0BB8
+		e.ApplyItems(c) // O0ED:0C20
 		c.Combat = &CombatInfo{}
 		if i+1 > int(wordAt(e.game, gsPartyCount)) {
 			c.Combat.Extra = 1
@@ -115,13 +115,13 @@ func (e *Engine) dungeonMap() {
 		for c := -6; c <= 6; c++ {
 			x, y := e.partyX()+c, e.partyY()+r
 			w, n, ea := e.cellEdge(x, y, 6), e.cellEdge(x, y, 0), e.cellEdge(x, y, 2)
-			put := func(col, row int, t byte) { // ovr11:0221
+			put := func(col, row int, t byte) { // Pool ovr11:0221
 				px, py := col+c*6+r*5+0x15, row+r*5+0xA
 				if px >= 0 && px <= 0x31 && py >= 0 && py <= 0x18 {
 					e.cmap.ground[py][px] = t + 1
 				}
 			}
-			// nested ovr11:02BA: floor, west wall or door
+			// nested O05D:03FC: floor, west wall or door
 			for row := 2; row <= 4; row++ {
 				for col := 0; col <= 5; col++ {
 					put(col, row, 0x16)
@@ -137,7 +137,7 @@ func (e *Engine) dungeonMap() {
 				put(1, 2, 8)
 				put(5, 4, 0)
 			}
-			// nested ovr11:0377: north wall
+			// nested Pool ovr11:0377: north wall
 			if n == 1 {
 				put(3, 0, 5)
 				put(4, 0, 5)
@@ -149,7 +149,7 @@ func (e *Engine) dungeonMap() {
 				put(3, 1, 0x16)
 				put(4, 1, 0x16)
 			}
-			// nested ovr11:040F: the north-west corner
+			// nested O05D:051E: the north-west corner
 			nw := e.cellEdge(x, y-1, 6) == 0 && e.cellEdge(x-1, y, 0) == 0
 			pick := func(ok bool, a, b byte) byte {
 				if ok {
@@ -190,7 +190,7 @@ func (e *Engine) dungeonMap() {
 			put(2, 0, b)
 			put(1, 1, cc)
 			put(2, 1, d)
-			// nested ovr11:0615: the north-east corner
+			// nested O05D:06F6: the north-east corner
 			ne7, ne8 := e.cellEdge(x, y-1, 2), e.cellEdge(x+1, y, 0)
 			ne := ne7 == 0 && ne8 == 0
 			a = map[byte]byte{0: pick(ne7 == 1, 4, 0x16), 3: 0xF, 1: 5}[n]
@@ -491,7 +491,7 @@ func (e *Engine) wildScatter() {
 
 // --- placement (O05D:17FE) -------------------------------------------
 
-// placement is the DS:4440..4658 state of ovr11:19F5: per side the
+// placement is the DS:4440..4658 state of O05D:17FE: per side the
 // formation templates (4 teams of 6 rows by 11), origin, size and facing.
 type placement struct {
 	slots  [2][4][6][11]byte // DS:4440

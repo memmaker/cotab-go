@@ -1,7 +1,7 @@
 package engine
 
 // Rules: affects, to-hit rolls, saving throws, damage and healing, ported
-// from ovr25 and the START helpers it leans on (00BA:16EC ... 2637).
+// from ovr25 and the START helpers it leans on (O0ED:1788 ... 2637).
 
 // CombatInfo is the 0x16-byte block at char+0x108 (allocated by ovr11).
 type CombatInfo struct {
@@ -53,7 +53,7 @@ func (e *Engine) callAffect(typ byte, c *Character, a *Affect, flag byte) {
 	}
 }
 
-// FindAffect = 00BA:2199 (out, type, char): first affect of the type.
+// FindAffect = O0ED:2345 (out, type, char): first affect of the type.
 func (e *Engine) FindAffect(c *Character, typ byte) *Affect {
 	for _, a := range c.Affects {
 		if a.Type == typ {
@@ -629,7 +629,7 @@ func (e *Engine) hitMessage(c *Character, magical bool, msg string) {
 	}
 }
 
-// forgetSpell = 00BA:148B (spell): the selected character's first
+// forgetSpell = O0ED:1520 (spell): the selected character's first
 // memorised copy of the spell is gone.
 func (e *Engine) forgetSpell(sp byte) {
 	c := e.selected()
@@ -657,7 +657,7 @@ func (e *Engine) healedMessage(c *Character) {
 	}
 }
 
-// countSides = 00BA:23DB: standing members of each side (DS:6814/6815).
+// countSides = O0ED:2588: standing members of each side (DS:6814/6815).
 func (e *Engine) countSides() {
 	e.rv.side = [2]int8{}
 	for _, c := range e.party {

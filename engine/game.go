@@ -1,9 +1,9 @@
 package engine
 
-// The adventuring loop: ovr04:31B4/32F8 (game loop and area change),
+// The adventuring loop: Pool ovr04:31B4/32F8 (game loop and area change),
 // ovr15 (command input, movement, doors) and ovr21 (clock).
 
-// normalizeClock = ovr21:02F2: carry each unit into the next; a year
+// normalizeClock = O0B6:0317: carry each unit into the next; a year
 // passing ages the party.
 func (e *Engine) normalizeClock(t *[7]int) {
 	for i := 0; i <= 6; i++ {
@@ -21,7 +21,7 @@ func (e *Engine) normalizeClock(t *[7]int) {
 	}
 }
 
-// AdvanceClock = ovr21:03D5 (count, unit): add count units to the area
+// AdvanceClock = O0B6:03FA (count, unit): add count units to the area
 // clock (area+0x18C, 7 words), then run down timed effects.
 func (e *Engine) AdvanceClock(count, unit int) {
 	var t [7]int
@@ -38,7 +38,7 @@ func (e *Engine) AdvanceClock(count, unit int) {
 	e.tickEffects(count, unit)
 }
 
-// tickEffects = ovr21:0000 (count, unit): count down the timed entries in
+// tickEffects = O0B6:001E (count, unit): count down the timed entries in
 // each member's effect list (+0x7F) in steps of up to 10 rounds; expired
 // ones are removed. While camping only members flagged in DS:471D are
 // looked at.
@@ -107,8 +107,8 @@ func (e *Engine) tickEffects(count, unit int) {
 					cur = next(c, cur)
 				default:
 					after := next(c, cur)
-					e.RemoveEffect(c, cur) // ovr25:0026
-					// ovr21:0203 quirk: when the node before the removed one
+					e.RemoveEffect(c, cur) // O0E3:010A
+					// Pool ovr21:0203 quirk: when the node before the removed one
 					// is the head, the walk restarts at the head.
 					if pred == head(c) {
 						cur = head(c)
@@ -116,13 +116,13 @@ func (e *Engine) tickEffects(count, unit int) {
 						cur = after
 					}
 				}
-				// ovr21:0239: pred = the node before cur (or cur itself).
+				// O0B6:025E: pred = the node before cur (or cur itself).
 				pred = head(c)
 				for pred != nil && pred != cur && next(c, pred) != cur {
 					pred = next(c, pred)
 				}
 			}
-			for ; cur != nil; cur = next(c, cur) { // ovr21:028E
+			for ; cur != nil; cur = next(c, cur) { // O0B6:02B3
 				if cur.Time > 0 {
 					r.effTick[i+1] = 1
 				}

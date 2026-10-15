@@ -105,7 +105,7 @@ func (e *Engine) pageSet(x, y int, c uint8) {
 	}
 }
 
-// traceFlip = 0464:1B52 Flip: the hash of the drawing page.
+// traceFlip = R226:12E9 Flip: the hash of the drawing page.
 func (e *Engine) traceFlip() {
 	if e.Trace != nil {
 		e.flips++
@@ -113,14 +113,14 @@ func (e *Engine) traceFlip() {
 			os.WriteFile("out/page.go.bin", e.page[:], 0o644)
 		}
 		s := md5.Sum(e.page[:])
-		e.Trace("0464:1B52", "Flip", "168x168:"+hex.EncodeToString(s[:])[:10])
+		e.Trace("R226:12E9", "Flip", "168x168:"+hex.EncodeToString(s[:])[:10])
 	}
 }
 
-// SetPaletteColor = 0464:2A0D (colour, index): EGA palette register.
+// SetPaletteColor = R226:2142 (colour, index): EGA palette register.
 func (e *Engine) SetPaletteColor(colour, index int) {
 	if e.Trace != nil {
-		e.Trace("0464:2A0D", "SetPaletteColor", index, colour) // Pascal order: (index, colour)
+		e.Trace("R226:2142", "SetPaletteColor", index, colour) // Pascal order: (index, colour)
 	}
 	e.S.SetPalette(index, colour)
 }
