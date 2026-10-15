@@ -1,5 +1,10 @@
 package engine
 
+import (
+	"fmt"
+	"os"
+)
+
 // The ECL script machine: operands, variables, strings, comparisons, calls
 // (unit O04C of the reconstruction). Script addresses are 16-bit:
 //
@@ -142,6 +147,11 @@ func (e *Engine) readArgs(n int) {
 		}
 	}
 	s.pc++
+	if scriptTrace {
+		for k := 1; k <= n; k++ {
+			fmt.Fprintf(os.Stderr, "    arg%d type %d %d/%d = %d\n", k, s.argType[k], s.argLo[k], s.argHi[k], e.arg(k))
+		}
+	}
 }
 
 // arg = O04C:0168 (k): the value of operand k.

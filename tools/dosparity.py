@@ -120,6 +120,12 @@ def main():
                 a, n = arg.split(',')
                 r = tools.read_memory(client, int(a, 16), int(n), allow_running=True)
                 print('peek', a, r['data_hex'])
+            elif kind == 'dspeek':
+                # dspeek:OFF,N: N bytes at DS:OFF (decimal)
+                off, n = (int(x) for x in arg.split(','))
+                ds = game_ds(client)
+                r = tools.read_memory(client, ds * 16 + off, n, allow_running=True)
+                print('dspeek', arg, r['data_hex'], flush=True)
             elif kind == 'dsptr':
                 # dsptr:OFF,DELTA,N: the far pointer at DS:OFF (decimal), then N bytes at pointer+DELTA
                 off, delta, n = (int(x) for x in arg.split(','))

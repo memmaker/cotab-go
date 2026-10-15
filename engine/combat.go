@@ -246,14 +246,19 @@ func keySet(keys ...byte) (set [256]bool) {
 	return
 }
 
-// endRound = ovr09:0880 (var done): the clock, the dying, the end check.
+// combatRoundsWithoutAttack: a fight ends after this many rounds without
+// an attack.
+const combatRoundsWithoutAttack = 15
+
+// endRound = O057:09B3 battle01 (var done): the clock, the dying, the end
+// check.
 func (e *Engine) endRound() (done bool) {
 	e.AdvanceClock(1, 1)
 	e.combatRound++
 	e.o14_2879()
 	for _, c := range e.party {
-		e.affectGroup(c, 0x13)
-		e.inPoisonCloud(c, true)
+		e.affectGroup(c, grpRest)
+		e.inPoisonCloud(c, false)
 		if c.Status == 5 {
 			c.Combat.Dying++
 			if c.Combat.Dying > 9 {
@@ -266,10 +271,10 @@ func (e *Engine) endRound() (done bool) {
 	}
 	e.countSides()
 	e.combatCentre(e.cmap.viewX+viewW/2, e.cmap.viewY+3, 0xFF, 8)
-	if e.rv.side[0] == 0 || e.rv.side[1] == 0 {
+	if e.rv.side[0] == 0 || e.rv.side[1] == 0 || e.combatRound >= e.roundLimit {
 		done = true
 	}
-	if e.rv.side[0] > 0 && e.rv.side[1] == 0 && e.v49F4 == 0 {
+	if e.rv.side[0] > 0 && e.rv.side[1] == 0 && !e.demo {
 		if e.YesNo(0xD, 0xA, 0xF, "Continue Battle:") == 'Y' {
 			done = false
 		}

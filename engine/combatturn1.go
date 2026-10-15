@@ -638,7 +638,7 @@ func (e *Engine) o14_17F6(att, vic *Character) {
 func (e *Engine) o14_1884(a, b *Character, flag int, it *Item) (done bool) {
 	e.showMoves = true
 	e.panelDirty = true
-	// (O08D:19DB also writes round + 15 to the first byte of the near list)
+	e.roundLimit = e.combatRound + combatRoundsWithoutAttack
 	var dir byte
 	if b.Combat.Attackers < 2 && flag == 0 {
 		dir = byte(e.o14_263D(b, a))

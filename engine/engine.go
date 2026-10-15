@@ -164,7 +164,6 @@ type Engine struct {
 	poisonClouds   []*cloudRecord      // DS:7579
 	v6E30          byte
 	v5D9A          *Item
-	v49F4          byte
 	v49F7          byte // DS:49F7 debug display (never set)
 
 	// combat overlays (ovr10/13/14/23)
@@ -188,6 +187,7 @@ type Engine struct {
 	itemCall            bool             // DS:759C the next affect call is a readied item's
 	callItem            *Item            // the item it is for
 	combatRound         byte             // DS:75A7 rounds since the fight (or the last wait) began
+	roundLimit          byte             // DS:75A8 the fight ends at this round (15 after the last attack)
 	v6825               byte             // DS:6825 flee/surrender roll
 	hits6822, shots6E2C [3]byte          // DS:6822+i / 6E2C+i, i = 1..2 attack slots
 	v443C, v443D, v443E byte             // DS:443C..443E computer-turn movement state
