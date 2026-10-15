@@ -32,7 +32,7 @@ func (e *Engine) LoadAnimPic(name string, block int, masked bool) {
 	}
 	e.FreeAnimPic()
 	a.name, a.block = name, block
-	b := e.L.Block(name+e.symDAX[4:], block)
+	b := e.daxBlock(name+e.symDAX[4:], block)
 	if b == nil {
 		return
 	}

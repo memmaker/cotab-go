@@ -252,11 +252,11 @@ func (e *Engine) cmdCall() {
 	case callSound:
 		switch s.encounterA {
 		case soundDuelA:
-			e.playSound(soundStep)
+			e.PlaySound(sndStep)
 		case soundDuelB:
-			e.playSound(soundOther)
+			e.PlaySound(sndSpell47)
 		default:
-			e.playSound(soundStep)
+			e.PlaySound(sndStep)
 		}
 	case callStepForward:
 		e.stepForward()
@@ -274,5 +274,3 @@ func (e *Engine) cmdCall() {
 		e.gameDelay()
 	}
 }
-
-const soundOther = 1

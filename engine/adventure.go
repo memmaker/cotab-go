@@ -229,11 +229,6 @@ func (e *Engine) wildernessPicture() {
 // gameDelay = R4CE:0B19: the message pause for the game speed.
 func (e *Engine) gameDelay() { e.Delay(int(e.gameSpeed) * 100) }
 
-// playSound = R699:0020 (sound): the PC-speaker effects (M8).
-func (e *Engine) playSound(n int) {}
-
-// Sounds of the adventuring loop.
-const soundStep = 0
 
 // clearTreasure = O03C:1240's part: the treasure's money and items.
 func (e *Engine) clearTreasure() {
@@ -294,12 +289,12 @@ func (e *Engine) adventureInput() byte {
 					e.viewOrMap(int(s.posX), int(s.posY), int(s.facing))
 				case scanLeft:
 					s.facing = (s.facing + 6) % 8
-					e.playSound(soundStep)
+					e.PlaySound(sndStep)
 					s.wallHere = e.WallAt(int(s.posX), int(s.posY), int(s.facing))
 					e.viewOrMap(int(s.posX), int(s.posY), int(s.facing))
 				case scanRight:
 					s.facing = (s.facing + 2) % 8
-					e.playSound(soundStep)
+					e.PlaySound(sndStep)
 					s.wallHere = e.WallAt(int(s.posX), int(s.posY), int(s.facing))
 					e.viewOrMap(int(s.posX), int(s.posY), int(s.facing))
 				default:
@@ -575,7 +570,7 @@ func (e *Engine) pickLock() bool {
 // then the clock (twice as long while searching).
 func (e *Engine) walkForward() {
 	s := &e.sc
-	e.playSound(soundStep)
+	e.PlaySound(sndStep)
 	e.Delay(stepDelay)
 	x := int(int8(s.posX)) + int(stepX[s.facing])
 	y := int(int8(s.posY)) + int(stepY[s.facing])

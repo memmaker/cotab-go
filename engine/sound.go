@@ -6,14 +6,13 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"cotab/amiga"
 )
 
-//go:generate sh -c "go run ../cmd/sounddata ../START.EXE > sounddata.go"
+//go:generate sh -c "go run ../cmd/sounddata $$COTAB_EXE > sounddata.go"
 
-// The sound driver of START.EXE (its segment 08AE): a sequencer run from the timer
+// The sound driver of START.EXE (its segment R699): a sequencer run from the timer
 // interrupt, reprogrammed to 236.7 Hz, that steps two sets of four channels every tick,
 // the PC speaker's and the Tandy/PCjr's (three tones and the noise of its SN76489). A song
 // starts a script on each channel of one set; a script sets the channel's fields (its
@@ -53,14 +52,16 @@ const (
 	sndSpell51    = 8
 	sndMiss       = 9 // an attack hits nobody
 	sndStep       = 10
-	sndSpell47    = 11
+	sndSpell47    = 11 // also the script call 0x3201 in areas of kind 10
 	sndMissileEnd = 12 // a missile arrives
+	sndTitle      = 13 // the Forgotten Realms banner
+	sndCountdown  = 15
 )
 
-// The game's sound card (DS:5372).
+// The game's sound card (DS:5C04).
 const (
-	sndTandy = iota
-	sndSpeaker
+	sndSpeaker = iota // DS:5C04, from the config file's 'P'
+	sndTandy          // 'T'
 	sndNone
 )
 
@@ -163,24 +164,24 @@ type sndChannelSet struct {
 
 // sound is the driver state.
 type sound struct {
-	mu       sync.Mutex
-	speaker  sndChannelSet
-	tandySet sndChannelSet
-	on       bool // a sink is attached (SoundReader called)
-	isr      bool // the timer interrupt is hooked
-	typ      int  // DS:5372: sndTandy, sndSpeaker or sndNone
-	saved    int  // DS:5373: typ before Ctrl-S turned the sound off
-	wait     int  // DS:5374
-	song     int  // the song playing, 0 none
-	enabled  bool // PlaySound(sndUnmute) and (sndMute)
-	ret      int  // where sndReturn goes
-	period   int  // timer 2 divisor sent to the speaker
-	tone     bool // speaker gate and data bits both on
-	phase    float64
-	tickLeft float64
-	tandy    bool // Tandy sound chip present (config 'T'): render the SN76489
-	sn       sn76489
-	am       *amiga.Player // DISK2/SOUND.BIN imported: the Amiga players instead
+	mu        sync.Mutex
+	speaker   sndChannelSet
+	tandySet  sndChannelSet
+	on        bool // a sink is attached (SoundReader called)
+	isr       bool // the timer interrupt is hooked
+	typ       int  // DS:5C04: sndSpeaker, sndTandy or sndNone
+	saved     int  // DS:5C05: typ before Ctrl-S turned the sound off
+	installed bool // DS:5C06: soundInit ran, PlaySound(sndStop) not since
+	song      int  // the song playing, 0 none
+	enabled   bool // PlaySound(sndUnmute) and (sndMute)
+	ret       int  // where sndReturn goes
+	period    int  // timer 2 divisor sent to the speaker
+	tone      bool // speaker gate and data bits both on
+	phase     float64
+	tickLeft  float64
+	tandy     bool // Tandy sound chip present (config 'T'): render the SN76489
+	sn        sn76489
+	am        *amiga.Player // DISK2/SOUND.BIN imported: the Amiga players instead
 }
 
 // amigaFx maps PlaySound 2..12 to Amiga effects: the Amiga's effect table parallels the
@@ -303,7 +304,6 @@ func (e *Engine) SoundReader() *soundReader {
 	default:
 		s.typ = sndNone
 	}
-	s.wait = 100 // soundWait(100) at start-up
 	s.on = true
 	if img, err := os.ReadFile(filepath.Join(e.L.Dir, "DISK2", "SOUND.BIN")); err == nil && len(img) == amiga.End-amiga.Base {
 		s.am = amiga.New(img)
@@ -519,77 +519,56 @@ func (s *sound) stop() {
 	s.start(&s.speaker, 0)
 }
 
-// PlaySound = 08AE:00DC (n): sndMute stops everything and mutes, sndUnmute unmutes,
-// sndStop stops, anything else starts song n-1. While DS:5374 is non-zero the sound
-// is played for 0.1 s and cut; after soundWait(0) it plays on until
-// soundWait(n) unhooks the interrupt.
+// PlaySound = R699:0020 (n): only 0..15 and 255 are taken, and only with a sound
+// card. sndMute starts the empty song 0 on both sets, sndUnmute lets the speaker
+// sound, sndStop silences everything and unhooks the timer interrupt; 2..14 start
+// song n-1 on the card's set. 15 arms the driver's copy-protection countdown
+// (R699:1338: after 5000 ticks it prints a message and exits); no caller passes it.
 func (e *Engine) PlaySound(n int) {
 	s := &e.snd
+	if !(n >= sndMute && n <= sndCountdown || n == sndStop) {
+		return
+	}
 	if !s.on || s.typ == sndNone {
 		return
 	}
 	s.mu.Lock()
-	if s.wait > 0 {
-		s.isr = true
-	}
-	switch n {
-	case sndMute:
+	defer s.mu.Unlock()
+	switch {
+	case n == sndMute:
 		s.stop()
-		s.enabled = false
-	case sndUnmute:
+	case n == sndUnmute:
 		s.enabled = true
-	case sndStop:
+	case n == sndStop:
 		s.stop()
-	default:
-		if s.am != nil && n >= 2 && n-2 < len(amigaFx) {
-			s.am.Effect(amigaFx[n-2])
+		s.unhook()
+		s.installed = false
+	case n >= sndSpell && n < sndCountdown:
+		if s.am != nil && n-sndSpell < len(amigaFx) {
+			s.am.Effect(amigaFx[n-sndSpell])
 		} else if s.typ == sndSpeaker {
 			s.start(&s.speaker, n-1)
 		} else {
 			s.start(&s.tandySet, n-1)
 		}
 	}
-	if s.wait > 0 {
-		s.mu.Unlock()
-		time.Sleep(100 * time.Millisecond) // ten hundredths
-		s.mu.Lock()
-		s.stop()
-		s.unhook()
-	}
-	s.mu.Unlock()
 }
 
-// soundWait = 08AE:01A5 (n): 0 hooks the timer interrupt so sounds play
-// while the caller animates; n > 0 unhooks it (when it was hooked) and sets
-// the cut-after-0.1 s mode used by PlaySound.
-func (e *Engine) soundWait(n int) {
+// soundInit = R699:00D4: remember the card (DS:5C05), mark the driver
+// installed (DS:5C06) and, with a card, hook the timer interrupt (R699:12BF)
+// and start song 0 on both sets.
+func (e *Engine) soundInit() {
 	s := &e.snd
-	if !s.on || s.typ == sndNone {
-		return
-	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if n == 0 {
-		s.isr = true
-	} else if s.wait == 0 {
-		s.unhook()
-	}
-	s.wait = n
-}
-
-// SoundReset = 08AE:017B: silence everything (used by the sound toggle and
-// at start-up). It also copies DS:5372 to DS:5373.
-func (e *Engine) SoundReset() {
-	s := &e.snd
 	s.saved = s.typ
+	s.installed = true
 	if !s.on || s.typ == sndNone {
 		return
 	}
-	s.mu.Lock()
+	s.isr = true
 	s.start(&s.speaker, 0)
 	s.start(&s.tandySet, 0)
-	s.unhook()
-	s.mu.Unlock()
 }
 
 // unhook restores the timer interrupt: speaker off, all Tandy voices off.
@@ -598,24 +577,32 @@ func (s *sound) unhook() {
 	s.snSilence()
 }
 
-// soundToggle = 0899:006E (Ctrl-S in the key reader): sound on means
-// remember DS:5372 in DS:5373, stop the song (PlaySound(sndStop))
-// and set 5372 to sndNone, which mutes every driver call; off again restores the
-// saved type (the set test [0,1] always holds) and resets the driver.
+// soundToggle = R670 debug_txt's Ctrl-S: with a card, remember it (DS:5C05),
+// PlaySound(sndMute) and take sndNone; without, the remembered card comes back
+// (when it is the speaker or the Tandy) with PlaySound(sndUnmute).
 func (e *Engine) soundToggle() {
 	s := &e.snd
 	if s.typ != sndNone {
 		s.saved = s.typ
-		e.PlaySound(sndStop)
+		e.PlaySound(sndMute)
 		s.mu.Lock()
 		s.typ = sndNone
 		s.mu.Unlock()
 		return
 	}
-	if s.saved == sndTandy || s.saved == sndSpeaker {
+	if s.saved == sndSpeaker || s.saved == sndTandy {
 		s.mu.Lock()
 		s.typ = s.saved
 		s.mu.Unlock()
-		e.SoundReset()
+		e.PlaySound(sndUnmute)
 	}
+}
+
+// daxBlock = R5BD load_decode_dax: a .DAX block; the song playing is cut
+// (PlaySound(sndMute)) and the speaker let sound again after.
+func (e *Engine) daxBlock(name string, id int) []byte {
+	e.PlaySound(sndMute)
+	b := e.L.Block(name, id)
+	e.PlaySound(sndUnmute)
+	return b
 }

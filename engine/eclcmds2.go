@@ -382,7 +382,7 @@ func (e *Engine) addMonsters(block, count, icon byte) {
 func (e *Engine) loadMonsterRecord(block byte) *Character {
 	c := &Character{}
 	name := "MON" + e.areaDigit()
-	b := e.L.Block(name+"CHA", int(block))
+	b := e.daxBlock(name+"CHA", int(block))
 	if b == nil {
 		e.displayAndWait(colourWhite, colourBlack, "Unable to load monster")
 		e.Exit()
@@ -390,10 +390,10 @@ func (e *Engine) loadMonsterRecord(block byte) *Character {
 	}
 	c.setRecord(b)
 	e.loadingMonster = true
-	if b := e.L.Block(name+"SPC", int(block)); b != nil {
+	if b := e.daxBlock(name+"SPC", int(block)); b != nil {
 		c.Affects = readAffects(b)
 	}
-	if b := e.L.Block(name+"ITM", int(block)); b != nil {
+	if b := e.daxBlock(name+"ITM", int(block)); b != nil {
 		c.Items = readRecords[Item](b, itemRecSize)
 	}
 	e.loadingMonster = false

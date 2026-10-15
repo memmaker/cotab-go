@@ -252,6 +252,13 @@ func upper(c byte) byte {
 // blocks on keyboard reads like the DOS program did.
 func (e *Engine) Run() {
 	e.Init()
+	// START: the driver is started, stopped around the overlay loader's
+	// set-up (O060:0054) and started again with song 0.
+	e.soundInit()
+	e.PlaySound(sndStop)
+	e.soundInit()
+	e.PlaySound(sndMute)
+	e.soundInit()
 	if e.Cfg.Param != "STING" { // ParamStr(1) = 'STING' skips the title
 		e.Title()
 	}
@@ -271,6 +278,7 @@ func (e *Engine) Run() {
 			e.Title()
 			e.ClearKeyboard()
 			e.demo = e.playOrDemo(demoTimeoutAgain)
+			e.PlaySound(sndMute)
 		}
 	}
 }
@@ -291,8 +299,11 @@ func (e *Engine) playOrDemo(timeout int64) bool {
 	return k == 'D'
 }
 
-// Exit = 0899:0000: back to DOS.
+// Exit = R670:0000 print_and_exit: the sound card back from a Ctrl-S,
+// the driver stopped, back to DOS.
 func (e *Engine) Exit() {
+	e.snd.typ = e.snd.saved
+	e.PlaySound(sndStop)
 	if e.tr != nil {
 		panic(TraceDone{"exit"})
 	}

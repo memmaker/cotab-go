@@ -587,7 +587,7 @@ func (e *Engine) Revive(c *Character, hp byte) bool {
 	return true
 }
 
-// hitMessage = 00BA:1FEB (char, magical, message): in combat the target
+// hitMessage = O0ED:218A (char, magical, message): in combat the target
 // flashes (once per message delay step for magic) with a sound.
 func (e *Engine) hitMessage(c *Character, magical bool, msg string) {
 	msg = cut(msg, 0x28)
@@ -595,7 +595,6 @@ func (e *Engine) hitMessage(c *Character, magical bool, msg string) {
 		e.combatName(c, msg, 0xA, true)
 		return
 	}
-	e.soundWait(0)
 	sel := 0x17
 	if magical {
 		sel = 0x16
@@ -624,7 +623,6 @@ func (e *Engine) hitMessage(c *Character, magical bool, msg string) {
 			e.restoreHitFrame(px, py)
 		}
 	}
-	e.soundWait(0xA)
 	e.Flip()
 	if n == 0 {
 		e.gameDelay()

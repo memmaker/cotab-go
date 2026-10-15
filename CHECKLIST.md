@@ -23,7 +23,7 @@ no hex/magic numbers, readable names).
   - [x] after-combat O045 (outcome, experience, hired shares, treasure menu, take money/items): ported from CotAB, replacing Pool ovr06 and the party purse
   - [x] the duel (O04C:1B9A)
   - [x] the ending O0AC (text, animated pictures, fireworks)
-  - [ ] the sound calls (R699, M8)
+  - [x] the sound calls (R699, M8)
   - [ ] parity: PARLAY's prompt (the original passes a char as its prompt string)
 - [ ] M6 camp, shops, temples, training (paladin/ranger etc.)
   - [x] shop (O048) with money (O0BA: pool, share, take, appraise) and View (O0AF viewPlayer, items menu, trade/drop coins, paladin heal/cure): pixel-identical
@@ -49,7 +49,7 @@ no hex/magic numbers, readable names).
   - [x] O11C line walker (CotAB DDA, not Bresenham), nearSort tie-break fixed, LOS/arc/buildNear verified
   - [x] O12A icons/tiles: Load24x24Set counts (DungCom 25, RandCom 6) and n honoured
   - [x] O08D turn code and O0C2 spell bodies renamed and audited; O045 after-combat ported
-- [ ] M8 sound: the PC speaker driver as Go data
+- [x] M8 sound: R699 (Pool's 08AE driver moved 189 bytes) as Go data from CotAB's START.EXE; PlaySound/soundInit/Ctrl-S per R699:0020, 00D4, R670; DAX loads cut the song (R5BD)
 - [ ] M9 goplay: games.js, deploy.sh, README tables, hardware cursor n/a (no pointer), wasm build, box art
 - [ ] M10 publish (GitHub + deploy)
 
@@ -65,6 +65,7 @@ raw EGA colour indices.
 - Pool/Hillsfar import shows a message.
 
 ## Deliberate deviations (obvious bugs fixed, per c-to-go.md)
+- The overlay loader's driver stop/restart around overlay calls (O03C:17E4, START) is not modelled: the port has no overlays.
 - Fireworks sparks (O0AC:04F7) wait 15 ms per step: the original was paced only by its slow BIOS pixel calls.
 - maxHitPoints / setRolledHP (O0A7:4793, modifyPlayer): a character with no class level returns instead of a divide error.
 - aiPickWeapon (O05A:1673): ready_Item is not called with a nil weapon when the off hand is empty or cursed.

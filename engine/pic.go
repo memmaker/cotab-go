@@ -27,7 +27,7 @@ func (e *Engine) LoadPicMasked(name string, id int, mask byte) *dax.Image {
 	if e.Trace != nil {
 		e.Trace("0464:0111", "LoadPic", name, id, 1, int(mask), "")
 	}
-	b := e.L.Block(name, id)
+	b := e.daxBlock(name, id)
 	if b == nil {
 		return nil
 	}
@@ -39,7 +39,7 @@ func (e *Engine) LoadPic(name string, id int) *dax.Image {
 	if e.Trace != nil {
 		e.Trace("0464:0111", "LoadPic", name, id, 0, 0, "")
 	}
-	b := e.L.Block(name, id)
+	b := e.daxBlock(name, id)
 	if b == nil {
 		return nil
 	}

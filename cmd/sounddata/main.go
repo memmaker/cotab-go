@@ -18,24 +18,25 @@ import (
 	"cotab/exe"
 )
 
-// The driver's segment (08AE) in the load image, and its data.
+// The driver's segment (R699) in the load image, and its data. The driver is Pool of
+// Radiance's (its 08AE), 189 bytes further down.
 const (
-	segment      = 35552 // 08AE:0000
-	jumpTable    = 545   // the six script commands' handlers, from command 250 on
+	segment      = 0x699 * 16 // R699:0000
+	jumpTable    = 356        // the six script commands' handlers, from command 250 on
 	channelSize  = 48
-	speakerSet   = 557 // the PC speaker's four channels
-	tandySet     = 967 // the Tandy's: three tones, then the noise
-	speakerSongs = 1375
-	tandySongs   = 1543
+	speakerSet   = 368  // the PC speaker's four channels
+	tandySet     = 778  // the Tandy's: three tones, then the noise
+	speakerSongs = 1186 // R699:1685's table
+	tandySongs   = 1354 // R699:16F1's table
 	songs        = 21
 	channels     = 4
-	enabledFlag  = 525
+	enabledFlag  = 336
 	firstCommand = 250
 )
 
 // The handlers of the commands, by their address in the segment.
 var commands = map[int]string{
-	5710: "reset", 5804: "return", 5811: "call", 5701: "switch", 5678: "loop", 5759: "set",
+	5521: "reset", 5615: "return", 5622: "call", 5512: "switch", 5489: "loop", 5570: "set",
 }
 
 // The channel fields a script may set, by their offset in a channel, and what the

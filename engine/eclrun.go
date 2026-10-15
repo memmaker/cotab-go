@@ -76,7 +76,7 @@ func (e *Engine) loadScript(block byte) {
 	e.sc.code = [scriptCodeSize]byte{}
 	e.ClearRow24()
 	e.displayStringBg(0, statusRow, colourGreen, colourBlack, "Loading...Please Wait")
-	b := e.L.Block("ECL"+strconv.Itoa(int(e.gameArea)), int(block))
+	b := e.daxBlock("ECL"+strconv.Itoa(int(e.gameArea)), int(block))
 	if len(b) >= 2 {
 		copy(e.sc.code[:], b[2:])
 	}
@@ -252,7 +252,7 @@ func (e *Engine) Adventure() {
 			e.lockedDoor()
 			e.drawView()
 			if signed(s.posX) != wordAt(e.area, 2*areaWordOldX) || signed(s.posY) != wordAt(e.area, 2*areaWordOldY) {
-				e.playSound(soundStep)
+				e.PlaySound(sndStep)
 			}
 			s.pictureOn = false
 			s.viewDrawn = true

@@ -26,7 +26,7 @@ func (e *Engine) Init() {
 	e.symPrev = e.symDAX                  // DS:5377
 	e.newGameState()
 
-	e.font = e.L.Block(e.symDAX, 201) // 0709:017C
+	e.font = e.daxBlock(e.symDAX, 201) // 0709:017C
 	e.ClearRow24()
 	e.DisplayString(0, 24, 0xA, "Loading...Please Wait")
 	e.LoadSymbolSet(4, 202) // ovr35:003B
@@ -67,7 +67,7 @@ func (e *Engine) readItems() []byte {
 // InitGraphics loads the font and symbol sets 4 and 0 the way Init does
 // (for tools that skip Init).
 func (e *Engine) InitGraphics() {
-	e.font = e.L.Block(e.symDAX, 201)
+	e.font = e.daxBlock(e.symDAX, 201)
 	e.LoadSymbolSet(4, 202)
 	e.LoadSymbolSet(0, 203)
 }

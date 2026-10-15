@@ -58,7 +58,7 @@ func (e *Engine) loadViewPicture(name string, block byte, flags byte) {
 	e.restoreBackground()
 	a.name = name
 	e.mapMode = block
-	b := e.L.Block(name+e.areaDigit(), int(block))
+	b := e.daxBlock(name+e.areaDigit(), int(block))
 	if b == nil {
 		e.displayAndWait(colourYellow, colourBlack, "PIC not found")
 		return

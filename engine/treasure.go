@@ -19,7 +19,7 @@ func (e *Engine) cmdTreasure() {
 	}
 	what := byte(e.arg(8))
 	if what < treasureRandom {
-		b := e.L.Block("ITEM"+e.areaDigit(), int(what))
+		b := e.daxBlock("ITEM"+e.areaDigit(), int(what))
 		if len(b) == 0 {
 			e.displayAndWait(colourWhite, colourBlack, "Unable to find item file")
 			e.Exit()

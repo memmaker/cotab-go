@@ -218,7 +218,6 @@ func (e *Engine) CastSpell(spell, mode, b byte, quit *bool) {
 					dir++
 				}
 				e.combatTurn(caster, byte(dir), 1, false)
-				e.soundWait(0)
 				switch spell {
 				case 0x2F:
 					e.PlaySound(sndSpell47)
@@ -228,7 +227,6 @@ func (e *Engine) CastSpell(spell, mode, b byte, quit *bool) {
 					e.PlaySound(sndSpell)
 				}
 				e.flyMissile(x, y, e.tgtX, e.tgtY, 4, 0x1E)
-				e.soundWait(0xA)
 				if e.combatOnScreen(caster, false) {
 					e.combatTurn(caster, caster.Combat.Facing, 1, true)
 					e.combatTurn(caster, caster.Combat.Facing, 0, false)
