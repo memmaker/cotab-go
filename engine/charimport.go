@@ -461,6 +461,22 @@ const (
 	newCharMove   = 12
 )
 
+// poolClassPowers (extra): what creation gives a paladin or ranger, for one
+// from por-go (the original Pool has neither class, so the import, keeping
+// only the racial affects, leaves them without): protection from evil and
+// the week's cures, the ranger's bonus against giants.
+func (e *Engine) poolClassPowers(c *Character) {
+	if lvl := int(int8(c.Levels[clsPaladin])); lvl > 0 {
+		c.PaladinCures = byte((lvl-1)/paladinCureLevels + 1)
+		if e.FindAffect(c, affectProtectionFromEvil) == nil {
+			e.AddAffect(c, affectProtectionFromEvil, 0, permanent, 0)
+		}
+	}
+	if int8(c.Levels[clsRanger]) > 0 && e.FindAffect(c, affectRangerVsGiants) == nil {
+		e.AddAffect(c, affectRangerVsGiants, 0, permanent, 0)
+	}
+}
+
 // importCharacter = O0A1:22A0 import_char01 for Pool and Hillsfar.
 func (e *Engine) importCharacter(file string, c *Character) bool {
 	e.DisplayString(0, statusRow, colourGreen, "Loading...Please Wait")
@@ -493,6 +509,7 @@ func (e *Engine) importCharacter(file string, c *Character) bool {
 			}
 			loadPoolRecord(rec, p)
 			c.setRecord(rec)
+			e.poolClassPowers(c)
 			undo := e.selectTemp(c)
 			e.hillsfarMerge(c, h)
 			undo()
@@ -517,6 +534,7 @@ func (e *Engine) importCharacter(file string, c *Character) bool {
 				}
 			}
 		}
+		e.poolClassPowers(c)
 	}
 	e.ClearKeyboard()
 	e.ApplyItems(c)
