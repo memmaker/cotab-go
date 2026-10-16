@@ -68,7 +68,7 @@ func (e *Engine) ModifyCharacter() {
 		saved[i] = c.Stats[i].Value
 	}
 	savedStr00, savedMax, savedName := c.Str00.Value, c.MaxHP, c.PName
-	race, class, sex := int(c.Race), int(c.Class), int(c.Sex)
+	race, class := int(c.Race), int(c.Class)
 	limits := raceStatLimits[race]
 	restore := func() {
 		for i := range saved {
@@ -125,7 +125,7 @@ func (e *Engine) ModifyCharacter() {
 			case scanLeft:
 				switch {
 				case line < modifyHPLine:
-					e.modifyLower(c, line, limits, class, sex)
+					e.modifyLower(c, line, limits, class)
 				case line == modifyHPLine:
 					c.MaxHP--
 					if m := e.minHitPoints(c); m > c.MaxHP {
@@ -140,7 +140,7 @@ func (e *Engine) ModifyCharacter() {
 			case scanRight:
 				switch {
 				case line < modifyHPLine:
-					e.modifyRaise(c, line, limits, sex)
+					e.modifyRaise(c, line, limits)
 				case line == modifyHPLine:
 					c.MaxHP++
 					if m := e.maxHitPoints(c); m < c.MaxHP {
@@ -236,7 +236,7 @@ func (e *Engine) setRolledHP(c *Character) {
 
 // modifyLower: left on ability line i, kept within the race and class
 // minimum; strength first gives up exceptional strength.
-func (e *Engine) modifyLower(c *Character, i int, limits [16]byte, class, sex int) {
+func (e *Engine) modifyLower(c *Character, i int, limits [16]byte, class int) {
 	st := &c.Stats[i].Value
 	*st--
 	min := limits[statLimitMin+2*i]
@@ -244,8 +244,8 @@ func (e *Engine) modifyLower(c *Character, i int, limits [16]byte, class, sex in
 		if c.Str00.Value > 0 {
 			c.Str00.Value--
 			*st++
-		} else if *st < limits[sex] {
-			*st = limits[sex]
+		} else if *st < limits[0] {
+			*st = limits[0]
 		}
 		min = 0
 	}
@@ -272,13 +272,13 @@ func (e *Engine) modifyLower(c *Character, i int, limits [16]byte, class, sex in
 // modifyRaise: right on ability line i, kept within the race maximum;
 // strength of a fighter, paladin or ranger goes on into exceptional
 // strength.
-func (e *Engine) modifyRaise(c *Character, i int, limits [16]byte, sex int) {
+func (e *Engine) modifyRaise(c *Character, i int, limits [16]byte) {
 	st := &c.Stats[i].Value
 	*st++
 	if i == statStr {
-		if max := limits[2+sex]; *st > max {
+		if max := limits[2]; *st > max {
 			if *st > 18 && (int8(c.Levels[clsFighter]) > 0 || int8(c.Levels[clsPaladin]) > 0 ||
-				int8(c.Levels[clsRanger]) > 0) && limits[4+sex] > c.Str00.Value {
+				int8(c.Levels[clsRanger]) > 0) && limits[4] > c.Str00.Value {
 				c.Str00.Value++
 			}
 			*st = max

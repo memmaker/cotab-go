@@ -300,7 +300,7 @@ func (e *Engine) CreateCharacter() {
 // six 3d6+1 each, then the age steps, the race limits, the class minimum and
 // exceptional strength (fighters, paladins, rangers with 18).
 func (e *Engine) rollAbilities(c *Character, class int) {
-	race, gender := int(c.Race), int(c.Sex)
+	race := int(c.Race)
 	for k := 0; k <= clsMonk; k++ {
 		if int8(c.Levels[k]) > 0 {
 			c.Levels[k] = 1
@@ -371,7 +371,7 @@ func (e *Engine) rollAbilities(c *Character, class int) {
 		}
 		lo, hi := limits[2*i+4], limits[2*i+5] // int .. cha: min/max pairs after the strength block
 		if i == statStr {
-			lo, hi = limits[gender], limits[2+gender]
+			lo, hi = limits[0], limits[2] // females use the male strength limits
 		}
 		*st = max(*st, lo)
 		*st = min(*st, hi)
@@ -379,7 +379,7 @@ func (e *Engine) rollAbilities(c *Character, class int) {
 		if i == statStr && *st == strengthMaximum &&
 			(int8(c.Levels[clsFighter]) > 0 || int8(c.Levels[clsRanger]) > 0 || int8(c.Levels[clsPaladin]) > 0) {
 			c.Str00.Value = byte(e.Random(exceptionalStrDice) + 1)
-			c.Str00.Value = min(c.Str00.Value, limits[4+gender])
+			c.Str00.Value = min(c.Str00.Value, limits[4])
 		}
 		if i == statWis && *st < multiClericWisdom && class >= classClericFighter && class <= classClericThief {
 			*st = multiClericWisdom

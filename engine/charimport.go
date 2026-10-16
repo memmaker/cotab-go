@@ -231,7 +231,7 @@ func loadPoolRecord(rec, pool []byte) {
 		v := pool[poolStats+i]
 		lo, hi := limits[statLimitMin+2*i], limits[statLimitMin+2*i+1]
 		if i == statStr {
-			lo, hi = limits[sex&1], limits[2+sex&1]
+			lo, hi = limits[0], limits[2] // females use the male strength limits
 		}
 		if v < lo {
 			v = lo
@@ -245,7 +245,7 @@ func loadPoolRecord(rec, pool []byte) {
 	rec[offStr00] = pool[poolStr00]
 	// The original compares the exceptional strength maximum with the
 	// strength itself and raises the strength to it; see CHECKLIST.
-	if max00 := limits[4+sex&1]; rec[offStr00] > max00 {
+	if max00 := limits[4]; rec[offStr00] > max00 {
 		rec[offStr00] = max00
 	}
 	rec[offStr00+1] = pool[poolStr00]
