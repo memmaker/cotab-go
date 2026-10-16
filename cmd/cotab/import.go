@@ -16,8 +16,9 @@ import (
 )
 
 // markerFiles: a folder holding all of these is a Curse of the Azure Bonds install.
-// Pool of Radiance has neither the big pictures nor the sky archive.
-var markerFiles = []string{"BIGPIC1.DAX", "SKY.DAX", "GAME.OVR"}
+// Pool of Radiance has neither the big pictures nor the sky archive; Secret of the
+// Silver Blades has both but no wilderness combat (WILDCOM.DAX).
+var markerFiles = []string{"BIGPIC1.DAX", "SKY.DAX", "GAME.OVR", "WILDCOM.DAX"}
 
 // isMarker tells whether name is one of markerFiles.
 func isMarker(name string) bool {
